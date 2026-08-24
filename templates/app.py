@@ -3,7 +3,6 @@ from flask import (
     render_template,
     request,
     Response,
-    stream_with_context,
     session,
     redirect,
     url_for,
@@ -32,7 +31,7 @@ app = Flask(__name__)
 
 app.secret_key = os.getenv(
     "FLASK_SECRET_KEY",
-    "change-this-secret-key",
+    "change-this-secret-key"
 )
 
 USERS_FILE = "users.json"
@@ -44,10 +43,7 @@ USERS_FILE = "users.json"
 
 HF_TOKEN = os.getenv("HF_TOKEN")
 
-# Automatic fastest provider selection.
 TEXT_MODEL = "openai/gpt-oss-120b"
-
-# Better vision model for image questions.
 VISION_MODEL = "Qwen/Qwen2.5-VL-7B-Instruct"
 
 hf_client = None
@@ -64,16 +60,87 @@ if HF_TOKEN:
 # ============================================================
 
 CREATOR_RESPONSE = """
-My creator is Soham Chandrahas Sanap.
+My creator is **Soham Chandrahas Sanap**.
 
 He is 15 years old and is studying in Class 10 in 2026
 at Nimbark English School in Beed district, Maharashtra, India.
 
-His interests include Mathematics and web development.
+His main interests are Mathematics and web development.
 
-He built My AI as a study assistant for Mathematics,
-Physics, Chemistry and Biology.
+He built My AI as an AI study assistant to help students
+with Mathematics, Physics, Chemistry and Biology.
 """.strip()
+
+
+CREATOR_QUESTIONS = {
+    "who created you",
+    "who created you?",
+    "who made you",
+    "who made you?",
+    "who is your creator",
+    "who is your creator?",
+    "who developed you",
+    "who developed you?",
+    "who built you",
+    "who built you?",
+    "who is your developer",
+    "who is your developer?",
+    "who made this ai",
+    "who made this ai?",
+    "who built this ai",
+    "who built this ai?",
+    "who is behind you",
+    "who is behind this ai",
+    "who is your maker",
+    "who is your maker?",
+    "who is your father",
+    "tell me about your creator",
+    "tell me about your creator?",
+    "who is soham chandrahas sanap",
+    "who is soham chandrahas sanap?",
+}
+
+
+def is_creator_question(question):
+    return question.strip().lower() in CREATOR_QUESTIONS
+
+
+# ============================================================
+# USER STORAGE
+# ============================================================
+
+def load_users():
+    if not os.path.exists(USERS_FILE):
+        return {}
+
+    try:
+        with open(
+            USERS_FILE,
+            "r",
+            encoding="utf-8",
+        ) as file:
+            data = json.load(file)
+
+        return data if isinstance(data, dict) else {}
+
+    except (
+        OSError,
+        json.JSONDecodeError,
+    ):
+        return {}
+
+
+def save_users(users):
+    with open(
+        USERS_FILE,
+        "w",
+        encoding="utf-8",
+    ) as file:
+        json.dump(
+            users,
+            file,
+            indent=2,
+        )
 
 
 # ============================================================
@@ -81,32 +148,26 @@ Physics, Chemistry and Biology.
 # ============================================================
 
 GENERAL_PROMPT = """
-You are My AI, a high-quality student study assistant.
+You are My AI, a student study assistant.
 
-You answer:
-- Mathematics
-- Physics
-- Chemistry
-- Biology
-- General science
-- Academic questions
+You help with:
+Mathematics, Physics, Chemistry, Biology and general academic questions.
 
-You must handle basic, intermediate, advanced and very difficult questions.
-
-GENERAL RULES:
-1. Read the complete question.
+Rules:
+1. Read the entire question.
 2. Identify exactly what is being asked.
 3. Never guess.
 4. Answer every requested part.
 5. Show useful calculations.
 6. Check important arithmetic.
 7. Check units when relevant.
-8. Verify the final result whenever practical.
-9. For MCQs, verify the option.
-10. Understand follow-up questions using conversation context.
-11. Always finish the response.
+8. Verify important results.
+9. Understand follow-up questions from relevant conversation context.
+10. For simple questions be concise.
+11. For difficult questions show the useful derivation.
+12. Finish the answer completely.
 
-Never output raw LaTeX such as:
+Never output raw LaTeX commands such as:
 \\(
 \\)
 \\[
@@ -118,7 +179,7 @@ Never output raw LaTeX such as:
 \\end{}
 $$
 
-Use readable forms such as:
+Use readable notation such as:
 x²
 x³
 x⁵
@@ -130,12 +191,9 @@ F = ma
 
 
 MATH_PROMPT = """
-You are My AI's expert Mathematics solver.
+You are an expert Mathematics solver.
 
-Handle everything from school mathematics to very difficult
-JEE Main, JEE Advanced and Olympiad-style mathematics.
-
-Topics:
+Handle:
 - Algebra
 - Trigonometry
 - Trigonometric identities
@@ -145,8 +203,7 @@ Topics:
 - Surds
 - Sequences and series
 - Binomial theorem
-- Permutations
-- Combinations
+- Permutations and combinations
 - Probability
 - Functions
 - Logarithms
@@ -163,40 +220,35 @@ Topics:
 - Differentiation
 - Integration
 - Calculus
+- JEE Main
+- JEE Advanced
+- Olympiad-style mathematics
 
-FOR DIFFICULT PROBLEMS:
-1. Understand the target.
-2. Identify the relevant information.
-3. Choose the correct method.
+For difficult problems:
+1. Understand the exact target.
+2. Identify relevant information.
+3. Choose a correct method.
 4. Derive step by step.
 5. Simplify carefully.
 6. Check algebra.
 7. Check the final result.
-8. For MCQs, verify the option.
+8. Verify MCQ options.
 9. For identities, actually prove the identity.
 10. Never guess.
 
 For equations, check roots.
-
 For inequalities, check equality cases.
-
-For probability, check that the result is valid.
-
+For probability, check validity.
 For geometry, respect all constraints.
 
-For calculus, check the result where practical.
-
-Do not output raw LaTeX.
+Never output raw LaTeX.
 """
 
 
 PHYSICS_PROMPT = """
-You are My AI's expert Physics solver.
+You are an expert Physics solver for school, JEE Main and JEE Advanced.
 
-Handle school, JEE Main, JEE Advanced and very difficult
-multi-step Physics problems.
-
-Topics:
+Handle:
 - Kinematics
 - Newton's laws
 - Friction
@@ -222,26 +274,26 @@ Topics:
 - Kinetic theory
 - Modern physics
 
-FOR DIFFICULT PROBLEMS:
+For difficult problems:
 1. Understand the physical setup.
-2. Identify all relevant bodies.
+2. Identify all important bodies.
 3. Identify forces and constraints.
 4. Choose coordinates.
-5. Find equilibrium if required.
+5. Find equilibrium if needed.
 6. Write governing equations.
-7. Apply approximations only when justified.
+7. Use approximations only when justified.
 8. Derive the requested quantity.
 9. Check signs.
 10. Check dimensions.
 11. Check limiting cases when useful.
-12. Verify MCQ options.
+12. Verify the final answer.
 
-FOR SMALL OSCILLATION PROBLEMS:
+For small oscillation problems:
 - Find equilibrium first.
-- Define the small displacement.
-- Find the restoring force.
-- Use the correct small-displacement approximation.
-- Compare with the SHM relation.
+- Define small displacement.
+- Find restoring force.
+- Apply the appropriate approximation.
+- Compare with the SHM equation.
 
 Never guess.
 Do not output raw LaTeX.
@@ -249,7 +301,7 @@ Do not output raw LaTeX.
 
 
 CHEMISTRY_PROMPT = """
-You are My AI's expert Chemistry solver.
+You are an expert Chemistry solver.
 
 Handle school, JEE Main and JEE Advanced questions.
 
@@ -257,7 +309,6 @@ Topics:
 - Mole concept
 - Stoichiometry
 - Atomic structure
-- Periodic properties
 - Chemical bonding
 - Thermodynamics
 - Equilibrium
@@ -273,21 +324,21 @@ Topics:
 
 For numerical problems:
 Given
-→ Formula/reaction
-→ Substitution
-→ Calculation
-→ Verification
-→ Final Answer
+Formula/reaction
+Substitution
+Calculation
+Verification
+Final Answer
 
-Check units, molar masses, stoichiometric ratios and limiting reagents.
+Check units, molar masses, ratios and limiting reagent.
 
-Do not guess.
+Never guess.
 Do not output raw LaTeX.
 """
 
 
 BIOLOGY_PROMPT = """
-You are My AI's expert Biology solver.
+You are an expert Biology solver.
 
 Handle school and competitive Biology questions.
 
@@ -306,9 +357,9 @@ Topics:
 - Ecology
 
 For difficult questions:
-1. Identify the exact concept.
+1. Identify the concept.
 2. State relevant facts.
-3. Explain the mechanism in order.
+3. Explain the process in order.
 4. Compare alternatives when needed.
 5. For genetics, calculate probabilities carefully.
 6. For MCQs, evaluate the options.
@@ -320,9 +371,7 @@ Do not invent facts.
 VISION_PROMPT = """
 You are My AI's image-question solver.
 
-The user has uploaded a photograph or screenshot.
-
-Read the entire image carefully.
+Read the entire uploaded image.
 
 Identify whether it is:
 - Mathematics
@@ -333,73 +382,51 @@ Identify whether it is:
 
 Then solve it.
 
-MATHEMATICS:
-- Read every number and symbol.
-- Reconstruct the question.
-- Solve carefully.
+Mathematics:
+- Read all visible symbols and numbers.
+- Reconstruct the question carefully.
+- Solve step by step.
 - Check algebra and arithmetic.
 
-PHYSICS:
+Physics:
 - Identify the physical system.
-- Read all given values.
-- Choose the correct physical laws.
+- Extract given values.
+- Choose the correct laws.
 - Derive the result.
 - Check dimensions and units.
 
-CHEMISTRY:
-- Read equations and values.
-- Balance reactions when needed.
+Chemistry:
+- Read values and equations.
+- Balance reactions when required.
 - Calculate carefully.
 
-BIOLOGY:
+Biology:
 - Read labels and diagrams.
 - Answer all requested parts.
 
-IMPORTANT:
-- Do not invent text that is not visible.
-- If something is unclear, say what is unclear.
-- Do not merely describe the image.
-- Actually solve the question.
-- Do not output raw LaTeX.
+Do not invent text that is not visible.
+If something is blurry, say what is unclear.
+Do not merely describe the image.
+Actually solve it.
+Do not output raw LaTeX.
 """
 
 
 # ============================================================
-# USER STORAGE
+# PROMPT SELECTOR
 # ============================================================
 
-def load_users():
-    if not os.path.exists(USERS_FILE):
-        return {}
-
-    try:
-        with open(
-            USERS_FILE,
-            "r",
-            encoding="utf-8",
-        ) as f:
-            data = json.load(f)
-
-        return data if isinstance(data, dict) else {}
-
-    except (
-        OSError,
-        json.JSONDecodeError,
-    ):
-        return {}
-
-
-def save_users(users):
-    with open(
-        USERS_FILE,
-        "w",
-        encoding="utf-8",
-    ) as f:
-        json.dump(
-            users,
-            f,
-            indent=2,
-        )
+def get_prompt(subject):
+    return {
+        "math": MATH_PROMPT,
+        "physics": PHYSICS_PROMPT,
+        "chemistry": CHEMISTRY_PROMPT,
+        "biology": BIOLOGY_PROMPT,
+        "general": GENERAL_PROMPT,
+    }.get(
+        subject,
+        GENERAL_PROMPT,
+    )
 
 
 # ============================================================
@@ -409,40 +436,7 @@ def save_users(users):
 def basic_response(question):
     q = question.strip().lower()
 
-    creator_words = {
-        "who created you",
-        "who created you?",
-        "who made you",
-        "who made you?",
-        "who is your creator",
-        "who is your creator?",
-        "who developed you",
-        "who developed you?",
-        "who built you",
-        "who built you?",
-        "who is your developer",
-        "who is your developer?",
-        "who created",
-        "who created?",
-        "you are created by",
-        "you were created by",
-        "you were made by",
-        "who made this ai",
-        "who made this ai?",
-        "who built this ai",
-        "who built this ai?",
-        "who is behind you",
-        "who is behind this ai",
-        "who is your maker",
-        "who is your maker?",
-        "who is your father",
-        "tell me about your creator",
-        "tell me about your creator?",
-        "who is soham chandrahas sanap",
-        "who is soham chandrahas sanap?",
-    }
-
-    if q in creator_words:
+    if is_creator_question(question):
         return CREATOR_RESPONSE
 
     if q in {
@@ -486,13 +480,108 @@ def basic_response(question):
 
 
 # ============================================================
+# MEMORY
+#
+# IMPORTANT:
+# Normal chat, question sets, and creator responses are kept
+# in different categories.
+# ============================================================
+
+def save_history(
+    question,
+    answer,
+    category="normal",
+):
+    history = session.get(
+        "chat_history",
+        [],
+    )
+
+    history.append(
+        {
+            "question": question,
+            "answer": answer[:12000],
+            "category": category,
+        }
+    )
+
+    session["chat_history"] = history[-15:]
+    session.modified = True
+
+
+def save_question_set(
+    original_request,
+    answer,
+    subject,
+    difficulty,
+):
+    session["question_set"] = {
+        "request": original_request,
+        "answer": answer[:50000],
+        "subject": subject,
+        "difficulty": difficulty,
+    }
+
+    session.modified = True
+
+
+def get_question_set():
+    return session.get(
+        "question_set"
+    )
+
+
+def clear_question_set():
+    session.pop(
+        "question_set",
+        None,
+    )
+
+    session.modified = True
+
+
+# ============================================================
 # FOLLOW-UP DETECTION
 # ============================================================
+
+def continuation_count(question):
+    q = question.strip().lower()
+
+    patterns = [
+        r"^other\s+(\d+)\s+questions?$",
+        r"^another\s+(\d+)\s+questions?$",
+        r"^next\s+(\d+)\s+questions?$",
+        r"^more\s+(\d+)\s+questions?$",
+        r"^remaining\s+(\d+)\s+questions?$",
+        r"^give\s+(?:me\s+)?(?:the\s+)?other\s+(\d+)\s+questions?$",
+        r"^give\s+(?:me\s+)?another\s+(\d+)\s+questions?$",
+    ]
+
+    for pattern in patterns:
+        match = re.match(
+            pattern,
+            q,
+        )
+
+        if match:
+            return min(
+                max(
+                    int(match.group(1)),
+                    1,
+                ),
+                50,
+            )
+
+    return None
+
 
 def is_followup(question):
     q = question.strip().lower()
 
-    short = {
+    if continuation_count(question) is not None:
+        return True
+
+    short_followups = {
         "other",
         "others",
         "another",
@@ -505,8 +594,8 @@ def is_followup(question):
         "top five",
         "top 5",
         "which one",
-        "which one is easiest",
         "which is easiest",
+        "which one is easiest",
         "which is better",
         "why",
         "why?",
@@ -517,22 +606,8 @@ def is_followup(question):
         "continue please",
     }
 
-    if q in short:
+    if q in short_followups:
         return True
-
-    patterns = [
-        r"^other\s+\d+\s+questions?$",
-        r"^another\s+\d+\s+questions?$",
-        r"^next\s+\d+\s+questions?$",
-        r"^more\s+\d+\s+questions?$",
-        r"^remaining\s+\d+\s+questions?$",
-        r"^give\s+(?:me\s+)?(?:the\s+)?other\s+\d+\s+questions?$",
-        r"^give\s+(?:me\s+)?another\s+\d+\s+questions?$",
-    ]
-
-    for pattern in patterns:
-        if re.match(pattern, q):
-            return True
 
     prefixes = (
         "and ",
@@ -540,9 +615,6 @@ def is_followup(question):
         "what about ",
         "how about ",
         "then ",
-        "another ",
-        "other ",
-        "more ",
         "compare ",
         "difference ",
         "differences ",
@@ -560,156 +632,169 @@ def is_followup(question):
     return len(q.split()) <= 3
 
 
-def continuation_count(question):
-    q = question.strip().lower()
+# ============================================================
+# QUESTION NUMBERING
+# ============================================================
 
-    patterns = [
-        r"^other\s+(\d+)\s+questions?$",
-        r"^another\s+(\d+)\s+questions?$",
-        r"^next\s+(\d+)\s+questions?$",
-        r"^more\s+(\d+)\s+questions?$",
-        r"^remaining\s+(\d+)\s+questions?$",
-        r"^give\s+(?:me\s+)?(?:the\s+)?other\s+(\d+)\s+questions?$",
-        r"^give\s+(?:me\s+)?another\s+(\d+)\s+questions?$",
-    ]
-
-    for pattern in patterns:
-        m = re.match(pattern, q)
-
-        if m:
-            return min(
-                max(
-                    int(m.group(1)),
-                    1,
-                ),
-                50,
-            )
-
-    return None
-
-
-def save_history(question, answer):
-    history = session.get(
-        "chat_history",
-        [],
-    )
-
-    history.append(
-        {
-            "question": question,
-            "answer": answer[:12000],
-        }
-    )
-
-    session["chat_history"] = history[-10:]
-    session.modified = True
-
-
-def last_question_number(answer):
+def extract_question_numbers(text):
     numbers = re.findall(
         r"(?:^|\n)\s*(?:\*\*)?(\d+)\.",
-        answer,
+        text,
     )
 
-    if not numbers:
-        return 0
-
-    return max(
-        int(n)
-        for n in numbers
+    return sorted(
+        set(
+            int(number)
+            for number in numbers
+        )
     )
 
+
+def last_question_number(text):
+    numbers = extract_question_numbers(
+        text
+    )
+
+    return max(numbers) if numbers else 0
+
+
+# ============================================================
+# CONTEXT BUILDER
+# ============================================================
 
 def build_context(question):
-    history = session.get(
-        "chat_history",
-        [],
-    )
+    """
+    Critical memory fix:
 
-    if not history:
-        return question
+    1. Question-set continuation uses ONLY question_set.
+    2. Creator responses are NEVER automatic context.
+    3. Normal follow-ups use only normal conversation items.
+    """
+
+    # ========================================================
+    # QUESTION-SET CONTINUATION
+    # ========================================================
 
     count = continuation_count(
         question
     )
 
     if count is not None:
-        last = history[-1]
 
-        previous_number = last_question_number(
-            last["answer"]
-        )
+        question_set = get_question_set()
 
-        start = previous_number + 1
-        end = previous_number + count
+        if question_set:
 
-        return f"""
-PREVIOUS QUESTION-GENERATION REQUEST:
-{last["question"]}
+            previous_answer = (
+                question_set["answer"]
+            )
 
-PREVIOUS GENERATED RESPONSE:
-{last["answer"]}
+            last_number = last_question_number(
+                previous_answer
+            )
 
-NEW USER REQUEST:
+            start = last_number + 1
+            end = last_number + count
+
+            return f"""
+QUESTION SET CONTINUATION
+
+Original request:
+{question_set["request"]}
+
+Subject:
+{question_set["subject"]}
+
+Difficulty:
+{question_set["difficulty"]}
+
+Previous question set:
+{previous_answer}
+
+New request:
 {question}
 
-THIS IS A CONTINUATION.
+This is a continuation of the SAME question set.
 
 Generate exactly {count} additional questions.
 
-Start numbering at {start}.
-End numbering at {end}.
+Start at Question {start}.
+End at Question {end}.
 
-Keep the same subject and style as the previous set.
-Do not restart from Question 1.
-Do not change to an unrelated subject.
-Give options if the previous request asked for options.
-Do not provide an answer key unless requested.
+Keep the same subject and style.
+
+Do NOT:
+- restart at Question 1
+- change the subject
+- talk about the creator
+- use unrelated conversation
+- answer the questions instead of generating them
 """.strip()
+
+        # There is no active question set.
+        return question
+
+    # ========================================================
+    # NORMAL FOLLOW-UP
+    # ========================================================
 
     if not is_followup(question):
         return question
 
-    recent = history[-5:]
+    history = session.get(
+        "chat_history",
+        [],
+    )
+
+    # Only normal conversation.
+    useful_history = [
+        item
+        for item in history
+        if item.get("category") == "normal"
+    ]
+
+    if not useful_history:
+        return question
+
+    recent = useful_history[-5:]
 
     parts = [
-        "RECENT CONVERSATION:",
+        "RELEVANT RECENT CONVERSATION:",
         "",
     ]
 
     for item in recent:
+
         parts.append(
-            "USER:\n" + item["question"]
+            "USER:\n"
+            + item["question"]
         )
+
         parts.append(
-            "MY AI:\n" + item["answer"]
+            "MY AI:\n"
+            + item["answer"]
         )
+
         parts.append("")
 
     parts.append(
-        "NEW USER QUESTION:\n" + question
+        "NEW USER QUESTION:\n"
+        + question
     )
 
     parts.append(
-        "\nUse relevant context to answer the new question."
+        "\nUse only relevant previous context."
     )
 
     return "\n".join(parts)
 
 
 # ============================================================
-# SUBJECT
+# SUBJECT DETECTION
 # ============================================================
 
 def detect_subject(question):
     q = question.lower()
-
-    scores = {
-        "math": 0,
-        "physics": 0,
-        "chemistry": 0,
-        "biology": 0,
-    }
 
     math_words = [
         "equation",
@@ -727,11 +812,10 @@ def detect_subject(question):
         "identity",
         "surds",
         "probability",
-        "sequence",
-        "series",
-        "binomial",
         "permutation",
         "combination",
+        "sequence",
+        "series",
         "matrix",
         "determinant",
         "calculus",
@@ -740,10 +824,12 @@ def detect_subject(question):
         "logarithm",
         "vector",
         "complex",
+        "binomial",
         "inequality",
         "number theory",
         "divisibility",
         "function",
+        "proof",
     ]
 
     physics_words = [
@@ -839,6 +925,7 @@ def detect_subject(question):
         "evolution",
         "hormone",
         "neuron",
+        "digestion",
         "reproduction",
         "heredity",
         "blood",
@@ -847,6 +934,13 @@ def detect_subject(question):
         "lung",
         "brain",
     ]
+
+    scores = {
+        "math": 0,
+        "physics": 0,
+        "chemistry": 0,
+        "biology": 0,
+    }
 
     for word in math_words:
         if word in q:
@@ -869,10 +963,11 @@ def detect_subject(question):
         key=scores.get,
     )
 
-    if scores[subject] == 0:
-        return "general"
-
-    return subject
+    return (
+        subject
+        if scores[subject] > 0
+        else "general"
+    )
 
 
 # ============================================================
@@ -884,7 +979,7 @@ def detect_difficulty(question):
 
     score = 0
 
-    advanced_terms = [
+    hard_words = [
         "jee advanced",
         "jee adv",
         "olympiad",
@@ -892,9 +987,9 @@ def detect_difficulty(question):
         "hardest",
         "difficult",
         "challenging",
-        "prove",
         "derive",
         "derivation",
+        "prove",
         "show that",
         "maximum",
         "minimum",
@@ -916,17 +1011,14 @@ def detect_difficulty(question):
         "electromagnetic induction",
     ]
 
-    for term in advanced_terms:
-        if term in q:
+    for word in hard_words:
+        if word in q:
             score += 2
 
-    if len(q) >= 300:
+    if len(q) > 300:
         score += 2
 
-    if len(q) >= 700:
-        score += 2
-
-    if q.count("?") >= 2:
+    if len(q) > 700:
         score += 2
 
     if score >= 6:
@@ -983,15 +1075,17 @@ def requested_question_count(question):
     ]
 
     for pattern in patterns:
-        m = re.search(
+
+        match = re.search(
             pattern,
             q,
         )
 
-        if m:
+        if match:
+
             return min(
                 max(
-                    int(m.group(1)),
+                    int(match.group(1)),
                     1,
                 ),
                 50,
@@ -1001,7 +1095,7 @@ def requested_question_count(question):
 
 
 # ============================================================
-# LOCAL CALCULATOR
+# SAFE CALCULATOR
 # ============================================================
 
 ALLOWED_BINARY_OPERATORS = {
@@ -1032,22 +1126,26 @@ def safe_calculate(expression):
     ):
         return None
 
-    def calc(node):
+    def calculate(node):
+
         if isinstance(
             node,
             ast.Constant,
         ):
+
             if isinstance(
                 node.value,
                 (int, float),
             ):
                 return node.value
+
             raise ValueError()
 
         if isinstance(
             node,
             ast.UnaryOp,
         ):
+
             operation = (
                 ALLOWED_UNARY_OPERATORS.get(
                     type(node.op)
@@ -1058,13 +1156,16 @@ def safe_calculate(expression):
                 raise ValueError()
 
             return operation(
-                calc(node.operand)
+                calculate(
+                    node.operand
+                )
             )
 
         if isinstance(
             node,
             ast.BinOp,
         ):
+
             operation = (
                 ALLOWED_BINARY_OPERATORS.get(
                     type(node.op)
@@ -1074,8 +1175,13 @@ def safe_calculate(expression):
             if operation is None:
                 raise ValueError()
 
-            left = calc(node.left)
-            right = calc(node.right)
+            left = calculate(
+                node.left
+            )
+
+            right = calculate(
+                node.right
+            )
 
             if (
                 isinstance(
@@ -1094,9 +1200,10 @@ def safe_calculate(expression):
         raise ValueError()
 
     try:
-        return calc(
+        return calculate(
             tree.body
         )
+
     except (
         ArithmeticError,
         OverflowError,
@@ -1165,9 +1272,11 @@ def solve_calculation(question):
         result,
         int,
     ):
+
         answer = f"{result:,}"
 
     else:
+
         if not math.isfinite(
             result
         ):
@@ -1186,23 +1295,23 @@ def solve_calculation(question):
 
 
 # ============================================================
-# LOCAL x + 1/x SOLVER
+# LOCAL x + 1/x
 # ============================================================
 
 def solve_power_recurrence(question):
     q = question.lower()
 
-    m = re.search(
+    given = re.search(
         r"x\s*\+\s*1\s*/\s*x\s*=\s*"
         r"(-?\d+(?:\.\d+)?)",
         q,
     )
 
-    if not m:
+    if not given:
         return None
 
     a = float(
-        m.group(1)
+        given.group(1)
     )
 
     target = re.search(
@@ -1251,6 +1360,7 @@ def solve_power_recurrence(question):
         2,
         n + 1,
     ):
+
         lines.extend(
             [
                 f"**Step {k - 1}:**",
@@ -1283,356 +1393,305 @@ def solve_power_recurrence(question):
 
 
 # ============================================================
-# TEXT MODEL STREAM
+# OPENAI-COMPATIBLE TEXT CALL
 # ============================================================
 
-def stream_responses_api(
+def text_call(
     instructions,
     user_input,
-    reasoning_effort,
-    max_output_tokens,
+    reasoning="medium",
+    max_tokens=5000,
 ):
     """
-    Streams output_text.delta events from the Responses API.
-    Hugging Face documents this event-based streaming format.
+    Responses API first.
+    Chat Completions fallback second.
     """
-
-    stream = hf_client.responses.create(
-        model=TEXT_MODEL,
-        instructions=instructions,
-        input=user_input,
-        reasoning={
-            "effort": reasoning_effort,
-        },
-        max_output_tokens=max_output_tokens,
-        stream=True,
-    )
-
-    full_answer = ""
-
-    for event in stream:
-
-        event_type = getattr(
-            event,
-            "type",
-            "",
-        )
-
-        if event_type == (
-            "response.output_text.delta"
-        ):
-            delta = getattr(
-                event,
-                "delta",
-                "",
-            )
-
-            if delta:
-                full_answer += delta
-                yield delta
-
-        elif event_type == "response.failed":
-
-            error = getattr(
-                event,
-                "error",
-                None,
-            )
-
-            if error:
-                yield (
-                    "\n\n❌ AI error: "
-                    + str(error)
-                )
-
-    return
-
-
-# ============================================================
-# NORMAL / HARD TEXT AI
-# ============================================================
-
-def stream_text_ai(
-    user_question,
-    subject,
-    original_question,
-    difficulty,
-):
-    if not HF_TOKEN or hf_client is None:
-        yield (
-            "❌ HF_TOKEN is missing.\n\n"
-            "Check Render → Environment → HF_TOKEN."
-        )
-        return
-
-    base_prompt = {
-        "math": MATH_PROMPT,
-        "physics": PHYSICS_PROMPT,
-        "chemistry": CHEMISTRY_PROMPT,
-        "biology": BIOLOGY_PROMPT,
-        "general": GENERAL_PROMPT,
-    }.get(
-        subject,
-        GENERAL_PROMPT,
-    )
-
-    generation = is_question_generation(
-        original_question
-    )
-
-    count = requested_question_count(
-        original_question
-    )
-
-    continuation = continuation_count(
-        original_question
-    )
-
-    if generation:
-
-        prompt = base_prompt + """
-
-QUESTION GENERATION MODE
-
-Generate EXACTLY the requested number of questions.
-
-Rules:
-- Do not stop early.
-- Number continuously.
-- Give complete questions.
-- Use A, B, C and D when options are requested.
-- Keep the same subject.
-- Keep the requested difficulty.
-- Do not provide the answer key unless asked.
-- Before ending, count the questions and make sure the requested
-  number has been completed.
-"""
-
-        if continuation is not None:
-
-            history = session.get(
-                "chat_history",
-                [],
-            )
-
-            previous_end = 0
-
-            if history:
-                previous_end = last_question_number(
-                    history[-1]["answer"]
-                )
-
-            start = previous_end + 1
-            end = previous_end + continuation
-
-            prompt += f"""
-
-CONTINUATION REQUEST:
-
-Generate exactly {continuation} more questions.
-
-Start at Question {start}.
-End at Question {end}.
-
-Do not restart at Question 1.
-"""
-
-        elif count is not None:
-
-            prompt += f"""
-
-The requested number is exactly {count} questions.
-"""
-
-        max_tokens = min(
-            18000,
-            max(
-                8000,
-                600 * (
-                    count
-                    or continuation
-                    or 10
-                ),
-            ),
-        )
-
-        reasoning = "medium"
-
-    elif difficulty == "advanced":
-
-        prompt = base_prompt + """
-
-ADVANCED REASONING MODE
-
-This is a difficult problem.
-
-Work carefully through the mathematical or physical logic.
-
-Before finalizing:
-- Recheck equations.
-- Recheck algebra.
-- Recheck arithmetic.
-- Recheck units.
-- Recheck signs.
-- Check limiting cases where useful.
-- Verify MCQ options.
-- Never guess.
-
-Do not reveal private chain-of-thought.
-Give the useful derivation, checks and final answer.
-"""
-
-        max_tokens = 9000
-        reasoning = "high"
-
-    elif difficulty == "intermediate":
-
-        prompt = base_prompt + """
-
-INTERMEDIATE MODE
-
-Show the important steps.
-Check the result before finishing.
-"""
-
-        max_tokens = 5000
-        reasoning = "medium"
-
-    else:
-
-        prompt = base_prompt + """
-
-BASIC MODE
-
-Give a clear, concise answer.
-"""
-
-        max_tokens = 3000
-        reasoning = "low"
 
     try:
 
-        # Stream primary answer.
-        stream = stream_responses_api(
-            instructions=prompt,
-            user_input=user_question,
-            reasoning_effort=reasoning,
+        response = hf_client.responses.create(
+            model=TEXT_MODEL,
+            instructions=instructions,
+            input=user_input,
+            reasoning={
+                "effort": reasoning,
+            },
             max_output_tokens=max_tokens,
         )
 
-        # The generator yields the actual answer.
-        for piece in stream:
-            yield piece
+        return response.output_text or ""
 
-    except Exception as error:
+    except Exception as responses_error:
 
         print(
             "RESPONSES API ERROR:",
-            repr(error),
+            repr(responses_error),
         )
 
-        # Fallback to Chat Completions so a Responses API
-        # provider failure does not immediately break the app.
-        try:
+        # Fallback
+        response = hf_client.chat.completions.create(
+            model=TEXT_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": instructions,
+                },
+                {
+                    "role": "user",
+                    "content": user_input,
+                },
+            ],
+            temperature=0.05,
+            max_tokens=max_tokens,
+        )
 
-            completion = (
-                hf_client.chat.completions.create(
-                    model=TEXT_MODEL,
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": prompt,
-                        },
-                        {
-                            "role": "user",
-                            "content": user_question,
-                        },
-                    ],
-                    temperature=0.05,
-                    max_tokens=max_tokens,
-                    stream=True,
-                )
+        if response.choices:
+            return (
+                response
+                .choices[0]
+                .message
+                .content
+                or ""
             )
 
-            for chunk in completion:
-
-                if not chunk.choices:
-                    continue
-
-                text = getattr(
-                    chunk.choices[0].delta,
-                    "content",
-                    None,
-                )
-
-                if text:
-                    yield text
-
-        except Exception as fallback_error:
-
-            print(
-                "CHAT COMPLETIONS FALLBACK ERROR:",
-                repr(fallback_error),
-            )
-
-            yield (
-                "❌ Hugging Face error:\n\n"
-                + str(fallback_error)
-            )
+        return ""
 
 
 # ============================================================
-# COMPLETE ANSWER FOR VERIFICATION
+# QUESTION BATCH GENERATOR
+#
+# This is the permanent fix for long MCQ generation.
 # ============================================================
 
-def get_complete_answer(
-    user_question,
+def generate_question_batch(
     subject,
     difficulty,
+    start_number,
+    end_number,
+    previous_context="",
 ):
-    """
-    Non-streaming call used only for the verification pass.
-    """
-
-    prompt = {
-        "math": MATH_PROMPT,
-        "physics": PHYSICS_PROMPT,
-        "chemistry": CHEMISTRY_PROMPT,
-        "biology": BIOLOGY_PROMPT,
-        "general": GENERAL_PROMPT,
-    }.get(
-        subject,
-        GENERAL_PROMPT,
+    count = (
+        end_number
+        - start_number
+        + 1
     )
 
-    prompt += """
+    prompt = get_prompt(
+        subject
+    )
 
-Return the complete final solution.
+    prompt += f"""
 
-Show the useful derivation.
-Check the result carefully.
-Do not output raw LaTeX.
+QUESTION GENERATION MODE
+
+Generate exactly {count} multiple-choice questions.
+
+Number them from {start_number} to {end_number}.
+
+Rules:
+- Every question must be complete.
+- Give A, B, C and D options.
+- Keep the same subject.
+- Keep the requested difficulty.
+- Make questions distinct.
+- Do not provide answers unless explicitly requested.
+- Do not restart numbering.
+- Do not add unrelated commentary.
+- Finish every question completely.
+
+Before finishing, check that all question numbers
+from {start_number} through {end_number} exist.
+
+Previous context, if any:
+{previous_context}
 """
 
-    response = hf_client.responses.create(
-        model=TEXT_MODEL,
-        instructions=prompt,
-        input=user_question,
-        reasoning={
-            "effort": (
-                "high"
-                if difficulty == "advanced"
-                else "medium"
-            ),
-        },
-        max_output_tokens=9000,
+    # 5 questions per batch.
+    max_tokens = max(
+        5000,
+        count * 1200,
     )
 
-    return response.output_text
+    max_tokens = min(
+        max_tokens,
+        10000,
+    )
+
+    return text_call(
+        instructions=prompt,
+        user_input=prompt,
+        reasoning="medium",
+        max_tokens=max_tokens,
+    )
 
 
 # ============================================================
-# VERIFY ADVANCED ANSWER
+# LONG QUESTION GENERATOR
+#
+# Generates 5 at a time and repairs missing numbers.
+# ============================================================
+
+def generate_questions_in_batches(
+    subject,
+    difficulty,
+    total,
+    start_number=1,
+    previous_context="",
+):
+    pieces = []
+
+    current = start_number
+    final_number = (
+        start_number
+        + total
+        - 1
+    )
+
+    # ========================================================
+    # BATCH LOOP
+    # ========================================================
+
+    while current <= final_number:
+
+        batch_end = min(
+            current + 4,
+            final_number,
+        )
+
+        batch = generate_question_batch(
+            subject=subject,
+            difficulty=difficulty,
+            start_number=current,
+            end_number=batch_end,
+            previous_context=previous_context,
+        )
+
+        if not batch.strip():
+
+            raise RuntimeError(
+                f"AI returned an empty batch "
+                f"{current}-{batch_end}."
+            )
+
+        expected = set(
+            range(
+                current,
+                batch_end + 1,
+            )
+        )
+
+        found = set(
+            extract_question_numbers(
+                batch
+            )
+        )
+
+        missing = sorted(
+            expected - found
+        )
+
+        # ====================================================
+        # REPAIR MISSING QUESTIONS
+        # ====================================================
+
+        repair_attempts = 0
+
+        while missing and repair_attempts < 2:
+
+            repair_attempts += 1
+
+            repair_start = missing[0]
+            repair_end = missing[-1]
+
+            repair = generate_question_batch(
+                subject=subject,
+                difficulty=difficulty,
+                start_number=repair_start,
+                end_number=repair_end,
+                previous_context=batch,
+            )
+
+            if repair.strip():
+                batch += (
+                    "\n\n"
+                    + repair
+                )
+
+            found = set(
+                extract_question_numbers(
+                    batch
+                )
+            )
+
+            missing = sorted(
+                expected - found
+            )
+
+        if missing:
+
+            raise RuntimeError(
+                "Could not complete question numbers: "
+                + ", ".join(
+                    str(number)
+                    for number in missing
+                )
+            )
+
+        pieces.append(
+            batch
+        )
+
+        current = (
+            batch_end
+            + 1
+        )
+
+    # ========================================================
+    # COMBINE
+    # ========================================================
+
+    final_text = "\n\n".join(
+        pieces
+    )
+
+    # ========================================================
+    # FINAL COUNT CHECK
+    # ========================================================
+
+    final_numbers = set(
+        extract_question_numbers(
+            final_text
+        )
+    )
+
+    expected_final = set(
+        range(
+            start_number,
+            final_number + 1,
+        )
+    )
+
+    missing_final = sorted(
+        expected_final
+        - final_numbers
+    )
+
+    if missing_final:
+
+        raise RuntimeError(
+            "Final question-set check failed. "
+            "Missing: "
+            + ", ".join(
+                str(number)
+                for number in missing_final
+            )
+        )
+
+    return final_text
+
+
+# ============================================================
+# ADVANCED VERIFICATION
 # ============================================================
 
 def verify_advanced_answer(
@@ -1640,62 +1699,44 @@ def verify_advanced_answer(
     answer,
     subject,
 ):
-    """
-    A second pass checks advanced Math/Physics answers.
-
-    It does not expose private reasoning.
-    """
-
     if subject not in {
         "math",
         "physics",
     }:
         return answer
 
-    if len(answer) < 20:
-        return answer
-
     verifier_prompt = """
-You are a strict verifier for an educational AI.
+You are a strict Mathematics/Physics answer verifier.
 
-Check the supplied problem and solution.
+Check the supplied problem and proposed solution.
 
-Your task:
-1. Determine whether the final result is correct.
-2. Recalculate important mathematics.
-3. Check Physics equations, dimensions and signs if applicable.
-4. If the answer is wrong, provide a corrected solution.
-5. If it is correct, return the solution with only necessary corrections.
-6. Do not discuss private chain-of-thought.
-7. Do not output raw LaTeX.
+Tasks:
+1. Check the equations.
+2. Check algebra and arithmetic.
+3. Check signs.
+4. Check units for Physics.
+5. Check the final result.
+6. Correct the solution if necessary.
 
-Return only the corrected final educational answer.
+Return the corrected educational answer.
+
+Do not discuss private reasoning.
+Do not output raw LaTeX.
 """
 
     try:
 
-        response = hf_client.responses.create(
-            model=TEXT_MODEL,
+        return text_call(
             instructions=verifier_prompt,
-            input=f"""
-QUESTION:
-
-{question}
-
-PROPOSED ANSWER:
-
-{answer}
-""",
-            reasoning={
-                "effort": "high",
-            },
-            max_output_tokens=9000,
-        )
-
-        verified = response.output_text
-
-        if verified and verified.strip():
-            return verified
+            user_input=(
+                "QUESTION:\n"
+                + question
+                + "\n\nPROPOSED ANSWER:\n"
+                + answer
+            ),
+            reasoning="high",
+            max_tokens=9000,
+        ) or answer
 
     except Exception as error:
 
@@ -1704,11 +1745,11 @@ PROPOSED ANSWER:
             repr(error),
         )
 
-    return answer
+        return answer
 
 
 # ============================================================
-# IMAGE AI
+# IMAGE / CAMERA
 # ============================================================
 
 def analyze_image(
@@ -1716,6 +1757,7 @@ def analyze_image(
     question,
 ):
     if not HF_TOKEN or hf_client is None:
+
         return (
             "❌ HF_TOKEN is missing.\n\n"
             "Check Render → Environment → HF_TOKEN."
@@ -1724,24 +1766,28 @@ def analyze_image(
     if not image_data.startswith(
         "data:image/"
     ):
-        return "❌ Invalid image data."
+
+        return (
+            "❌ Invalid image data."
+        )
 
     if len(image_data) > 12_000_000:
+
         return (
             "❌ Image is too large.\n\n"
-            "Please capture a smaller or clearer image."
+            "Please use a smaller or clearer image."
         )
 
     user_text = (
         question.strip()
         if question.strip()
         else
-        "Read the image carefully and solve the question step by step."
+        "Read this image carefully and solve the question step by step."
     )
 
+    # Responses API image input.
     try:
 
-        # Responses API multimodal input.
         response = hf_client.responses.create(
             model=VISION_MODEL,
             instructions=VISION_PROMPT,
@@ -1763,80 +1809,82 @@ def analyze_image(
             max_output_tokens=7000,
         )
 
-        answer = response.output_text
+        answer = (
+            response.output_text
+            or ""
+        )
 
-        if not answer:
-            return (
-                "❌ Vision model returned no answer."
-            )
-
-        return answer
+        if answer.strip():
+            return answer
 
     except Exception as error:
 
         print(
-            "VISION API ERROR:",
+            "VISION RESPONSES ERROR:",
             repr(error),
         )
 
-        # Vision fallback through Chat Completions.
-        try:
+    # ========================================================
+    # VISION FALLBACK
+    # ========================================================
 
-            response = (
-                hf_client.chat.completions.create(
-                    model=VISION_MODEL,
-                    messages=[
+    try:
+
+        response = hf_client.chat.completions.create(
+            model=VISION_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": VISION_PROMPT,
+                },
+                {
+                    "role": "user",
+                    "content": [
                         {
-                            "role": "system",
-                            "content": VISION_PROMPT,
+                            "type": "text",
+                            "text": user_text,
                         },
                         {
-                            "role": "user",
-                            "content": [
-                                {
-                                    "type": "text",
-                                    "text": user_text,
-                                },
-                                {
-                                    "type": "image_url",
-                                    "image_url": {
-                                        "url": image_data,
-                                    },
-                                },
-                            ],
+                            "type": "image_url",
+                            "image_url": {
+                                "url": image_data,
+                            },
                         },
                     ],
-                    temperature=0.05,
-                    max_tokens=7000,
-                )
+                },
+            ],
+            temperature=0.05,
+            max_tokens=7000,
+        )
+
+        if response.choices:
+
+            answer = (
+                response
+                .choices[0]
+                .message
+                .content
+                or ""
             )
 
-            if response.choices:
+            if answer.strip():
+                return answer
 
-                answer = (
-                    response.choices[0]
-                    .message
-                    .content
-                )
+    except Exception as error:
 
-                if answer:
-                    return answer
-
-        except Exception as fallback_error:
-
-            print(
-                "VISION FALLBACK ERROR:",
-                repr(fallback_error),
-            )
-
-            return (
-                "❌ Vision AI error:\n\n"
-                + str(fallback_error)
-            )
+        print(
+            "VISION CHAT FALLBACK ERROR:",
+            repr(error),
+        )
 
         return (
-            "❌ Vision AI could not analyze this image."
+            "❌ Vision AI error:\n\n"
+            + str(error)
         )
+
+    return (
+        "❌ Vision AI could not analyze this image."
+    )
 
 
 # ============================================================
@@ -1972,10 +2020,14 @@ def register():
             ),
     }
 
-    save_users(users)
+    save_users(
+        users
+    )
 
     session["username"] = username
     session["chat_history"] = []
+
+    clear_question_set()
 
     return {
         "success": True,
@@ -2065,6 +2117,8 @@ def login():
                 session["username"] = username
                 session["chat_history"] = []
 
+                clear_question_set()
+
                 return {
                     "success": True,
                     "message":
@@ -2086,6 +2140,7 @@ def login():
 
 @app.route("/logout")
 def logout():
+
     session.clear()
 
     return redirect(
@@ -2094,7 +2149,26 @@ def logout():
 
 
 # ============================================================
-# CHAT ROUTE
+# NEW CHAT
+# ============================================================
+
+@app.route(
+    "/new-chat",
+    methods=["POST"],
+)
+def new_chat():
+
+    session["chat_history"] = []
+
+    clear_question_set()
+
+    return {
+        "success": True
+    }
+
+
+# ============================================================
+# CHAT
 # ============================================================
 
 @app.route(
@@ -2141,19 +2215,15 @@ def chat():
 
         save_history(
             question
-            or
-            "Image question",
+            or "Image question",
             answer,
+            category="normal",
         )
 
         return Response(
             answer,
             mimetype="text/plain",
         )
-
-    # ========================================================
-    # EMPTY
-    # ========================================================
 
     if not question:
 
@@ -2163,7 +2233,7 @@ def chat():
         )
 
     # ========================================================
-    # BASIC
+    # CREATOR / BASIC
     # ========================================================
 
     simple = basic_response(
@@ -2172,58 +2242,174 @@ def chat():
 
     if simple:
 
+        category = (
+            "creator"
+            if is_creator_question(
+                question
+            )
+            else "normal"
+        )
+
         save_history(
             question,
             simple,
+            category=category,
         )
 
         return Response(
             simple,
             mimetype="text/plain",
         )
+
+    # ========================================================
+    # QUESTION SET CONTINUATION
+    # ========================================================
+
+    continuation = continuation_count(
+        question
+    )
+
+    if continuation is not None:
+
+        question_set = get_question_set()
+
+        if question_set:
+
+            start_number = (
+                last_question_number(
+                    question_set["answer"]
+                )
+                + 1
+            )
+
+            generated = generate_questions_in_batches(
+                subject=question_set["subject"],
+                difficulty=question_set["difficulty"],
+                total=continuation,
+                start_number=start_number,
+                previous_context=question_set["answer"],
+            )
+
+            combined = (
+                question_set["answer"]
+                + "\n\n"
+                + generated
+            )
+
+            # Update question set.
+            save_question_set(
+                original_request=question_set["request"],
+                answer=combined,
+                subject=question_set["subject"],
+                difficulty=question_set["difficulty"],
+            )
+
+            save_history(
+                question,
+                generated,
+                category="question_generation",
+            )
+
+            return Response(
+                generated,
+                mimetype="text/plain",
+            )
+
+        # No stored set: send to normal AI.
+        # It will NOT see creator information.
 
     # ========================================================
     # LOCAL CALCULATOR
     # ========================================================
 
-    local_result = solve_calculation(
+    result = solve_calculation(
         question
     )
 
-    if local_result:
+    if result:
 
         save_history(
             question,
-            local_result,
+            result,
+            category="normal",
         )
 
         return Response(
-            local_result,
+            result,
             mimetype="text/plain",
         )
 
     # ========================================================
-    # LOCAL RECURRING MATH
+    # LOCAL x + 1/x
     # ========================================================
 
-    local_result = solve_power_recurrence(
+    result = solve_power_recurrence(
         question
     )
 
-    if local_result:
+    if result:
 
         save_history(
             question,
-            local_result,
+            result,
+            category="normal",
         )
 
         return Response(
-            local_result,
+            result,
             mimetype="text/plain",
         )
 
     # ========================================================
-    # ONLINE REASONING
+    # QUESTION GENERATION — BATCH MODE
+    # ========================================================
+
+    if is_question_generation(
+        question
+    ):
+
+        count = requested_question_count(
+            question
+        )
+
+        if count:
+
+            subject = detect_subject(
+                question
+            )
+
+            difficulty = detect_difficulty(
+                question
+            )
+
+            generated = generate_questions_in_batches(
+                subject=subject,
+                difficulty=difficulty,
+                total=count,
+                start_number=1,
+            )
+
+            # Store separately from normal chat.
+            save_question_set(
+                original_request=question,
+                answer=generated,
+                subject=subject,
+                difficulty=difficulty,
+            )
+
+            save_history(
+                question,
+                generated,
+                category="question_generation",
+            )
+
+            return Response(
+                generated,
+                mimetype="text/plain",
+            )
+
+    # ========================================================
+    # NORMAL / HARD AI
     # ========================================================
 
     subject = detect_subject(
@@ -2238,25 +2424,79 @@ def chat():
         question
     )
 
-    # For advanced Math/Physics, use a complete
-    # verification pass after the main answer.
-    #
-    # For normal/basic answers, stream directly.
+    ai_prompt = get_prompt(
+        subject
+    )
+
+    if difficulty == "advanced":
+
+        ai_prompt += """
+
+ADVANCED MODE
+
+Solve very carefully.
+
+Before finalizing:
+- Recheck equations.
+- Recheck algebra.
+- Recheck arithmetic.
+- Recheck units.
+- Recheck signs.
+- Check limiting cases when useful.
+- Verify MCQ options.
+
+Do not guess.
+
+Do not reveal private chain-of-thought.
+Show the useful derivation and verification.
+"""
+
+        max_tokens = 9000
+        reasoning = "high"
+
+    elif difficulty == "intermediate":
+
+        ai_prompt += """
+
+INTERMEDIATE MODE
+
+Show the important steps and verify the result.
+"""
+
+        max_tokens = 5000
+        reasoning = "medium"
+
+    else:
+
+        ai_prompt += """
+
+BASIC MODE
+
+Answer clearly and concisely.
+"""
+
+        max_tokens = 3000
+        reasoning = "low"
+
+    # ========================================================
+    # HARD MATH / PHYSICS VERIFICATION
+    # ========================================================
+
     if (
         difficulty == "advanced"
         and subject in {
             "math",
             "physics",
         }
-        and not is_question_generation(question)
     ):
 
         try:
 
-            draft = get_complete_answer(
-                context_question,
-                subject,
-                difficulty,
+            draft = text_call(
+                instructions=ai_prompt,
+                user_input=context_question,
+                reasoning=reasoning,
+                max_tokens=max_tokens,
             )
 
             verified = verify_advanced_answer(
@@ -2268,6 +2508,7 @@ def chat():
             save_history(
                 question,
                 verified,
+                category="normal",
             )
 
             return Response(
@@ -2278,30 +2519,52 @@ def chat():
         except Exception as error:
 
             print(
-                "ADVANCED VERIFIED PATH ERROR:",
+                "ADVANCED VERIFICATION PATH ERROR:",
                 repr(error),
             )
 
-            # Fall through to the streaming path.
-            pass
+    # ========================================================
+    # NORMAL AI FALLBACK
+    # ========================================================
 
-    return Response(
-        stream_with_context(
-            stream_text_ai(
-                context_question,
-                subject,
-                question,
-                difficulty,
+    try:
+
+        answer = text_call(
+            instructions=ai_prompt,
+            user_input=context_question,
+            reasoning=reasoning,
+            max_tokens=max_tokens,
+        )
+
+        if not answer:
+
+            answer = (
+                "❌ The AI returned an empty answer."
             )
-        ),
-        mimetype="text/plain",
-        headers={
-            "Cache-Control":
-                "no-cache",
-            "X-Accel-Buffering":
-                "no",
-        },
-    )
+
+        save_history(
+            question,
+            answer,
+            category="normal",
+        )
+
+        return Response(
+            answer,
+            mimetype="text/plain",
+        )
+
+    except Exception as error:
+
+        print(
+            "TEXT AI ERROR:",
+            repr(error),
+        )
+
+        return Response(
+            "❌ Hugging Face error:\n\n"
+            + str(error),
+            mimetype="text/plain",
+        )
 
 
 # ============================================================
@@ -2368,7 +2631,7 @@ def improve():
     )
 
     prompt = f"""
-You are improving an existing educational answer.
+Improve an educational answer.
 
 QUESTION:
 {question}
@@ -2380,64 +2643,51 @@ TASK:
 {instruction}
 
 Check:
-- mathematical correctness
-- physics equations
-- arithmetic
+- calculations
+- algebra
+- Physics equations
 - units
-- final answer
+- final result
 
 Do not output raw LaTeX.
-Return the improved final answer only.
+Return the final improved answer.
 """
 
-    if (
-        subject in {
-            "math",
-            "physics",
-        }
-    ):
+    try:
 
-        try:
+        result = text_call(
+            instructions=prompt,
+            user_input=prompt,
+            reasoning="high"
+            if subject in {
+                "math",
+                "physics",
+            }
+            else "medium",
+            max_tokens=8000,
+        )
 
-            response = hf_client.responses.create(
-                model=TEXT_MODEL,
-                instructions=prompt,
-                input=prompt,
-                reasoning={
-                    "effort": "high",
-                },
-                max_output_tokens=8000,
-            )
+        return Response(
+            result,
+            mimetype="text/plain",
+        )
 
-            result = response.output_text
+    except Exception as error:
 
-            return Response(
-                result,
-                mimetype="text/plain",
-            )
+        print(
+            "IMPROVE ERROR:",
+            repr(error),
+        )
 
-        except Exception as error:
-
-            print(
-                "IMPROVE ERROR:",
-                repr(error),
-            )
-
-    return Response(
-        stream_with_context(
-            stream_text_ai(
-                prompt,
-                subject,
-                question,
-                detect_difficulty(question),
-            )
-        ),
-        mimetype="text/plain",
-    )
+        return Response(
+            "❌ AI error:\n\n"
+            + str(error),
+            mimetype="text/plain",
+        )
 
 
 # ============================================================
-# HEALTH CHECK
+# HEALTH
 # ============================================================
 
 @app.route("/health")
@@ -2462,40 +2712,52 @@ if __name__ == "__main__":
     print("=" * 70)
     print("MY AI")
     print("=" * 70)
+
     print(
         "HF configured:",
         bool(HF_TOKEN),
     )
+
     print(
-        "Text reasoning: ON"
+        "Normal AI       : ON"
     )
+
     print(
-        "Hard Math: ON"
+        "Hard Math       : ON"
     )
+
     print(
-        "Hard Physics: ON"
+        "Hard Physics     : ON"
     )
+
     print(
-        "Chemistry: ON"
+        "Chemistry       : ON"
     )
+
     print(
-        "Biology: ON"
+        "Biology         : ON"
     )
+
     print(
-        "Vision: ON"
+        "Calculator      : ON"
     )
+
     print(
-        "Camera backend: ON"
+        "Question batches: ON"
     )
+
     print(
-        "Question generation: ON"
+        "Question memory : ON"
     )
+
     print(
-        "Continuation memory: ON"
+        "Safe follow-ups : ON"
     )
+
     print(
-        "Advanced verification: ON"
+        "Vision / Camera : ON"
     )
+
     print("=" * 70)
 
     app.run(
