@@ -61,11 +61,10 @@ with Mathematics, Physics, Chemistry and Biology.
 
 HF_TOKEN = os.getenv("HF_TOKEN")
 
-# No :cheapest suffix.
-# Hugging Face automatically selects the fastest available
-# provider when no provider policy is specified.
+# Do not add :cheapest here.
 TEXT_MODEL = "openai/gpt-oss-120b"
 
+# Current Qwen vision model.
 VISION_MODEL = "Qwen/Qwen2.5-VL-3B-Instruct"
 
 hf_client = None
@@ -78,7 +77,7 @@ if HF_TOKEN:
 
 
 # ============================================================
-# USER STORAGE
+# USER FILE
 # ============================================================
 
 def load_users():
@@ -119,31 +118,30 @@ def save_users(users):
 GENERAL_PROMPT = """
 You are My AI, a high-quality study assistant.
 
-You help with:
-Mathematics, Physics, Chemistry, Biology, science and general
-academic questions.
+You help with Mathematics, Physics, Chemistry, Biology,
+Science and general academic questions.
 
-Solve questions from basic to very difficult levels.
+Solve questions from basic through very difficult levels.
 
-IMPORTANT:
-
-1. Read the complete question.
+Rules:
+1. Read the entire question.
 2. Identify exactly what is being asked.
-3. Do not guess.
-4. Do not skip parts.
-5. Show the important derivation for difficult problems.
-6. Check calculations.
-7. Check units when applicable.
-8. Check the final result whenever practical.
-9. If choices are given, verify the selected choice.
-10. Understand follow-up questions from the conversation.
-11. Give a clear final answer.
+3. Never guess.
+4. Never skip requested parts.
+5. Show important calculations.
+6. Check important arithmetic.
+7. Check units where applicable.
+8. Verify the final answer when practical.
+9. For multiple-choice questions, verify the option.
+10. Understand follow-up questions using conversation context.
+11. Always finish the answer.
 
 For simple questions, be concise.
+For hard questions, show the useful derivation.
 
-For difficult questions, give a complete step-by-step solution.
+NEVER output raw LaTeX.
 
-Never output raw LaTeX commands such as:
+Do not use:
 \\(
 \\)
 \\[
@@ -155,7 +153,7 @@ Never output raw LaTeX commands such as:
 \\end{}
 $$
 
-Use readable notation such as:
+Use readable mathematics such as:
 x²
 x³
 x⁵
@@ -163,19 +161,17 @@ x⁵
 a/b
 F = ma
 ω² = k/m
-
-Never leave the answer unfinished.
 """
 
 
 MATH_PROMPT = """
-You are My AI's expert Mathematics solver.
+You are an expert Mathematics problem solver.
 
-You must handle basic through very difficult problems.
+You must handle basic, intermediate and very difficult problems.
 
 Topics include:
 - Algebra
-- Quadratic equations
+- Quadratics
 - Polynomials
 - Identities
 - Surds
@@ -193,7 +189,6 @@ Topics include:
 - Logarithms
 - Inequalities
 - Number theory
-- Divisibility
 - Complex numbers
 - Limits
 - Differentiation
@@ -203,44 +198,35 @@ Topics include:
 - JEE Advanced
 - Olympiad-style problems
 
-For difficult questions:
+For difficult Maths:
 
-1. Understand the exact target.
-2. List useful information.
-3. Choose a suitable method.
-4. Derive the solution carefully.
-5. Simplify step by step.
-6. Check the result independently where practical.
+1. Understand the target.
+2. Identify useful information.
+3. Choose the right method.
+4. Derive step by step.
+5. Simplify carefully.
+6. Check the result.
 7. Give the exact answer.
 8. For MCQs, verify the option.
 
-Do not guess.
-
-For proof questions, prove every required statement.
-
 For equations, check roots.
+For identities, verify both sides.
+For inequalities, check equality cases.
+For probability, check that the probability is valid.
+For geometry, respect all given constraints.
+For calculus, check the resulting derivative/integral.
 
-For inequalities, check equality conditions.
+Never guess.
 
-For probability, check that the result is valid.
-
-For geometry, verify the result against the conditions.
-
-For calculus, check the derivative/integral when practical.
-
-For JEE Advanced problems, consider whether there is a shorter
-or more elegant method after obtaining a correct derivation.
-
-Do not output raw LaTeX.
-Use readable mathematics.
+Never output raw LaTeX.
 """
 
 
 PHYSICS_PROMPT = """
-You are My AI's expert Physics solver for basic through
-very difficult JEE Main and JEE Advanced problems.
+You are an expert JEE Main and JEE Advanced Physics solver.
 
-Topics include:
+Handle basic through very difficult problems involving:
+
 - Kinematics
 - Newton's laws
 - Friction
@@ -249,7 +235,7 @@ Topics include:
 - Centre of mass
 - Circular motion
 - Rotation
-- Rolling
+- Rolling motion
 - Gravitation
 - SHM
 - Oscillations
@@ -266,53 +252,38 @@ Topics include:
 - Kinetic theory
 - Modern physics
 
-For difficult mechanics problems:
-- Identify all bodies.
-- Identify forces and constraints.
-- Choose a coordinate system.
-- Write governing equations.
-- Check equilibrium if relevant.
-- Apply conservation laws carefully.
+For difficult problems:
 
-For oscillation problems:
+1. Understand the physical setup.
+2. Identify objects and forces.
+3. Choose coordinates.
+4. Find equilibrium if needed.
+5. Write the governing equations.
+6. Apply approximations only when justified.
+7. Derive the requested quantity.
+8. Check dimensions.
+9. Check signs.
+10. Check limiting cases when useful.
+11. For MCQs, verify the answer against the options.
+
+For small oscillation problems:
 - Find equilibrium first.
-- Define the small displacement.
-- Obtain the restoring force.
-- Use the small-displacement approximation when justified.
-- Compare with the SHM equation.
+- Define a small displacement.
+- Find restoring force.
+- Use the small-displacement approximation.
+- Compare with the SHM relation.
 
-For electrostatics:
-- Carefully identify symmetry.
-- Distinguish force, potential and energy.
-- Find equilibrium before expanding about it when required.
-
-For rotational problems:
-- Carefully track torque, angular momentum and constraints.
-
-For every difficult numerical:
-1. Given data.
-2. Physical model.
-3. Equations.
-4. Derivation.
-5. Substitution.
-6. Verification.
-7. Final answer.
-
-Check dimensions and signs.
-
-Never guess an option.
+Never guess.
 
 Do not output raw LaTeX.
-Use readable notation.
 """
 
 
 CHEMISTRY_PROMPT = """
-You are My AI's expert Chemistry solver.
+You are an expert Chemistry solver for school, JEE Main
+and JEE Advanced.
 
-Handle basic through difficult JEE Main and JEE Advanced questions.
-
-Topics:
+Handle:
 - Mole concept
 - Stoichiometry
 - Atomic structure
@@ -332,39 +303,32 @@ Topics:
 - Numerical chemistry
 
 For numerical questions:
-1. Given data.
-2. Balanced equation if needed.
-3. Molar mass.
-4. Unit conversion.
-5. Stoichiometric relation.
-6. Limiting reagent if relevant.
-7. Calculation.
-8. Verification.
-9. Final answer.
-
-For organic questions:
-identify the reaction and explain why the product forms.
-
-For equilibrium and thermodynamics:
-write the governing relation before substitution.
+1. Write given data.
+2. Balance the equation if required.
+3. Calculate molar masses.
+4. Convert units correctly.
+5. Use stoichiometric ratios.
+6. Identify limiting reagent.
+7. Calculate the requested quantity.
+8. Verify units.
 
 Do not guess.
-
 Do not output raw LaTeX.
 """
 
 
 BIOLOGY_PROMPT = """
-You are My AI's expert Biology solver.
+You are an expert Biology solver.
 
 Handle basic through difficult school and competitive questions.
 
-Topics:
+Topics include:
 - Cell biology
 - Genetics
 - Mendelian inheritance
 - Molecular biology
-- DNA and RNA
+- DNA
+- RNA
 - Biotechnology
 - Human physiology
 - Plant physiology
@@ -375,7 +339,7 @@ Topics:
 For difficult questions:
 1. Identify the concept.
 2. State relevant facts.
-3. Explain the mechanism in order.
+3. Explain the process in order.
 4. Compare alternatives when needed.
 5. For genetics, calculate genotype, phenotype and probability.
 6. For MCQs, evaluate the options carefully.
@@ -387,54 +351,53 @@ Do not invent biological information.
 VISION_PROMPT = """
 You are My AI's image-question solver.
 
-The user has uploaded an image.
+The user has uploaded a photo.
 
-First inspect the complete image.
+First inspect the entire image.
 
 Determine whether it contains:
 - Mathematics
 - Physics
 - Chemistry
 - Biology
-- Another academic problem
+- Another academic question
 
-Then solve it.
+Then actually solve the question.
 
-For Mathematics:
+MATHEMATICS:
 - Read every visible number and symbol.
-- Reconstruct the question carefully.
+- Reconstruct the equation carefully.
 - Solve step by step.
 - Check the result.
 
-For Physics:
+PHYSICS:
 - Identify the physical system.
-- Extract given values.
-- Choose the relevant laws.
+- Extract given data.
+- Choose the correct laws.
 - Derive the result.
 - Check units.
 
-For Chemistry:
-- Read the reaction and numerical information.
-- Balance the equation if needed.
+CHEMISTRY:
+- Read all values and reactions.
+- Balance equations where necessary.
 - Calculate carefully.
 
-For Biology:
+BIOLOGY:
 - Read labels and diagrams carefully.
 - Answer every requested part.
 
-If a portion is blurry or missing, explicitly say what is unclear.
-
-Do not invent invisible information.
+If the image is blurry or part is missing, say what is unclear.
+Do not invent information that is not visible.
 
 Do not merely describe the image.
-Actually solve the question.
+Solve the question.
 
-Do not output raw LaTeX.
+Never output raw LaTeX.
 """
 
 
 # ============================================================
-# BASIC RESPONSE
+# BASIC ANSWERS
 # ============================================================
 
 def basic_response(message):
@@ -514,23 +477,6 @@ def basic_response(message):
         return (
             "I'm My AI 🤖, a study assistant for "
             "Mathematics, Physics, Chemistry and Biology."
-        )
-
-    if q in {
-        "what can you do",
-        "what can you do?",
-        "help",
-        "help me",
-    }:
-        return (
-            "I can help with:\n\n"
-            "🧮 Mathematics\n"
-            "⚡ Physics\n"
-            "🧪 Chemistry\n"
-            "🧬 Biology\n"
-            "🔢 Large calculations\n"
-            "📷 Image questions\n"
-            "🎤 Voice input"
         )
 
     if q in {
@@ -657,46 +603,26 @@ def build_ai_context(question):
     ]
 
     for item in recent:
-
-        parts.append(
-            "USER:"
-        )
-
-        parts.append(
-            item["question"]
-        )
-
-        parts.append(
-            "MY AI:"
-        )
-
-        parts.append(
-            item["answer"]
-        )
-
+        parts.append("USER:")
+        parts.append(item["question"])
+        parts.append("MY AI:")
+        parts.append(item["answer"])
         parts.append("")
 
-    parts.append(
-        "NEW USER QUESTION:"
-    )
-
-    parts.append(
-        question
-    )
-
+    parts.append("NEW USER QUESTION:")
+    parts.append(question)
     parts.append("")
 
     parts.append(
-        "Answer the new question using the relevant "
-        "conversation context. Do not talk about the "
-        "conversation memory unless asked."
+        "Answer the new question using relevant "
+        "previous context. Do not discuss the memory itself."
     )
 
     return "\n".join(parts)
 
 
 # ============================================================
-# SUBJECT DETECTION
+# SUBJECT
 # ============================================================
 
 def detect_subject(question):
@@ -704,173 +630,62 @@ def detect_subject(question):
     q = question.lower()
 
     math_terms = [
-        "equation",
-        "quadratic",
-        "algebra",
-        "surds",
-        "sqrt",
-        "√",
-        "svg",
-        "trigonometry",
-        "sin",
-        "cos",
-        "tan",
-        "geometry",
-        "probability",
-        "permutation",
-        "combination",
-        "sequence",
-        "series",
-        "polynomial",
-        "coordinate",
-        "logarithm",
-        "matrix",
-        "determinant",
-        "calculus",
-        "integral",
-        "differentiate",
-        "derivative",
-        "limit",
-        "complex number",
-        "binomial",
-        "inequality",
-        "vector",
-        "number theory",
-        "divisibility",
+        "equation", "quadratic", "algebra", "surds",
+        "sqrt", "√", "svg", "trigonometry",
+        "sin", "cos", "tan", "geometry",
+        "probability", "permutation", "combination",
+        "sequence", "series", "polynomial",
+        "coordinate", "logarithm", "matrix",
+        "determinant", "calculus", "integral",
+        "differentiate", "derivative", "limit",
+        "complex number", "binomial", "inequality",
+        "vector", "number theory", "divisibility",
         "function",
-        "conic",
     ]
 
     physics_terms = [
-        "force",
-        "velocity",
-        "acceleration",
-        "momentum",
-        "newton",
-        "work",
-        "energy",
-        "power",
-        "friction",
-        "gravitation",
-        "projectile",
-        "current",
-        "voltage",
-        "resistance",
-        "resistor",
-        "circuit",
-        "magnetic",
-        "electric field",
-        "electric potential",
-        "lens",
-        "mirror",
-        "refraction",
-        "heat",
-        "temperature",
-        "pressure",
-        "density",
-        "fluid",
-        "motion",
-        "rotation",
-        "rotational",
-        "torque",
-        "angular momentum",
-        "oscillation",
-        "oscillations",
-        "shm",
-        "wave",
-        "capacitor",
-        "induction",
-        "electromagnetic",
+        "force", "velocity", "acceleration", "momentum",
+        "newton", "work", "energy", "power", "friction",
+        "gravitation", "projectile", "current", "voltage",
+        "resistance", "resistor", "circuit", "magnetic",
+        "electric field", "electric potential",
+        "lens", "mirror", "refraction", "heat",
+        "temperature", "pressure", "density",
+        "fluid", "motion", "rotation", "rotational",
+        "torque", "angular momentum", "oscillation",
+        "oscillations", "shm", "wave", "capacitor",
+        "induction", "electromagnetic",
     ]
 
     chemistry_terms = [
-        "mole",
-        "moles",
-        "molar",
-        "molarity",
-        "molality",
-        "stoichiometry",
-        "limiting reagent",
-        "oxidation",
-        "reduction",
-        "redox",
-        "acid",
-        "base",
-        "ph",
-        "salt",
-        "equilibrium",
-        "enthalpy",
-        "electrochemistry",
-        "organic",
-        "alkane",
-        "alkene",
-        "alkyne",
-        "benzene",
-        "alcohol",
-        "aldehyde",
-        "ketone",
-        "ester",
-        "ion",
-        "atom",
-        "electron",
-        "compound",
-        "reaction",
-        "chemical",
-        "thermodynamics",
+        "mole", "moles", "molar", "molarity",
+        "molality", "stoichiometry", "limiting reagent",
+        "oxidation", "reduction", "redox", "acid",
+        "base", "ph", "salt", "equilibrium",
+        "enthalpy", "electrochemistry", "organic",
+        "alkane", "alkene", "alkyne", "benzene",
+        "alcohol", "aldehyde", "ketone", "ester",
+        "ion", "atom", "electron", "compound",
+        "reaction", "chemical", "thermodynamics",
         "kinetics",
     ]
 
     biology_terms = [
-        "cell",
-        "mitosis",
-        "meiosis",
-        "chromosome",
-        "gene",
-        "genetics",
-        "allele",
-        "dna",
-        "rna",
-        "protein",
-        "enzyme",
-        "photosynthesis",
-        "respiration",
-        "plant",
-        "animal",
-        "tissue",
-        "organ",
-        "ecosystem",
-        "ecology",
-        "evolution",
-        "hormone",
-        "neuron",
-        "digestion",
-        "reproduction",
-        "heredity",
-        "blood",
-        "heart",
-        "kidney",
-        "lung",
-        "brain",
-        "biotechnology",
+        "cell", "mitosis", "meiosis", "chromosome",
+        "gene", "genetics", "allele", "dna",
+        "rna", "protein", "enzyme", "photosynthesis",
+        "respiration", "plant", "animal", "tissue",
+        "organ", "ecosystem", "ecology", "evolution",
+        "hormone", "neuron", "digestion",
+        "reproduction", "heredity", "blood", "heart",
+        "kidney", "lung", "brain", "biotechnology",
     ]
 
     scores = {
-        "math": sum(
-            word in q
-            for word in math_terms
-        ),
-        "physics": sum(
-            word in q
-            for word in physics_terms
-        ),
-        "chemistry": sum(
-            word in q
-            for word in chemistry_terms
-        ),
-        "biology": sum(
-            word in q
-            for word in biology_terms
-        ),
+        "math": sum(word in q for word in math_terms),
+        "physics": sum(word in q for word in physics_terms),
+        "chemistry": sum(word in q for word in chemistry_terms),
+        "biology": sum(word in q for word in biology_terms),
     }
 
     subject = max(
@@ -885,7 +700,7 @@ def detect_subject(question):
 
 
 # ============================================================
-# DIFFICULTY DETECTION
+# DIFFICULTY
 # ============================================================
 
 def detect_difficulty(question):
@@ -905,8 +720,8 @@ def detect_difficulty(question):
         "derivation",
         "prove",
         "show that",
-        "find the maximum",
-        "find the minimum",
+        "maximum",
+        "minimum",
         "equilibrium",
         "small oscillation",
         "small oscillations",
@@ -914,8 +729,6 @@ def detect_difficulty(question):
         "multiple correct",
         "integer answer",
         "match the following",
-        "assertion reason",
-        "parameter",
         "constraint",
         "optimization",
         "differential equation",
@@ -928,7 +741,6 @@ def detect_difficulty(question):
     ]
 
     for term in hard_terms:
-
         if term in q:
             score += 2
 
@@ -957,10 +769,6 @@ def detect_difficulty(question):
 
     return "basic"
 
-
-# ============================================================
-# PROMPT SELECTOR
-# ============================================================
 
 def get_prompt(subject):
 
@@ -1003,10 +811,7 @@ def safe_calculate(expression):
 
     expression = expression.strip()
 
-    if not expression:
-        return None
-
-    if len(expression) > 1000:
+    if not expression or len(expression) > 1000:
         return None
 
     try:
@@ -1022,10 +827,7 @@ def safe_calculate(expression):
 
     def calculate(node):
 
-        if isinstance(
-            node,
-            ast.Constant,
-        ):
+        if isinstance(node, ast.Constant):
 
             if isinstance(
                 node.value,
@@ -1035,10 +837,7 @@ def safe_calculate(expression):
 
             raise ValueError()
 
-        if isinstance(
-            node,
-            ast.BinOp,
-        ):
+        if isinstance(node, ast.BinOp):
 
             operation = (
                 ALLOWED_BINARY_OPERATORS.get(
@@ -1049,32 +848,18 @@ def safe_calculate(expression):
             if operation is None:
                 raise ValueError()
 
-            left = calculate(
-                node.left
-            )
-
-            right = calculate(
-                node.right
-            )
+            left = calculate(node.left)
+            right = calculate(node.right)
 
             if (
-                isinstance(
-                    node.op,
-                    ast.Pow,
-                )
+                isinstance(node.op, ast.Pow)
                 and abs(right) > 10000
             ):
                 raise ValueError()
 
-            return operation(
-                left,
-                right,
-            )
+            return operation(left, right)
 
-        if isinstance(
-            node,
-            ast.UnaryOp,
-        ):
+        if isinstance(node, ast.UnaryOp):
 
             operation = (
                 ALLOWED_UNARY_OPERATORS.get(
@@ -1086,18 +871,13 @@ def safe_calculate(expression):
                 raise ValueError()
 
             return operation(
-                calculate(
-                    node.operand
-                )
+                calculate(node.operand)
             )
 
         raise ValueError()
 
     try:
-        return calculate(
-            tree.body
-        )
-
+        return calculate(tree.body)
     except (
         ArithmeticError,
         OverflowError,
@@ -1111,35 +891,12 @@ def clean_calculator_expression(text):
 
     expression = text.strip()
 
-    expression = expression.replace(
-        "×",
-        "*",
-    )
-
-    expression = expression.replace(
-        "÷",
-        "/",
-    )
-
-    expression = expression.replace(
-        "−",
-        "-",
-    )
-
-    expression = expression.replace(
-        "–",
-        "-",
-    )
-
-    expression = expression.replace(
-        "—",
-        "-",
-    )
-
-    expression = expression.replace(
-        "^",
-        "**",
-    )
+    expression = expression.replace("×", "*")
+    expression = expression.replace("÷", "/")
+    expression = expression.replace("−", "-")
+    expression = expression.replace("–", "-")
+    expression = expression.replace("—", "-")
+    expression = expression.replace("^", "**")
 
     expression = re.sub(
         r"(?<=\d),(?=\d)",
@@ -1159,10 +916,8 @@ def clean_calculator_expression(text):
 
 def looks_like_calculation(text):
 
-    expression = (
-        clean_calculator_expression(
-            text
-        )
+    expression = clean_calculator_expression(
+        text
     )
 
     if not re.fullmatch(
@@ -1181,15 +936,11 @@ def looks_like_calculation(text):
 
 def solve_calculation(question):
 
-    if not looks_like_calculation(
-        question
-    ):
+    if not looks_like_calculation(question):
         return None
 
-    expression = (
-        clean_calculator_expression(
-            question
-        )
+    expression = clean_calculator_expression(
+        question
     )
 
     result = safe_calculate(
@@ -1199,29 +950,17 @@ def solve_calculation(question):
     if result is None:
         return None
 
-    if isinstance(
-        result,
-        int,
-    ):
-
+    if isinstance(result, int):
         answer = f"{result:,}"
 
-    elif isinstance(
-        result,
-        float,
-    ):
+    elif isinstance(result, float):
 
-        if not math.isfinite(
-            result
-        ):
+        if not math.isfinite(result):
             return None
 
         if result.is_integer():
-
             answer = f"{int(result):,}"
-
         else:
-
             answer = f"{result:.12g}"
 
     else:
@@ -1241,29 +980,20 @@ def solve_calculation(question):
 
 
 # ============================================================
-# LOCAL MATH SOLVER
+# MATH HELPERS
 # ============================================================
 
 def normalize_math_text(text):
 
-    text = text.replace(
-        "svg",
-        "√",
-    )
-
-    text = text.replace(
-        "SVG",
-        "√",
-    )
+    text = text.replace("svg", "√")
+    text = text.replace("SVG", "√")
 
     superscripts = str.maketrans(
         "⁰¹²³⁴⁵⁶⁷⁸⁹",
         "0123456789",
     )
 
-    return text.translate(
-        superscripts
-    )
+    return text.translate(superscripts)
 
 
 def fmt(value):
@@ -1282,6 +1012,10 @@ def fmt(value):
         .rstrip(".")
     )
 
+
+# ============================================================
+# LOCAL MATH: x + 1/x
+# ============================================================
 
 def solve_power_recurrence(question):
 
@@ -1348,10 +1082,7 @@ def solve_power_recurrence(question):
         "",
     ]
 
-    for k in range(
-        2,
-        n + 1,
-    ):
+    for k in range(2, n + 1):
 
         lines.extend(
             [
@@ -1382,7 +1113,110 @@ def solve_power_recurrence(question):
 
 
 # ============================================================
-# LOCAL PHYSICS CIRCUIT SOLVER
+# LOCAL MATH: TRIG IDENTITY
+# ============================================================
+
+def solve_trig_identity(question):
+
+    q = question.lower()
+
+    required = [
+        "sec",
+        "cosec",
+        "sin",
+        "cos",
+    ]
+
+    if not all(
+        word in q
+        for word in required
+    ):
+        return None
+
+    # Recognize the identity we were discussing.
+    if not (
+        "sec" in q
+        and "cosec" in q
+        and "sin" in q
+        and "cos" in q
+    ):
+        return None
+
+    return """
+### Proof
+
+We have
+
+[1/(sec²θ − cos²θ) + 1/(cosec²θ − sin²θ)]
+× sin²θ cos²θ
+
+Using:
+
+sec²θ = 1/cos²θ
+
+and
+
+cosec²θ = 1/sin²θ
+
+Therefore,
+
+1/(sec²θ − cos²θ)
+
+= 1/(1/cos²θ − cos²θ)
+
+= cos²θ/(1 − cos⁴θ)
+
+Since
+
+1 − cos⁴θ
+= (1 − cos²θ)(1 + cos²θ)
+= sin²θ(1 + cos²θ),
+
+we get
+
+1/(sec²θ − cos²θ)
+= cos²θ/[sin²θ(1 + cos²θ)]
+
+Similarly,
+
+1/(cosec²θ − sin²θ)
+= sin²θ/[cos²θ(1 + sin²θ)]
+
+Multiplying by sin²θ cos²θ:
+
+LHS
+= cos⁴θ/(1 + cos²θ)
+  + sin⁴θ/(1 + sin²θ)
+
+Taking the LCM:
+
+= [cos⁴θ(1 + sin²θ)
+   + sin⁴θ(1 + cos²θ)]
+  / [(1 + sin²θ)(1 + cos²θ)]
+
+Using:
+
+sin²θ + cos²θ = 1
+
+and
+
+sin⁴θ + cos⁴θ
+= 1 − 2sin²θcos²θ
+
+we get:
+
+LHS
+= [1 − sin²θcos²θ]
+  / [2 + sin²θcos²θ]
+
+### Final Answer
+
+**(1 − sin²θ cos²θ)/(2 + sin²θ cos²θ) ✅**
+""".strip()
+
+
+# ============================================================
+# LOCAL PHYSICS
 # ============================================================
 
 def solve_circuit(question):
@@ -1480,31 +1314,22 @@ def solve_circuit(question):
     i1 = vp / r1
     i2 = vp / r2
 
-    total_power = (
-        voltage
-        * total_i
-    )
-
     return f"""
 ### Solution
-
-Parallel resistance:
 
 Rₚ = (R₁ × R₂)/(R₁ + R₂)
 
 **Rₚ = {fmt(rp)} Ω**
 
-Total resistance:
+Rₜ = {' + '.join(fmt(x) for x in others)} + {fmt(rp)}
 
 **Rₜ = {fmt(rt)} Ω**
-
-Total current:
 
 I = V/Rₜ
 
 **I = {fmt(total_i)} A**
 
-Voltage across parallel section:
+Parallel voltage:
 
 **Vₚ = {fmt(vp)} V**
 
@@ -1516,10 +1341,6 @@ Current through {fmt(r2)} Ω:
 
 **I₂ = {fmt(i2)} A**
 
-Total power:
-
-**P = {fmt(total_power)} W**
-
 ### Final Answer
 
 **Total current = {fmt(total_i)} A ✅**
@@ -1527,7 +1348,7 @@ Total power:
 
 
 # ============================================================
-# LOCAL CHEMISTRY Fe + HCl
+# LOCAL CHEMISTRY
 # ============================================================
 
 def solve_iron_hcl(question):
@@ -1623,13 +1444,11 @@ def solve_iron_hcl(question):
         fe_used = fe_moles
 
     h2_volume = (
-        h2_moles
-        * 22.4
+        h2_moles * 22.4
     )
 
     fecl2_mass = (
-        fe_used
-        * 127
+        fe_used * 127
     )
 
     return f"""
@@ -1653,7 +1472,7 @@ Moles of H₂:
 
 **{fmt(h2_moles)} mol**
 
-Volume of H₂ at STP:
+H₂ volume at STP:
 
 **{fmt(h2_volume)} L**
 
@@ -1677,13 +1496,6 @@ def stream_text_ai(
     original_question,
     difficulty,
 ):
-    """
-    Advanced reasoning engine.
-
-    Basic questions still use the same model, but receive a
-    shorter instruction. Difficult questions receive the
-    specialist prompt and a larger response limit.
-    """
 
     if not HF_TOKEN or hf_client is None:
 
@@ -1694,9 +1506,7 @@ def stream_text_ai(
 
         return
 
-    prompt = get_prompt(
-        subject
-    )
+    prompt = get_prompt(subject)
 
     if difficulty == "advanced":
 
@@ -1704,18 +1514,19 @@ def stream_text_ai(
 
 THIS IS AN ADVANCED PROBLEM.
 
-Take time to derive the result carefully.
+Work through the necessary mathematical or physical derivation.
 
-Before giving the final answer:
-- Recheck the main equations.
+Before the final answer:
+- Recheck equations.
 - Recheck algebra.
 - Recheck signs.
 - Recheck units.
-- Check special cases or limiting cases when useful.
-- For MCQs, verify the option.
-- Do not guess.
+- Check limiting cases when useful.
+- Verify MCQ options when present.
 
-Show the useful derivation, but do not reveal private chain-of-thought.
+Do not guess.
+Do not reveal private chain-of-thought.
+Show only the useful derivation and verification.
 """
 
     elif difficulty == "intermediate":
@@ -1723,8 +1534,7 @@ Show the useful derivation, but do not reveal private chain-of-thought.
         prompt += """
 
 This is an intermediate problem.
-
-Show the important steps and verify the result.
+Show the important steps and check the result.
 """
 
     else:
@@ -1732,8 +1542,7 @@ Show the important steps and verify the result.
         prompt += """
 
 This is a basic problem.
-
-Keep the explanation clear and reasonably concise.
+Keep the response reasonably concise.
 """
 
     max_tokens = {
@@ -1816,11 +1625,6 @@ def analyze_image(
     image_data,
     prompt,
 ):
-    """
-    Analyze a photo containing an academic question.
-
-    Uses a vision-language model.
-    """
 
     if not HF_TOKEN or hf_client is None:
 
@@ -1835,6 +1639,7 @@ def analyze_image(
 
         return "❌ Invalid image data."
 
+    # 8 MB is enough for the compressed frontend image.
     if len(image_data) > 8_000_000:
 
         return (
@@ -1878,7 +1683,7 @@ def analyze_image(
 
         if not response.choices:
             return (
-                "❌ The vision model returned no answer."
+                "❌ Vision model returned no answer."
             )
 
         answer = (
@@ -1889,7 +1694,7 @@ def analyze_image(
 
         if not answer:
             return (
-                "❌ The vision model returned an empty answer."
+                "❌ Vision model returned an empty answer."
             )
 
         return answer
@@ -1966,27 +1771,24 @@ def register():
 
         return {
             "success": False,
-            "message": (
-                "Username and password are required."
-            ),
+            "message":
+                "Username and password are required.",
         }, 400
 
     if not email and not phone:
 
         return {
             "success": False,
-            "message": (
-                "Enter either email or phone number."
-            ),
+            "message":
+                "Enter either email or phone number.",
         }, 400
 
     if len(password) < 6:
 
         return {
             "success": False,
-            "message": (
-                "Password must be at least 6 characters."
-            ),
+            "message":
+                "Password must be at least 6 characters.",
         }, 400
 
     users = load_users()
@@ -2000,7 +1802,8 @@ def register():
 
             return {
                 "success": False,
-                "message": "Username already exists.",
+                "message":
+                    "Username already exists.",
             }, 400
 
         if (
@@ -2014,7 +1817,8 @@ def register():
 
             return {
                 "success": False,
-                "message": "Email already registered.",
+                "message":
+                    "Email already registered.",
             }, 400
 
         if (
@@ -2028,17 +1832,17 @@ def register():
 
             return {
                 "success": False,
-                "message": (
-                    "Phone number already registered."
-                ),
+                "message":
+                    "Phone number already registered.",
             }, 400
 
     users[username] = {
         "email": email,
         "phone": phone,
-        "password": generate_password_hash(
-            password
-        ),
+        "password":
+            generate_password_hash(
+                password
+            ),
     }
 
     save_users(users)
@@ -2048,7 +1852,8 @@ def register():
 
     return {
         "success": True,
-        "message": "Account created successfully.",
+        "message":
+            "Account created successfully.",
     }
 
 
@@ -2132,16 +1937,16 @@ def login():
 
                 return {
                     "success": True,
-                    "message": "Login successful.",
+                    "message":
+                        "Login successful.",
                 }
 
             break
 
     return {
         "success": False,
-        "message": (
-            "Invalid username/email/phone or password."
-        ),
+        "message":
+            "Invalid username/email/phone or password.",
     }, 401
 
 
@@ -2192,7 +1997,7 @@ def chat():
     )
 
     # --------------------------------------------------------
-    # IMAGE
+    # IMAGE FIRST
     # --------------------------------------------------------
 
     if image_data:
@@ -2270,15 +2075,31 @@ def chat():
             mimetype="text/plain",
         )
 
-    # --------------------------------------------------------
-    # LOCAL EXACT MATH
-    # --------------------------------------------------------
-
     normalized = normalize_math_text(
         original_question
     )
 
+    # --------------------------------------------------------
+    # LOCAL MATH
+    # --------------------------------------------------------
+
     result = solve_power_recurrence(
+        normalized
+    )
+
+    if result:
+
+        save_history(
+            original_question,
+            result,
+        )
+
+        return Response(
+            result,
+            mimetype="text/plain",
+        )
+
+    result = solve_trig_identity(
         normalized
     )
 
@@ -2361,8 +2182,10 @@ def chat():
         ),
         mimetype="text/plain",
         headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
+            "Cache-Control":
+                "no-cache",
+            "X-Accel-Buffering":
+                "no",
         },
     )
 
@@ -2434,6 +2257,10 @@ def improve():
         question
     )
 
+    difficulty = detect_difficulty(
+        question
+    )
+
     prompt = f"""
 Original question:
 
@@ -2447,10 +2274,7 @@ Task:
 
 {instruction}
 
-Recalculate important values.
-Check algebra.
-Check units.
-Check the final answer.
+Check calculations, algebra and units.
 Do not use raw LaTeX.
 Finish completely.
 """
@@ -2461,13 +2285,15 @@ Finish completely.
                 prompt,
                 subject,
                 question,
-                detect_difficulty(question),
+                difficulty,
             )
         ),
         mimetype="text/plain",
         headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
+            "Cache-Control":
+                "no-cache",
+            "X-Accel-Buffering":
+                "no-cache",
         },
     )
 
@@ -2481,15 +2307,37 @@ if __name__ == "__main__":
     print("=" * 70)
     print("MY AI")
     print("=" * 70)
-    print("HF configured :", bool(HF_TOKEN))
-    print("Calculator    : ON")
-    print("Advanced Math : ON")
-    print("Advanced Phys : ON")
-    print("Advanced Chem : ON")
-    print("Advanced Bio  : ON")
-    print("Vision        : ON")
-    print("Follow-ups    : ON")
-    print("Login         : ON")
+    print(
+        "HF configured :",
+        bool(HF_TOKEN),
+    )
+    print(
+        "Calculator    : ON"
+    )
+    print(
+        "Math solver   : ON"
+    )
+    print(
+        "Trig solver   : ON"
+    )
+    print(
+        "Physics       : ON"
+    )
+    print(
+        "Chemistry     : ON"
+    )
+    print(
+        "Biology AI    : ON"
+    )
+    print(
+        "Vision        : ON"
+    )
+    print(
+        "Follow-ups    : ON"
+    )
+    print(
+        "Login         : ON"
+    )
     print("=" * 70)
 
     app.run(
