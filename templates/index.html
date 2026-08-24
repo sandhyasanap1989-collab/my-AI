@@ -1,11 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
     <title>My AI</title>
 
     <style>
+
         * {
             box-sizing: border-box;
         }
@@ -23,9 +30,10 @@
             font-family: inherit;
         }
 
-        /* =========================
-           AUTH
-        ========================= */
+
+        /* =====================================================
+           LOGIN / CREATE ACCOUNT
+        ====================================================== */
 
         .auth-screen {
             min-height: 100vh;
@@ -41,14 +49,15 @@
             background: white;
             padding: 30px;
             border-radius: 20px;
-            box-shadow: 0 15px 45px rgba(0, 0, 0, 0.1);
+            box-shadow:
+                0 15px 45px rgba(0, 0, 0, 0.10);
         }
 
         .logo {
             text-align: center;
+            color: #2563eb;
             font-size: 34px;
             font-weight: 800;
-            color: #2563eb;
             margin-bottom: 7px;
         }
 
@@ -66,8 +75,8 @@
 
         .tab {
             flex: 1;
-            padding: 11px;
             border: none;
+            padding: 11px;
             border-radius: 10px;
             background: #eef2f7;
             cursor: pointer;
@@ -105,7 +114,7 @@
 
         .field input {
             width: 100%;
-            padding: 12px 13px;
+            padding: 12px;
             border: 1px solid #d4dbe7;
             border-radius: 10px;
             outline: none;
@@ -158,9 +167,10 @@
             font-size: 13px;
         }
 
-        /* =========================
-           APP
-        ========================= */
+
+        /* =====================================================
+           MAIN APP
+        ====================================================== */
 
         .app {
             min-height: 100vh;
@@ -215,6 +225,10 @@
             cursor: pointer;
         }
 
+        .logout:hover {
+            background: #f8fafc;
+        }
+
         .main {
             flex: 1;
             min-width: 0;
@@ -236,10 +250,15 @@
             font-weight: 800;
         }
 
+
+        /* =====================================================
+           CHAT
+        ====================================================== */
+
         .chat {
             flex: 1;
             overflow-y: auto;
-            padding: 25px 15px 165px;
+            padding: 25px 15px 175px;
         }
 
         .chat-inner {
@@ -262,9 +281,10 @@
             line-height: 1.6;
         }
 
-        /* =========================
+
+        /* =====================================================
            MESSAGES
-        ========================= */
+        ====================================================== */
 
         .message {
             display: flex;
@@ -323,9 +343,14 @@
             margin: 8px 0;
         }
 
-        /* =========================
+        .bubble strong {
+            font-weight: 800;
+        }
+
+
+        /* =====================================================
            ACTION BUTTONS
-        ========================= */
+        ====================================================== */
 
         .actions {
             display: flex;
@@ -348,9 +373,10 @@
             background: #eef4ff;
         }
 
-        /* =========================
-           IMAGE
-        ========================= */
+
+        /* =====================================================
+           IMAGE PREVIEW
+        ====================================================== */
 
         .image-preview-wrap {
             display: none;
@@ -359,11 +385,13 @@
 
         .image-preview {
             display: block;
-            max-width: 260px;
-            max-height: 180px;
+            width: auto;
+            max-width: 280px;
+            max-height: 200px;
             border-radius: 10px;
             border: 1px solid #d7dee9;
             object-fit: contain;
+            background: #f8fafc;
         }
 
         .remove-image {
@@ -377,9 +405,10 @@
             font-size: 12px;
         }
 
-        /* =========================
+
+        /* =====================================================
            COMPOSER
-        ========================= */
+        ====================================================== */
 
         .composer {
             position: fixed;
@@ -391,6 +420,7 @@
                 transparent,
                 #f3f6fb 30%
             );
+            z-index: 100;
         }
 
         .composer-box {
@@ -400,7 +430,8 @@
             border: 1px solid #d7dee9;
             border-radius: 15px;
             padding: 8px;
-            box-shadow: 0 7px 25px rgba(15, 23, 42, 0.08);
+            box-shadow:
+                0 7px 25px rgba(15, 23, 42, 0.08);
         }
 
         .input-row {
@@ -409,31 +440,14 @@
             align-items: flex-end;
         }
 
-        .icon-btn,
-        .send-btn {
-            width: 44px;
-            height: 44px;
-            flex-shrink: 0;
-            border: none;
-            border-radius: 11px;
-            cursor: pointer;
-        }
 
-        .icon-btn {
-            background: #eef2f7;
-            color: #374151;
-            font-size: 18px;
-        }
+        /* =====================================================
+           MICROPHONE
+        ====================================================== */
 
-        .icon-btn:hover {
-            background: #e2e8f0;
-        }
-
-        /* Custom microphone */
         .voice-btn {
-            position: relative;
-            width: 44px;
-            height: 44px;
+            width: 40px;
+            height: 40px;
             flex-shrink: 0;
             border: none;
             border-radius: 50%;
@@ -450,40 +464,93 @@
 
         .mic-body {
             position: relative;
-            width: 13px;
-            height: 19px;
+            width: 10px;
+            height: 15px;
             background: #111827;
-            border-radius: 8px;
+            border-radius: 6px;
         }
 
         .mic-body::before {
             content: "";
             position: absolute;
-            left: -5px;
-            bottom: -7px;
-            width: 19px;
-            height: 16px;
-            border: 2px solid #111827;
+            left: -4px;
+            bottom: -6px;
+            width: 16px;
+            height: 13px;
+            border: 1.6px solid #111827;
             border-top: none;
-            border-radius: 0 0 12px 12px;
+            border-radius: 0 0 10px 10px;
         }
 
         .mic-body::after {
             content: "";
             position: absolute;
-            left: 5px;
-            bottom: -14px;
-            width: 3px;
-            height: 8px;
+            left: 4px;
+            bottom: -12px;
+            width: 2px;
+            height: 7px;
             background: #111827;
             border-radius: 2px;
         }
 
+
+        /* =====================================================
+           CAMERA / GALLERY BUTTONS
+        ====================================================== */
+
+        .camera-tools {
+            display: flex;
+            gap: 6px;
+        }
+
+        .icon-btn {
+            width: 40px;
+            height: 40px;
+            flex-shrink: 0;
+            border: none;
+            border-radius: 50%;
+            background: #eef2f7;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .icon-btn:hover {
+            background: #e2e8f0;
+        }
+
+
+        /* =====================================================
+           TEXTAREA
+        ====================================================== */
+
+        textarea {
+            flex: 1;
+            min-height: 42px;
+            max-height: 150px;
+            padding: 10px;
+            resize: none;
+            border: none;
+            outline: none;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+
+
+        /* =====================================================
+           SEND
+        ====================================================== */
+
         .send-btn {
+            width: 42px;
+            height: 42px;
+            flex-shrink: 0;
+            border: none;
+            border-radius: 50%;
             background: #2563eb;
             color: white;
-            font-size: 18px;
+            font-size: 17px;
             font-weight: 800;
+            cursor: pointer;
         }
 
         .send-btn:hover {
@@ -495,21 +562,10 @@
             cursor: not-allowed;
         }
 
-        textarea {
-            flex: 1;
-            min-height: 44px;
-            max-height: 150px;
-            padding: 11px;
-            resize: none;
-            border: none;
-            outline: none;
-            font-size: 15px;
-            line-height: 1.5;
-        }
 
-        /* =========================
+        /* =====================================================
            LOADING
-        ========================= */
+        ====================================================== */
 
         .loading {
             display: inline-flex;
@@ -526,19 +582,20 @@
         }
 
         .loading span:nth-child(2) {
-            animation-delay: 0.15s;
+            animation-delay: .15s;
         }
 
         .loading span:nth-child(3) {
-            animation-delay: 0.3s;
+            animation-delay: .30s;
         }
 
         @keyframes bounce {
+
             0%,
             80%,
             100% {
                 transform: translateY(0);
-                opacity: 0.35;
+                opacity: .35;
             }
 
             40% {
@@ -547,11 +604,141 @@
             }
         }
 
-        /* =========================
+
+        /* =====================================================
+           CAMERA MODAL
+        ====================================================== */
+
+        .camera-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: rgba(0, 0, 0, 0.72);
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            padding: 15px;
+        }
+
+        .camera-box {
+            width: min(760px, 100%);
+            max-height: 94vh;
+
+            background: white;
+            border-radius: 18px;
+
+            padding: 14px;
+
+            box-shadow:
+                0 20px 60px rgba(0, 0, 0, 0.3);
+
+            overflow: hidden;
+        }
+
+        .camera-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+
+            font-size: 18px;
+
+            margin-bottom: 12px;
+        }
+
+        .camera-close {
+            width: 36px;
+            height: 36px;
+
+            border: none;
+            border-radius: 50%;
+
+            background: #eef2f7;
+
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .camera-close:hover {
+            background: #e2e8f0;
+        }
+
+        #cameraVideo {
+            display: block;
+
+            width: 100%;
+
+            max-height: 68vh;
+
+            object-fit: contain;
+
+            background: #000;
+
+            border-radius: 14px;
+        }
+
+        .camera-error {
+            min-height: 18px;
+
+            margin-top: 8px;
+
+            color: #dc2626;
+
+            font-size: 13px;
+
+            text-align: center;
+        }
+
+        .camera-controls {
+            display: flex;
+
+            gap: 10px;
+
+            margin-top: 12px;
+        }
+
+        .camera-action {
+            flex: 1;
+
+            padding: 12px;
+
+            border: none;
+
+            border-radius: 11px;
+
+            cursor: pointer;
+
+            font-weight: 700;
+
+            font-size: 14px;
+        }
+
+        .camera-action.capture {
+            background: #2563eb;
+            color: white;
+        }
+
+        .camera-action.capture:hover {
+            background: #1d4ed8;
+        }
+
+        .camera-action.gallery {
+            background: #eef2f7;
+            color: #111827;
+        }
+
+        .camera-action.gallery:hover {
+            background: #e2e8f0;
+        }
+
+
+        /* =====================================================
            MOBILE
-        ========================= */
+        ====================================================== */
 
         @media (max-width: 760px) {
+
             .sidebar {
                 display: none;
             }
@@ -562,7 +749,8 @@
             }
 
             .chat {
-                padding: 20px 10px 145px;
+                padding:
+                    20px 10px 150px;
             }
 
             .bubble {
@@ -580,16 +768,37 @@
             .icon-btn,
             .voice-btn,
             .send-btn {
-                width: 40px;
-                height: 40px;
+                width: 38px;
+                height: 38px;
             }
 
             textarea {
                 font-size: 14px;
             }
+
+            .camera-box {
+                padding: 10px;
+                border-radius: 14px;
+            }
+
+            #cameraVideo {
+                max-height: 62vh;
+                border-radius: 10px;
+            }
+
+            .camera-controls {
+                gap: 7px;
+            }
+
+            .camera-action {
+                padding: 10px;
+                font-size: 13px;
+            }
         }
 
+
         @media (max-width: 470px) {
+
             .auth-box {
                 padding: 22px;
             }
@@ -601,13 +810,18 @@
             .bubble {
                 font-size: 14px;
             }
+
         }
+
     </style>
 </head>
 
+
 <body>
 
+
 {% if not logged_in %}
+
 
 <!-- =========================================================
      LOGIN / CREATE ACCOUNT
@@ -617,11 +831,14 @@
 
     <div class="auth-box">
 
-        <div class="logo">🤖 My AI</div>
+        <div class="logo">
+            🤖 My AI
+        </div>
 
         <div class="subtitle">
             Your PCMB study assistant
         </div>
+
 
         <div class="tabs">
 
@@ -645,7 +862,10 @@
 
         </div>
 
-        <!-- LOGIN -->
+
+        <!-- =================================================
+             LOGIN
+        ================================================== -->
 
         <div
             class="auth-form active"
@@ -661,11 +881,12 @@
                 <input
                     type="text"
                     id="loginValue"
-                    placeholder="Enter username, email or phone"
+                    placeholder="Username, email or phone"
                     autocomplete="username"
                 >
 
             </div>
+
 
             <div class="field">
 
@@ -678,7 +899,7 @@
                     <input
                         type="password"
                         id="loginPassword"
-                        placeholder="Enter password"
+                        placeholder="Password"
                         autocomplete="current-password"
                     >
 
@@ -694,6 +915,7 @@
 
             </div>
 
+
             <button
                 type="button"
                 class="auth-button"
@@ -704,7 +926,10 @@
 
         </div>
 
-        <!-- CREATE ACCOUNT -->
+
+        <!-- =================================================
+             CREATE ACCOUNT
+        ================================================== -->
 
         <div
             class="auth-form"
@@ -726,6 +951,7 @@
 
             </div>
 
+
             <div class="field">
 
                 <label>
@@ -740,6 +966,7 @@
                 >
 
             </div>
+
 
             <div class="field">
 
@@ -756,9 +983,17 @@
 
             </div>
 
-            <p style="font-size:12px;color:#667085;margin:-2px 0 14px;">
+
+            <p
+                style="
+                    font-size:12px;
+                    color:#667085;
+                    margin:-2px 0 14px;
+                "
+            >
                 Enter either an email address or a phone number.
             </p>
+
 
             <div class="field">
 
@@ -787,6 +1022,7 @@
 
             </div>
 
+
             <button
                 type="button"
                 class="auth-button"
@@ -797,6 +1033,7 @@
 
         </div>
 
+
         <div
             class="auth-message"
             id="authMessage"
@@ -806,7 +1043,9 @@
 
 </div>
 
+
 {% else %}
+
 
 <!-- =========================================================
      MAIN APP
@@ -814,11 +1053,17 @@
 
 <div class="app">
 
+
+    <!-- =====================================================
+         SIDEBAR
+    ====================================================== -->
+
     <aside class="sidebar">
 
         <div class="brand">
             🤖 My AI
         </div>
+
 
         <button
             type="button"
@@ -828,10 +1073,15 @@
             ＋ New Chat
         </button>
 
+
         <div class="sidebar-bottom">
 
             Logged in as:
-            <strong>{{ username }}</strong>
+
+            <strong>
+                {{ username }}
+            </strong>
+
 
             <button
                 type="button"
@@ -845,11 +1095,26 @@
 
     </aside>
 
+
+    <!-- =====================================================
+         MAIN
+    ====================================================== -->
+
     <main class="main">
 
+
         <header class="topbar">
-            <div class="top-title">My AI</div>
+
+            <div class="top-title">
+                My AI
+            </div>
+
         </header>
+
+
+        <!-- =================================================
+             CHAT
+        ================================================== -->
 
         <section
             class="chat"
@@ -861,33 +1126,50 @@
                 id="chatInner"
             >
 
+
                 <div
                     class="welcome"
                     id="welcome"
                 >
 
-                    <h1>🤖 My AI</h1>
+                    <h1>
+                        🤖 My AI
+                    </h1>
+
 
                     <p>
                         Hello {{ username }}! 👋
                     </p>
+
 
                     <p>
                         Ask Mathematics, Physics,
                         Chemistry, Biology or general questions.
                     </p>
 
+                    <p>
+                        You can also use the camera,
+                        gallery or microphone.
+                    </p>
+
                 </div>
+
 
             </div>
 
         </section>
 
-        <!-- COMPOSER -->
+
+        <!-- =================================================
+             COMPOSER
+        ================================================== -->
 
         <div class="composer">
 
             <div class="composer-box">
+
+
+                <!-- IMAGE PREVIEW -->
 
                 <div
                     class="image-preview-wrap"
@@ -900,6 +1182,7 @@
                         alt="Selected image"
                     >
 
+
                     <button
                         type="button"
                         class="remove-image"
@@ -910,9 +1193,14 @@
 
                 </div>
 
+
+                <!-- INPUT ROW -->
+
                 <div class="input-row">
 
-                    <!-- CUSTOM MIC -->
+
+                    <!-- MICROPHONE -->
+
                     <button
                         type="button"
                         class="voice-btn"
@@ -923,27 +1211,46 @@
                         <span class="mic-body"></span>
                     </button>
 
-                    <!-- CAMERA -->
-                    <button
-                        type="button"
-                        class="icon-btn"
-                        onclick="openCamera()"
-                        title="Camera"
-                        aria-label="Camera"
-                    >
-                        📷
-                    </button>
 
-                    <input
-                        type="file"
-                        id="cameraInput"
-                        accept="image/*"
-                        capture="environment"
-                        hidden
-                        onchange="selectImage(event)"
-                    >
+                    <!-- CAMERA / GALLERY -->
+
+                    <div class="camera-tools">
+
+                        <button
+                            type="button"
+                            class="icon-btn"
+                            onclick="openCameraModal()"
+                            title="Camera"
+                            aria-label="Camera"
+                        >
+                            📷
+                        </button>
+
+
+                        <button
+                            type="button"
+                            class="icon-btn"
+                            onclick="document.getElementById('imageFileInput').click()"
+                            title="Choose image"
+                            aria-label="Choose image"
+                        >
+                            🖼️
+                        </button>
+
+
+                        <input
+                            type="file"
+                            id="imageFileInput"
+                            accept="image/*"
+                            hidden
+                            onchange="selectImage(event)"
+                        >
+
+                    </div>
+
 
                     <!-- TEXT -->
+
                     <textarea
                         id="messageInput"
                         placeholder="Ask My AI anything..."
@@ -952,13 +1259,16 @@
                         onkeydown="handleKey(event)"
                     ></textarea>
 
+
                     <!-- SEND -->
+
                     <button
                         type="button"
                         class="send-btn"
                         id="sendButton"
                         onclick="sendMessage()"
                         title="Send"
+                        aria-label="Send"
                     >
                         ➤
                     </button>
@@ -973,63 +1283,180 @@
 
 </div>
 
+
+<!-- =========================================================
+     CAMERA MODAL
+========================================================== -->
+
+<div
+    id="cameraModal"
+    class="camera-modal"
+    style="display:none;"
+>
+
+    <div class="camera-box">
+
+
+        <div class="camera-header">
+
+            <strong>
+                📷 Camera
+            </strong>
+
+
+            <button
+                type="button"
+                class="camera-close"
+                onclick="closeCameraModal()"
+            >
+                ✕
+            </button>
+
+        </div>
+
+
+        <video
+            id="cameraVideo"
+            autoplay
+            playsinline
+        ></video>
+
+
+        <canvas
+            id="cameraCanvas"
+            style="display:none;"
+        ></canvas>
+
+
+        <div
+            id="cameraError"
+            class="camera-error"
+        ></div>
+
+
+        <div class="camera-controls">
+
+            <button
+                type="button"
+                class="camera-action capture"
+                onclick="capturePhoto()"
+            >
+                📸 Capture
+            </button>
+
+
+            <button
+                type="button"
+                class="camera-action gallery"
+                onclick="document.getElementById('imageFileInput').click()"
+            >
+                🖼️ Gallery
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
 {% endif %}
 
 
 <script>
 
+
 /* ============================================================
-   AUTH
+   AUTH TABS
 ============================================================ */
 
 function showAuth(type) {
 
     const loginForm =
-        document.getElementById("loginForm");
+        document.getElementById(
+            "loginForm"
+        );
 
     const registerForm =
-        document.getElementById("registerForm");
+        document.getElementById(
+            "registerForm"
+        );
 
     const loginTab =
-        document.getElementById("loginTab");
+        document.getElementById(
+            "loginTab"
+        );
 
     const registerTab =
-        document.getElementById("registerTab");
+        document.getElementById(
+            "registerTab"
+        );
 
-    const authMessage =
-        document.getElementById("authMessage");
+    const message =
+        document.getElementById(
+            "authMessage"
+        );
+
 
     if (type === "login") {
 
-        loginForm.classList.add("active");
-        registerForm.classList.remove("active");
+        loginForm.classList.add(
+            "active"
+        );
 
-        loginTab.classList.add("active");
-        registerTab.classList.remove("active");
+        registerForm.classList.remove(
+            "active"
+        );
+
+        loginTab.classList.add(
+            "active"
+        );
+
+        registerTab.classList.remove(
+            "active"
+        );
 
     } else {
 
-        loginForm.classList.remove("active");
-        registerForm.classList.add("active");
+        loginForm.classList.remove(
+            "active"
+        );
 
-        loginTab.classList.remove("active");
-        registerTab.classList.add("active");
+        registerForm.classList.add(
+            "active"
+        );
+
+        loginTab.classList.remove(
+            "active"
+        );
+
+        registerTab.classList.add(
+            "active"
+        );
     }
 
-    if (authMessage) {
-        authMessage.textContent = "";
+
+    if (message) {
+        message.textContent = "";
     }
 }
 
 
+/* ============================================================
+   PASSWORD
+============================================================ */
+
 function togglePassword(id) {
 
     const input =
-        document.getElementById(id);
+        document.getElementById(
+            id
+        );
 
     if (!input) {
         return;
     }
+
 
     input.type =
         input.type === "password"
@@ -1046,47 +1473,67 @@ async function register() {
 
     const username =
         document
-            .getElementById("registerUsername")
+            .getElementById(
+                "registerUsername"
+            )
             .value
             .trim();
 
     const email =
         document
-            .getElementById("registerEmail")
+            .getElementById(
+                "registerEmail"
+            )
             .value
             .trim();
 
     const phone =
         document
-            .getElementById("registerPhone")
+            .getElementById(
+                "registerPhone"
+            )
             .value
             .trim();
 
     const password =
         document
-            .getElementById("registerPassword")
+            .getElementById(
+                "registerPassword"
+            )
             .value;
 
     const message =
-        document.getElementById("authMessage");
+        document.getElementById(
+            "authMessage"
+        );
+
 
     if (!username) {
+
         message.textContent =
             "Please enter a username.";
+
         return;
     }
+
 
     if (!email && !phone) {
+
         message.textContent =
             "Enter either email or phone number.";
+
         return;
     }
 
+
     if (password.length < 6) {
+
         message.textContent =
             "Password must be at least 6 characters.";
+
         return;
     }
+
 
     try {
 
@@ -1095,10 +1542,12 @@ async function register() {
                 "/register",
                 {
                     method: "POST",
+
                     headers: {
                         "Content-Type":
                             "application/json"
                     },
+
                     body: JSON.stringify({
                         username,
                         email,
@@ -1108,12 +1557,17 @@ async function register() {
                 }
             );
 
+
         const data =
             await response.json();
 
+
         if (data.success) {
-            window.location.reload();
+
+            location.reload();
+
         } else {
+
             message.textContent =
                 data.message ||
                 "Could not create account.";
@@ -1121,7 +1575,10 @@ async function register() {
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "REGISTER ERROR:",
+            error
+        );
 
         message.textContent =
             "Could not connect to server.";
@@ -1137,17 +1594,24 @@ async function login() {
 
     const loginValue =
         document
-            .getElementById("loginValue")
+            .getElementById(
+                "loginValue"
+            )
             .value
             .trim();
 
     const password =
         document
-            .getElementById("loginPassword")
+            .getElementById(
+                "loginPassword"
+            )
             .value;
 
     const message =
-        document.getElementById("authMessage");
+        document.getElementById(
+            "authMessage"
+        );
+
 
     if (!loginValue || !password) {
 
@@ -1157,6 +1621,7 @@ async function login() {
         return;
     }
 
+
     try {
 
         const response =
@@ -1164,23 +1629,32 @@ async function login() {
                 "/login",
                 {
                     method: "POST",
+
                     headers: {
                         "Content-Type":
                             "application/json"
                     },
+
                     body: JSON.stringify({
-                        login: loginValue,
-                        password
+                        login:
+                            loginValue,
+                        password:
+                            password
                     })
                 }
             );
 
+
         const data =
             await response.json();
 
+
         if (data.success) {
-            window.location.reload();
+
+            location.reload();
+
         } else {
+
             message.textContent =
                 data.message ||
                 "Login failed.";
@@ -1188,7 +1662,10 @@ async function login() {
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "LOGIN ERROR:",
+            error
+        );
 
         message.textContent =
             "Could not connect to server.";
@@ -1202,47 +1679,75 @@ async function login() {
 
 let busy = false;
 let selectedImage = null;
+let cameraStream = null;
 
 
 /* ============================================================
-   ESCAPE HTML
+   HTML ESCAPE
 ============================================================ */
 
 function escapeHtml(text) {
 
-    return text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
+    return String(text)
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+        .replace(
+            /</g,
+            "&lt;"
+        )
+        .replace(
+            />/g,
+            "&gt;"
+        );
 }
 
 
 /* ============================================================
-   REMOVE ALL UNWANTED LATEX SIGNS
+   CLEAN MATH / LATEX
 ============================================================ */
 
 function cleanMathFormatting(text) {
 
-    let clean = String(text);
+    let clean =
+        String(text);
 
 
-    /* -------------------------
-       Remove math delimiters
-    ------------------------- */
+    /* Math delimiters */
 
-    clean = clean.replace(/\\\[/g, "");
-    clean = clean.replace(/\\\]/g, "");
+    clean = clean.replace(
+        /\\\[/g,
+        ""
+    );
 
-    clean = clean.replace(/\\\(/g, "");
-    clean = clean.replace(/\\\)/g, "");
+    clean = clean.replace(
+        /\\\]/g,
+        ""
+    );
 
-    clean = clean.replace(/\$\$/g, "");
-    clean = clean.replace(/\$/g, "");
+    clean = clean.replace(
+        /\\\(/g,
+        ""
+    );
+
+    clean = clean.replace(
+        /\\\)/g,
+        ""
+    );
+
+    clean = clean.replace(
+        /\$\$/g,
+        ""
+    );
+
+    clean = clean.replace(
+        /\$/g,
+        ""
+    );
 
 
-    /* -------------------------
-       Remove environments
-    ------------------------- */
+    /* Environments */
 
     clean = clean.replace(
         /\\begin\{[^}]*\}/g,
@@ -1254,15 +1759,8 @@ function cleanMathFormatting(text) {
         ""
     );
 
-    clean = clean.replace(
-        /\\tag\{[^}]*\}/g,
-        ""
-    );
 
-
-    /* -------------------------
-       Remove / convert commands
-    ------------------------- */
+    /* Text commands */
 
     clean = clean.replace(
         /\\text\{([^{}]*)\}/g,
@@ -1285,19 +1783,12 @@ function cleanMathFormatting(text) {
     );
 
     clean = clean.replace(
-        /\\operatorname\{([^{}]*)\}/g,
-        "$1"
-    );
-
-    clean = clean.replace(
         /\\boxed\{([^{}]*)\}/g,
         "$1"
     );
 
 
-    /* -------------------------
-       Fractions
-    ------------------------- */
+    /* Fractions */
 
     clean = clean.replace(
         /\\frac\{([^{}]*)\}\{([^{}]*)\}/g,
@@ -1309,53 +1800,71 @@ function cleanMathFormatting(text) {
         "($1/$2)"
     );
 
-    clean = clean.replace(
-        /\\tfrac\{([^{}]*)\}\{([^{}]*)\}/g,
-        "($1/$2)"
+
+    /* Math symbols */
+
+    const symbols = {
+
+        "\\times": "×",
+
+        "\\cdot": "·",
+
+        "\\div": "÷",
+
+        "\\pm": "±",
+
+        "\\mp": "∓",
+
+        "\\leq": "≤",
+
+        "\\le": "≤",
+
+        "\\geq": "≥",
+
+        "\\ge": "≥",
+
+        "\\neq": "≠",
+
+        "\\ne": "≠",
+
+        "\\approx": "≈",
+
+        "\\rightarrow": "→",
+
+        "\\to": "→",
+
+        "\\leftarrow": "←",
+
+        "\\Rightarrow": "⇒",
+
+        "\\Leftarrow": "⇐",
+
+        "\\sqrt": "√",
+
+        "\\infty": "∞"
+    };
+
+
+    Object.keys(
+        symbols
+    ).forEach(
+        command => {
+
+            clean =
+                clean
+                    .split(
+                        command
+                    )
+                    .join(
+                        symbols[
+                            command
+                        ]
+                    );
+        }
     );
 
 
-    /* -------------------------
-       Math symbols
-    ------------------------- */
-
-    const symbols = {
-        "\\times": "×",
-        "\\cdot": "·",
-        "\\div": "÷",
-        "\\pm": "±",
-        "\\mp": "∓",
-        "\\leq": "≤",
-        "\\le": "≤",
-        "\\geq": "≥",
-        "\\ge": "≥",
-        "\\neq": "≠",
-        "\\ne": "≠",
-        "\\approx": "≈",
-        "\\sim": "∼",
-        "\\infty": "∞",
-        "\\rightarrow": "→",
-        "\\to": "→",
-        "\\leftarrow": "←",
-        "\\Rightarrow": "⇒",
-        "\\Leftarrow": "⇐",
-        "\\sqrt": "√",
-        "\\degree": "°",
-        "\\cdots": "…",
-        "\\ldots": "…"
-    };
-
-    for (const command in symbols) {
-
-        clean = clean.split(command).join(
-            symbols[command]
-        );
-    }
-
-
-    /* -------------------------
-       Spacing commands
-    ------------------------- */
+    /* Spacing */
 
     clean = clean.replace(
         /\\[,;:!]/g,
@@ -1378,10 +1887,7 @@ function cleanMathFormatting(text) {
     );
 
 
-    /* -------------------------
-       Remove remaining simple
-       LaTeX backslash commands
-    ------------------------- */
+    /* Remaining backslash commands */
 
     clean = clean.replace(
         /\\([a-zA-Z]+)/g,
@@ -1389,9 +1895,7 @@ function cleanMathFormatting(text) {
     );
 
 
-    /* -------------------------
-       Clean LaTeX braces
-    ------------------------- */
+    /* Left/right */
 
     clean = clean.replace(
         /\\left/g,
@@ -1404,60 +1908,115 @@ function cleanMathFormatting(text) {
     );
 
 
-    /* -------------------------
-       Superscripts
-    ------------------------- */
+    /* Superscripts */
 
-    clean = clean.replace(/\^0\b/g, "⁰");
-    clean = clean.replace(/\^1\b/g, "¹");
-    clean = clean.replace(/\^2\b/g, "²");
-    clean = clean.replace(/\^3\b/g, "³");
-    clean = clean.replace(/\^4\b/g, "⁴");
-    clean = clean.replace(/\^5\b/g, "⁵");
-    clean = clean.replace(/\^6\b/g, "⁶");
-    clean = clean.replace(/\^7\b/g, "⁷");
-    clean = clean.replace(/\^8\b/g, "⁸");
-    clean = clean.replace(/\^9\b/g, "⁹");
+    clean = clean.replace(
+        /\^0\b/g,
+        "⁰"
+    );
+
+    clean = clean.replace(
+        /\^1\b/g,
+        "¹"
+    );
+
+    clean = clean.replace(
+        /\^2\b/g,
+        "²"
+    );
+
+    clean = clean.replace(
+        /\^3\b/g,
+        "³"
+    );
+
+    clean = clean.replace(
+        /\^4\b/g,
+        "⁴"
+    );
+
+    clean = clean.replace(
+        /\^5\b/g,
+        "⁵"
+    );
+
+    clean = clean.replace(
+        /\^6\b/g,
+        "⁶"
+    );
+
+    clean = clean.replace(
+        /\^7\b/g,
+        "⁷"
+    );
+
+    clean = clean.replace(
+        /\^8\b/g,
+        "⁸"
+    );
+
+    clean = clean.replace(
+        /\^9\b/g,
+        "⁹"
+    );
 
 
-    /* -------------------------
-       Subscripts
-    ------------------------- */
+    /* Subscripts */
 
-    clean = clean.replace(/_0\b/g, "₀");
-    clean = clean.replace(/_1\b/g, "₁");
-    clean = clean.replace(/_2\b/g, "₂");
-    clean = clean.replace(/_3\b/g, "₃");
-    clean = clean.replace(/_4\b/g, "₄");
-    clean = clean.replace(/_5\b/g, "₅");
-    clean = clean.replace(/_6\b/g, "₆");
-    clean = clean.replace(/_7\b/g, "₇");
-    clean = clean.replace(/_8\b/g, "₈");
-    clean = clean.replace(/_9\b/g, "₉");
+    clean = clean.replace(
+        /_0\b/g,
+        "₀"
+    );
 
+    clean = clean.replace(
+        /_1\b/g,
+        "₁"
+    );
 
-    /* -------------------------
-       Remove repeated spaces
-    ------------------------- */
+    clean = clean.replace(
+        /_2\b/g,
+        "₂"
+    );
+
+    clean = clean.replace(
+        /_3\b/g,
+        "₃"
+    );
+
+    clean = clean.replace(
+        /_4\b/g,
+        "₄"
+    );
+
+    clean = clean.replace(
+        /_5\b/g,
+        "₅"
+    );
+
+    clean = clean.replace(
+        /_6\b/g,
+        "₆"
+    );
+
+    clean = clean.replace(
+        /_7\b/g,
+        "₇"
+    );
+
+    clean = clean.replace(
+        /_8\b/g,
+        "₈"
+    );
+
+    clean = clean.replace(
+        /_9\b/g,
+        "₉"
+    );
+
 
     clean = clean.replace(
         /[ \t]{2,}/g,
         " "
-    );
-
-
-    /* -------------------------
-       Remove empty brackets
-    ------------------------- */
-
-    clean = clean.replace(
-        /\[\s*\]/g,
-        ""
-    );
-
-    clean = clean.replace(
-        /\{\s*\}/g,
-        ""
     );
 
 
@@ -1466,19 +2025,24 @@ function cleanMathFormatting(text) {
 
 
 /* ============================================================
-   FORMAT AI ANSWER
+   FORMAT ANSWER
 ============================================================ */
 
 function formatAnswer(text) {
 
     let clean =
-        cleanMathFormatting(text);
+        cleanMathFormatting(
+            text
+        );
+
 
     let html =
-        escapeHtml(clean);
+        escapeHtml(
+            clean
+        );
 
 
-    /* Bold markdown */
+    /* Bold */
 
     html = html.replace(
         /\*\*(.*?)\*\*/gs,
@@ -1512,7 +2076,7 @@ function formatAnswer(text) {
     );
 
 
-    /* New lines */
+    /* Newlines */
 
     html = html.replace(
         /\n/g,
@@ -1534,14 +2098,18 @@ function addMessage(
 ) {
 
     const message =
-        document.createElement("div");
+        document.createElement(
+            "div"
+        );
 
     message.className =
         "message " + role;
 
 
     const avatar =
-        document.createElement("div");
+        document.createElement(
+            "div"
+        );
 
     avatar.className =
         "avatar";
@@ -1553,23 +2121,36 @@ function addMessage(
 
 
     const bubble =
-        document.createElement("div");
+        document.createElement(
+            "div"
+        );
 
     bubble.className =
         "bubble";
 
 
     bubble.innerHTML =
-        formatAnswer(text);
+        formatAnswer(
+            text
+        );
 
 
-    message.appendChild(avatar);
-    message.appendChild(bubble);
+    message.appendChild(
+        avatar
+    );
+
+    message.appendChild(
+        bubble
+    );
 
 
     document
-        .getElementById("chatInner")
-        .appendChild(message);
+        .getElementById(
+            "chatInner"
+        )
+        .appendChild(
+            message
+        );
 
 
     scrollBottom();
@@ -1586,29 +2167,277 @@ function addMessage(
    CAMERA
 ============================================================ */
 
-function openCamera() {
+async function openCameraModal() {
 
-    const input =
+    const modal =
         document.getElementById(
-            "cameraInput"
+            "cameraModal"
         );
 
-    if (input) {
-        input.click();
+    const video =
+        document.getElementById(
+            "cameraVideo"
+        );
+
+    const errorBox =
+        document.getElementById(
+            "cameraError"
+        );
+
+
+    errorBox.textContent =
+        "";
+
+
+    modal.style.display =
+        "flex";
+
+
+    try {
+
+        if (
+            !navigator.mediaDevices ||
+            !navigator.mediaDevices.getUserMedia
+        ) {
+
+            throw new Error(
+                "Camera access is not supported by this browser."
+            );
+        }
+
+
+        cameraStream =
+            await navigator.mediaDevices.getUserMedia({
+
+                video: {
+                    facingMode: {
+                        ideal: "environment"
+                    },
+
+                    width: {
+                        ideal: 1920
+                    },
+
+                    height: {
+                        ideal: 1080
+                    }
+                },
+
+                audio: false
+            });
+
+
+        video.srcObject =
+            cameraStream;
+
+
+    } catch (error) {
+
+        console.error(
+            "CAMERA ERROR:",
+            error
+        );
+
+
+        errorBox.textContent =
+            "Camera access failed. Allow camera permission or use Gallery.";
     }
 }
 
+
+/* ============================================================
+   CAPTURE PHOTO
+============================================================ */
+
+function capturePhoto() {
+
+    const video =
+        document.getElementById(
+            "cameraVideo"
+        );
+
+    const canvas =
+        document.getElementById(
+            "cameraCanvas"
+        );
+
+
+    if (
+        !video.videoWidth ||
+        !video.videoHeight
+    ) {
+
+        document.getElementById(
+            "cameraError"
+        ).textContent =
+            "Camera is not ready yet.";
+
+        return;
+    }
+
+
+    const maxSize =
+        1920;
+
+
+    let width =
+        video.videoWidth;
+
+    let height =
+        video.videoHeight;
+
+
+    if (
+        width >
+        maxSize
+    ) {
+
+        height =
+            Math.round(
+                height *
+                maxSize /
+                width
+            );
+
+        width =
+            maxSize;
+    }
+
+
+    if (
+        height >
+        maxSize
+    ) {
+
+        width =
+            Math.round(
+                width *
+                maxSize /
+                height
+            );
+
+        height =
+            maxSize;
+    }
+
+
+    canvas.width =
+        width;
+
+    canvas.height =
+        height;
+
+
+    const ctx =
+        canvas.getContext(
+            "2d"
+        );
+
+
+    ctx.drawImage(
+        video,
+        0,
+        0,
+        width,
+        height
+    );
+
+
+    canvas.toBlob(
+        function(blob) {
+
+            if (!blob) {
+                return;
+            }
+
+
+            selectedImage =
+                new File(
+                    [blob],
+                    "camera-question.jpg",
+                    {
+                        type:
+                            "image/jpeg"
+                    }
+                );
+
+
+            showImagePreview(
+                selectedImage
+            );
+
+
+            closeCameraModal();
+
+        },
+
+        "image/jpeg",
+
+        0.90
+    );
+}
+
+
+/* ============================================================
+   CLOSE CAMERA
+============================================================ */
+
+function closeCameraModal() {
+
+    const modal =
+        document.getElementById(
+            "cameraModal"
+        );
+
+    const video =
+        document.getElementById(
+            "cameraVideo"
+        );
+
+
+    if (cameraStream) {
+
+        cameraStream
+            .getTracks()
+            .forEach(
+                track =>
+                    track.stop()
+            );
+
+        cameraStream =
+            null;
+    }
+
+
+    video.srcObject =
+        null;
+
+
+    modal.style.display =
+        "none";
+}
+
+
+/* ============================================================
+   SELECT IMAGE
+============================================================ */
 
 function selectImage(event) {
 
     const file =
         event.target.files[0];
 
+
     if (!file) {
         return;
     }
 
-    if (!file.type.startsWith("image/")) {
+
+    if (
+        !file.type.startsWith(
+            "image/"
+        )
+    ) {
 
         alert(
             "Please select an image."
@@ -1617,8 +2446,24 @@ function selectImage(event) {
         return;
     }
 
-    selectedImage = file;
 
+    selectedImage =
+        file;
+
+
+    showImagePreview(
+        file
+    );
+}
+
+
+/* ============================================================
+   IMAGE PREVIEW
+============================================================ */
+
+function showImagePreview(
+    file
+) {
 
     const preview =
         document.getElementById(
@@ -1631,23 +2476,52 @@ function selectImage(event) {
         );
 
 
+    if (
+        !preview ||
+        !wrap
+    ) {
+        return;
+    }
+
+
     preview.src =
-        URL.createObjectURL(file);
+        URL.createObjectURL(
+            file
+        );
+
 
     wrap.style.display =
         "block";
 }
 
 
+/* ============================================================
+   REMOVE IMAGE
+============================================================ */
+
 function removeImage() {
 
-    selectedImage = null;
+    selectedImage =
+        null;
 
 
-    const input =
+    const fileInput =
         document.getElementById(
-            "cameraInput"
+            "imageFileInput"
         );
+
+
+    if (fileInput) {
+        fileInput.value =
+            "";
+    }
+
+
+    const preview =
+        document.getElementById(
+            "imagePreview"
+        );
+
 
     const wrap =
         document.getElementById(
@@ -1655,8 +2529,10 @@ function removeImage() {
         );
 
 
-    if (input) {
-        input.value = "";
+    if (preview) {
+        preview.removeAttribute(
+            "src"
+        );
     }
 
 
@@ -1668,118 +2544,137 @@ function removeImage() {
 
 
 /* ============================================================
-   IMAGE COMPRESSION
+   COMPRESS IMAGE
 ============================================================ */
 
-function compressImage(file) {
+function compressImage(
+    file
+) {
 
     return new Promise(
-        (resolve, reject) => {
-
-            const img =
-                new Image();
+        (
+            resolve,
+            reject
+        ) => {
 
             const reader =
                 new FileReader();
 
-
-            reader.onload = () => {
-
-                img.onload = () => {
-
-                    const maxSize = 1400;
-
-                    let width =
-                        img.width;
-
-                    let height =
-                        img.height;
+            const image =
+                new Image();
 
 
-                    if (width > maxSize) {
+            reader.onload =
+                function() {
 
-                        height =
-                            Math.round(
-                                height *
-                                maxSize /
-                                width
-                            );
+                    image.onload =
+                        function() {
 
-                        width =
-                            maxSize;
-                    }
+                            const maxSize =
+                                1600;
 
 
-                    if (height > maxSize) {
+                            let width =
+                                image.width;
 
-                        width =
-                            Math.round(
-                                width *
-                                maxSize /
+                            let height =
+                                image.height;
+
+
+                            if (
+                                width >
+                                maxSize
+                            ) {
+
+                                height =
+                                    Math.round(
+                                        height *
+                                        maxSize /
+                                        width
+                                    );
+
+                                width =
+                                    maxSize;
+                            }
+
+
+                            if (
+                                height >
+                                maxSize
+                            ) {
+
+                                width =
+                                    Math.round(
+                                        width *
+                                        maxSize /
+                                        height
+                                    );
+
+                                height =
+                                    maxSize;
+                            }
+
+
+                            const canvas =
+                                document.createElement(
+                                    "canvas"
+                                );
+
+
+                            canvas.width =
+                                width;
+
+                            canvas.height =
+                                height;
+
+
+                            const ctx =
+                                canvas.getContext(
+                                    "2d"
+                                );
+
+
+                            ctx.drawImage(
+                                image,
+                                0,
+                                0,
+                                width,
                                 height
                             );
 
-                        height =
-                            maxSize;
-                    }
+
+                            resolve(
+                                canvas.toDataURL(
+                                    "image/jpeg",
+                                    0.85
+                                )
+                            );
+                        };
 
 
-                    const canvas =
-                        document.createElement(
-                            "canvas"
-                        );
+                    image.onerror =
+                        reject;
 
 
-                    canvas.width =
-                        width;
-
-                    canvas.height =
-                        height;
-
-
-                    const ctx =
-                        canvas.getContext(
-                            "2d"
-                        );
-
-
-                    ctx.drawImage(
-                        img,
-                        0,
-                        0,
-                        width,
-                        height
-                    );
-
-
-                    resolve(
-                        canvas.toDataURL(
-                            "image/jpeg",
-                            0.8
-                        )
-                    );
+                    image.src =
+                        reader.result;
                 };
-
-
-                img.onerror =
-                    reject;
-
-                img.src =
-                    reader.result;
-            };
 
 
             reader.onerror =
                 reject;
 
-            reader.readAsDataURL(file);
+
+            reader.readAsDataURL(
+                file
+            );
         }
     );
 }
 
 
 /* ============================================================
-   SEND
+   SEND MESSAGE
 ============================================================ */
 
 async function sendMessage() {
@@ -1804,16 +2699,22 @@ async function sendMessage() {
         input.value.trim();
 
 
-    if (!text && !selectedImage) {
+    if (
+        !text &&
+        !selectedImage
+    ) {
         return;
     }
 
 
-    busy = true;
+    busy =
+        true;
 
 
     if (sendButton) {
-        sendButton.disabled = true;
+
+        sendButton.disabled =
+            true;
     }
 
 
@@ -1862,7 +2763,8 @@ async function sendMessage() {
 
     try {
 
-        let imageData = "";
+        let imageData =
+            "";
 
 
         if (selectedImage) {
@@ -1878,32 +2780,43 @@ async function sendMessage() {
             await fetch(
                 "/chat",
                 {
-                    method: "POST",
+                    method:
+                        "POST",
 
                     headers: {
                         "Content-Type":
                             "application/json"
                     },
 
-                    body: JSON.stringify({
-                        message: text,
-                        image: imageData
-                    })
+                    body:
+                        JSON.stringify({
+                            message:
+                                text,
+
+                            image:
+                                imageData
+                        })
                 }
             );
 
 
         if (!response.ok) {
 
-            if (response.status === 401) {
+            const errorText =
+                await response.text();
 
-                window.location.reload();
-
-                return;
-            }
 
             throw new Error(
-                "Request failed"
+                errorText ||
+                "Server error."
+            );
+        }
+
+
+        if (!response.body) {
+
+            throw new Error(
+                "No response received."
             );
         }
 
@@ -1911,11 +2824,13 @@ async function sendMessage() {
         const reader =
             response.body.getReader();
 
+
         const decoder =
             new TextDecoder();
 
 
-        let result = "";
+        let result =
+            "";
 
 
         answer.bubble.textContent =
@@ -1927,7 +2842,8 @@ async function sendMessage() {
             const {
                 value,
                 done
-            } = await reader.read();
+            } =
+                await reader.read();
 
 
             if (done) {
@@ -1939,26 +2855,34 @@ async function sendMessage() {
                 decoder.decode(
                     value,
                     {
-                        stream: true
+                        stream:
+                            true
                     }
                 );
 
 
             answer.bubble.innerHTML =
-                formatAnswer(result);
+                formatAnswer(
+                    result
+                );
 
 
             scrollBottom();
         }
 
 
-        if (!result.trim()) {
+        if (
+            !result.trim()
+        ) {
 
             result =
                 "I couldn't generate an answer.";
 
+
             answer.bubble.innerHTML =
-                formatAnswer(result);
+                formatAnswer(
+                    result
+                );
         }
 
 
@@ -1971,33 +2895,46 @@ async function sendMessage() {
     } catch (error) {
 
         console.error(
-            "Chat error:",
+            "CHAT ERROR:",
             error
         );
 
 
         answer.bubble.innerHTML =
-            "<strong>❌ Something went wrong.</strong><br><br>" +
-            "Please try again.";
+            "<strong>" +
+            escapeHtml(
+                error.message ||
+                "Something went wrong."
+            ) +
+            "</strong>";
     }
 
 
-    input.value = "";
+    input.value =
+        "";
 
-    autoResize(input);
+
+    autoResize(
+        input
+    );
+
 
     removeImage();
 
 
-    busy = false;
+    busy =
+        false;
 
 
     if (sendButton) {
-        sendButton.disabled = false;
+
+        sendButton.disabled =
+            false;
     }
 
 
     input.focus();
+
 
     scrollBottom();
 }
@@ -2017,16 +2954,37 @@ function addActions(
             "div"
         );
 
+
     actions.className =
         "actions";
 
 
     const items = [
-        ["🔄 Improve Answer", "improve"],
-        ["🔎 Check Again", "check"],
-        ["📚 Explain More", "explain"],
-        ["⚡ Make Shorter", "short"],
-        ["🔊 Read Answer", "read"]
+
+        [
+            "🔄 Improve Answer",
+            "improve"
+        ],
+
+        [
+            "🔎 Check Again",
+            "check"
+        ],
+
+        [
+            "📚 Explain More",
+            "explain"
+        ],
+
+        [
+            "⚡ Make Shorter",
+            "short"
+        ],
+
+        [
+            "🔊 Read Answer",
+            "read"
+        ]
     ];
 
 
@@ -2039,29 +2997,38 @@ function addActions(
                 );
 
 
-            button.type = "button";
+            button.type =
+                "button";
+
 
             button.className =
                 "action-btn";
+
 
             button.textContent =
                 label;
 
 
-            button.onclick = () => {
+            button.onclick =
+                function() {
 
-                if (action === "read") {
+                    if (
+                        action ===
+                        "read"
+                    ) {
 
-                    readAnswer(answer);
+                        readAnswer(
+                            answer
+                        );
 
-                } else {
+                    } else {
 
-                    improveAnswer(
-                        action,
-                        answer
-                    );
-                }
-            };
+                        improveAnswer(
+                            action,
+                            answer
+                        );
+                    }
+                };
 
 
             actions.appendChild(
@@ -2072,13 +3039,17 @@ function addActions(
 
 
     message
-        .querySelector(".bubble")
-        .appendChild(actions);
+        .querySelector(
+            ".bubble"
+        )
+        .appendChild(
+            actions
+        );
 }
 
 
 /* ============================================================
-   IMPROVE
+   FIND LAST QUESTION
 ============================================================ */
 
 function findLastQuestion() {
@@ -2089,7 +3060,9 @@ function findLastQuestion() {
         );
 
 
-    if (!messages.length) {
+    if (
+        !messages.length
+    ) {
         return "";
     }
 
@@ -2097,11 +3070,17 @@ function findLastQuestion() {
     return messages[
         messages.length - 1
     ]
-    .querySelector(".bubble")
-    .innerText
-    .trim();
+        .querySelector(
+            ".bubble"
+        )
+        .innerText
+        .trim();
 }
 
+
+/* ============================================================
+   IMPROVE
+============================================================ */
 
 async function improveAnswer(
     action,
@@ -2122,7 +3101,8 @@ async function improveAnswer(
     }
 
 
-    busy = true;
+    busy =
+        true;
 
 
     const answer =
@@ -2138,18 +3118,25 @@ async function improveAnswer(
             await fetch(
                 "/improve",
                 {
-                    method: "POST",
+                    method:
+                        "POST",
 
                     headers: {
                         "Content-Type":
                             "application/json"
                     },
 
-                    body: JSON.stringify({
-                        question,
-                        answer: oldAnswer,
-                        action
-                    })
+                    body:
+                        JSON.stringify({
+                            question:
+                                question,
+
+                            answer:
+                                oldAnswer,
+
+                            action:
+                                action
+                        })
                 }
             );
 
@@ -2157,7 +3144,7 @@ async function improveAnswer(
         if (!response.ok) {
 
             throw new Error(
-                "Improve request failed"
+                await response.text()
             );
         }
 
@@ -2165,11 +3152,13 @@ async function improveAnswer(
         const reader =
             response.body.getReader();
 
+
         const decoder =
             new TextDecoder();
 
 
-        let result = "";
+        let result =
+            "";
 
 
         answer.bubble.textContent =
@@ -2181,7 +3170,8 @@ async function improveAnswer(
             const {
                 value,
                 done
-            } = await reader.read();
+            } =
+                await reader.read();
 
 
             if (done) {
@@ -2193,13 +3183,16 @@ async function improveAnswer(
                 decoder.decode(
                     value,
                     {
-                        stream: true
+                        stream:
+                            true
                     }
                 );
 
 
             answer.bubble.innerHTML =
-                formatAnswer(result);
+                formatAnswer(
+                    result
+                );
 
 
             scrollBottom();
@@ -2209,15 +3202,23 @@ async function improveAnswer(
     } catch (error) {
 
         console.error(
+            "IMPROVE ERROR:",
             error
         );
 
+
         answer.bubble.innerHTML =
-            "<strong>❌ Could not improve answer.</strong>";
+            "<strong>" +
+            escapeHtml(
+                error.message ||
+                "Could not improve answer."
+            ) +
+            "</strong>";
     }
 
 
-    busy = false;
+    busy =
+        false;
 }
 
 
@@ -2249,8 +3250,10 @@ function startDictation() {
     recognition.lang =
         "en-IN";
 
+
     recognition.continuous =
         false;
+
 
     recognition.interimResults =
         true;
@@ -2269,18 +3272,24 @@ function startDictation() {
     recognition.onresult =
         function(event) {
 
-            let text = "";
+            let text =
+                "";
 
 
             for (
-                let i = event.resultIndex;
-                i < event.results.length;
+                let i =
+                    event.resultIndex;
+
+                i <
+                    event.results.length;
+
                 i++
             ) {
 
                 text +=
-                    event.results[i][0]
-                        .transcript;
+                    event.results[
+                        i
+                    ][0].transcript;
             }
 
 
@@ -2295,7 +3304,12 @@ function startDictation() {
 
 
     recognition.onerror =
-        function() {
+        function(error) {
+
+            console.error(
+                "VOICE ERROR:",
+                error
+            );
 
             input.placeholder =
                 "Ask My AI anything...";
@@ -2315,13 +3329,18 @@ function startDictation() {
 
 
 /* ============================================================
-   READ ANSWER
+   TEXT TO SPEECH
 ============================================================ */
 
-function readAnswer(text) {
+function readAnswer(
+    text
+) {
 
     if (
-        !("speechSynthesis" in window)
+        !(
+            "speechSynthesis"
+            in window
+        )
     ) {
 
         alert(
@@ -2336,15 +3355,17 @@ function readAnswer(text) {
 
 
     const cleanText =
-        cleanMathFormatting(text)
-            .replace(
-                /[*#]/g,
-                ""
-            )
-            .replace(
-                /\n+/g,
-                ". "
-            );
+        cleanMathFormatting(
+            text
+        )
+        .replace(
+            /[*#]/g,
+            ""
+        )
+        .replace(
+            /\n+/g,
+            ". "
+        );
 
 
     const speech =
@@ -2355,6 +3376,7 @@ function readAnswer(text) {
 
     speech.rate =
         0.95;
+
 
     speech.pitch =
         1;
@@ -2370,10 +3392,13 @@ function readAnswer(text) {
    KEYBOARD
 ============================================================ */
 
-function handleKey(event) {
+function handleKey(
+    event
+) {
 
     if (
-        event.key === "Enter" &&
+        event.key ===
+            "Enter" &&
         !event.shiftKey
     ) {
 
@@ -2385,10 +3410,12 @@ function handleKey(event) {
 
 
 /* ============================================================
-   TEXTAREA
+   TEXTAREA RESIZE
 ============================================================ */
 
-function autoResize(textarea) {
+function autoResize(
+    textarea
+) {
 
     if (!textarea) {
         return;
@@ -2416,16 +3443,26 @@ function newChat() {
     document.getElementById(
         "chatInner"
     ).innerHTML = `
+
         <div
             class="welcome"
             id="welcome"
         >
-            <h1>🤖 My AI</h1>
+
+            <h1>
+                🤖 My AI
+            </h1>
 
             <p>
                 Ask Mathematics, Physics,
                 Chemistry, Biology or general questions.
             </p>
+
+            <p>
+                You can also use the camera,
+                gallery or microphone.
+            </p>
+
         </div>
     `;
 
@@ -2441,7 +3478,9 @@ function newChat() {
         input.value =
             "";
 
-        autoResize(input);
+        autoResize(
+            input
+        );
 
         input.focus();
     }
@@ -2470,8 +3509,10 @@ function scrollBottom() {
 
     setTimeout(
         function() {
+
             chat.scrollTop =
                 chat.scrollHeight;
+
         },
         20
     );
@@ -2495,6 +3536,7 @@ document.addEventListener(
         if (input) {
             input.focus();
         }
+
     }
 );
 
