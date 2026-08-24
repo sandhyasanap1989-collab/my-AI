@@ -1,1354 +1,2052 @@
-from flask import Flask, render_template, request, Response, stream_with_context
-import ollama
+from flask import (
+    Flask,
+    render_template,
+    request,
+    Response,
+    stream_with_context,
+    session,
+    redirect,
+    url_for,
+)
+
+import os
 import re
 import math
+import ast
+import operator
+import json
+
+from werkzeug.security import (
+    generate_password_hash,
+    check_password_hash,
+)
+
+from openai import OpenAI
+
+
+# ============================================================
+# APP
+# ============================================================
 
 app = Flask(__name__)
 
+app.secret_key = os.getenv(
+    "FLASK_SECRET_KEY",
+    "change-this-secret-in-render",
+)
+
+USERS_FILE = "users.json"
+
+
 # ============================================================
-# MODEL SETTINGS
+# CREATOR INFORMATION
 # ============================================================
 
-BIG_MODEL = "llama3.2"
-SMALL_MODEL = "llama3.2:1b"
-KEEP_ALIVE = "30m"
+CREATOR_RESPONSE = """
+🤖 My creator is **Soham Chandrahas Sanap**.
+
+He is 15 years old and is studying in Class 10 in 2026
+at Nimbark English School in Beed district, Maharashtra, India.
+
+His main interests are Mathematics and web development.
+
+He built My AI as an AI study assistant to help students
+with Mathematics, Physics, Chemistry and Biology.
+""".strip()
 
 
 # ============================================================
-# GENERAL AI PROMPT
+# HUGGING FACE
 # ============================================================
 
-SYSTEM_PROMPT = r"""
-You are My AI, a helpful, accurate and concise study assistant.
+HF_TOKEN = os.getenv("HF_TOKEN")
 
-ANSWER STYLE
-------------
+TEXT_MODEL = "openai/gpt-oss-120b:cheapest"
+VISION_MODEL = "Qwen/Qwen2.5-VL-3B-Instruct:cheapest"
 
-Simple question:
-Give a short direct answer.
+hf_client = None
 
-Numerical question:
-Use:
+if HF_TOKEN:
+    hf_client = OpenAI(
+        base_url="https://router.huggingface.co/v1",
+        api_key=HF_TOKEN,
+    )
 
-### Solution
 
-**1. Step**
-Formula and short calculation.
+# ============================================================
+# USER STORAGE
+# ============================================================
 
-**2. Step**
-Formula and short calculation.
+def load_users():
+    if not os.path.exists(USERS_FILE):
+        return {}
 
-### Final Answer
+    try:
+        with open(
+            USERS_FILE,
+            "r",
+            encoding="utf-8",
+        ) as file:
+            data = json.load(file)
 
-**Answer ✅**
+        return data if isinstance(data, dict) else {}
 
-For multiple-choice questions:
-- Solve the question.
-- Compare with the options.
-- Clearly state the correct option.
+    except (OSError, json.JSONDecodeError):
+        return {}
 
-For multi-part questions:
+
+def save_users(users):
+    with open(
+        USERS_FILE,
+        "w",
+        encoding="utf-8",
+    ) as file:
+        json.dump(
+            users,
+            file,
+            indent=2,
+        )
+
+
+# ============================================================
+# AI PROMPTS
+# ============================================================
+
+SYSTEM_PROMPT = """
+You are My AI, a helpful PCMB study assistant.
+
+You help with:
+- Mathematics
+- Physics
+- Chemistry
+- Biology
+- General science
+- General questions
+
+IMPORTANT:
 - Answer every requested part.
-- Use numbered steps.
-- Do not repeat answers unnecessarily.
-- Do not write one huge paragraph.
-
-IMPORTANT:
-- Do not invent missing information.
-- Do not change a verified numerical result from Python.
+- Never stop halfway through a sentence.
+- Never leave an equation unfinished.
+- Show important calculations.
 - Use simple student-friendly language.
+- Do not invent missing information.
+- Understand short follow-up questions using the previous conversation.
+- Always finish with a clear Final Answer.
+
+FORMATTING:
+Never output raw LaTeX.
+
+Do not use:
+\\(
+\\)
+\\[
+\\]
+\\frac
+\\boxed
+\\text{}
+\\begin{}
+\\end{}
+$$
+
+Use normal readable text instead.
+"""
+
+
+MATH_SYSTEM_PROMPT = """
+You are My AI's Mathematics specialist.
+
+Rules:
+- Solve step by step.
+- Use simple textbook-style mathematics.
+- Use x², x³, x⁵ and √ when useful.
+- Do not use raw LaTeX.
+- Do not use \\frac, \\boxed, \\text{}, \\begin{} or \\end{}.
+- Answer every part.
+- Check the final result.
+"""
+
+
+PHYSICS_SYSTEM_PROMPT = """
+You are My AI's Physics specialist.
+
+For numerical questions use:
+
+Given
+Formula
+Substitution
+Calculation
+Verification
+Final Answer
+
+Use correct units.
+Answer every requested part.
+Do not output raw LaTeX.
+"""
+
+
+CHEMISTRY_SYSTEM_PROMPT = """
+You are My AI's Chemistry specialist.
+
+For numerical questions:
+- Balance the equation when needed.
+- Calculate molar mass carefully.
+- Convert units correctly.
+- Calculate moles and molarity.
+- Use stoichiometric ratios.
+- Identify limiting reagent.
+- Include units.
+- Complete every part.
+- Do not output raw LaTeX.
+"""
+
+
+BIOLOGY_SYSTEM_PROMPT = """
+You are My AI's Biology specialist.
+
+Explain biology clearly and accurately.
+
+For processes:
+Explain steps in order.
+
+For comparisons:
+Compare every requested point.
+
+For genetics:
+Show genotype, phenotype and probability clearly.
+
+Do not invent biological facts.
+Do not output raw LaTeX.
+"""
+
+
+VISION_SYSTEM_PROMPT = """
+You are My AI's image-question specialist.
+
+Read the uploaded image carefully.
+
+If it contains Mathematics, Physics, Chemistry or Biology,
+solve or explain the question step by step.
+
+Transcribe important visible text when useful.
+
+Do not invent information that is not visible.
+
+Do not output raw LaTeX.
 """
 
 
 # ============================================================
-# MATH-SPECIALIST PROMPT
+# BASIC RESPONSES
 # ============================================================
 
-MATH_SYSTEM_PROMPT = r"""
-You are My AI's mathematics specialist.
+def basic_response(message):
+    q = message.strip().lower()
 
-The user's copied mathematical questions sometimes use the text
-"svg" where a square-root symbol √ was originally displayed.
+    # --------------------------------------------------------
+    # CREATOR
+    # --------------------------------------------------------
 
-IMPORTANT:
-- Treat "svg" as √ ONLY in this project.
-- Never treat "svg" as x.
-- Preserve the original numbers.
-- Carefully identify fractions, parentheses, exponents and square roots.
-- Do not invent numbers.
-- If the copied layout is partially flattened, use the surrounding
-  expression and MCQ options to reconstruct the most likely intended
-  expression.
-- If you cannot reconstruct it confidently, state exactly what part
-  is ambiguous.
+    creator_questions = {
+        "who created you",
+        "who created you?",
+        "who made you",
+        "who made you?",
+        "who is your creator",
+        "who is your creator?",
+        "who developed you",
+        "who developed you?",
+        "who built you",
+        "who built you?",
+        "who is your developer",
+        "who is your developer?",
+        "who created",
+        "who created?",
+        "you are created by",
+        "you were created by",
+        "you were made by",
+        "who made this ai",
+        "who made this ai?",
+        "who built this ai",
+        "who built this ai?",
+        "who is behind you",
+        "who is behind this ai",
+        "who is your maker",
+        "who is your maker?",
+        "tell me about your creator",
+        "tell me about your creator?",
+        "who is soham chandrahas sanap",
+        "who is soham chandrahas sanap?",
+    }
 
-For Real Numbers / Surds:
-- Simplify exact forms where possible.
-- Use identities such as:
-  √(a + 2√b) = √m + √n
-  when m+n=a and mn=b.
-- Check the result numerically.
-- For MCQs, compare the result with the options.
+    if q in creator_questions:
+        return CREATOR_RESPONSE
 
-Answer format:
+    # --------------------------------------------------------
+    # GREETINGS
+    # --------------------------------------------------------
 
-### Solution
-
-[clear short steps]
-
-### Final Answer
-
-**[answer] ✅**
-"""
-
-
-# ============================================================
-# HELPERS
-# ============================================================
-
-def fmt(value, decimals=4):
-    if value is None:
-        return "N/A"
-
-    if abs(value - round(value)) < 1e-10:
-        return str(int(round(value)))
-
-    return f"{value:.{decimals}f}".rstrip("0").rstrip(".")
-
-
-def close(a, b, tolerance=1e-7):
-    return math.isclose(
-        a,
-        b,
-        rel_tol=tolerance,
-        abs_tol=tolerance
-    )
-
-
-def extract_voltage(text):
-    match = re.search(
-        r"(\d+(?:\.\d+)?)\s*(?:V|volt|volts)\b",
-        text,
-        re.IGNORECASE
-    )
-
-    return float(match.group(1)) if match else None
-
-
-def extract_resistors(text):
-    return [
-        float(x)
-        for x in re.findall(
-            r"(\d+(?:\.\d+)?)\s*(?:Ω|ohm|ohms)\b",
-            text,
-            re.IGNORECASE
-        )
-    ]
-
-
-def get_problem_text(question):
-    """
-    Ignore the list of requested outputs after:
-    Calculate:
-    Find:
-    Determine:
-    """
-
-    patterns = [
-        r"\bcalculate the following\s*:",
-        r"\bfind the following\s*:",
-        r"\bdetermine the following\s*:",
-        r"\bcalculate\s*:",
-        r"\bfind\s*:",
-        r"\bdetermine\s*:"
-    ]
-
-    positions = []
-
-    for pattern in patterns:
-        match = re.search(
-            pattern,
-            question,
-            re.IGNORECASE
-        )
-
-        if match:
-            positions.append(match.start())
-
-    if positions:
-        return question[:min(positions)]
-
-    return question
-
-
-# ============================================================
-# SVG / COPY-FORMATTING NORMALIZATION
-# ============================================================
-
-def normalize_math_text(text):
-    """
-    Convert the project's known copied-text artifact:
-
-        svg  ->  √
-
-    Also remove zero-width/invisible characters.
-    """
-
-    text = text.replace("svg", "√")
-    text = text.replace("SVG", "√")
-
-    for char in [
-        "\u200b",
-        "\u200c",
-        "\u200d",
-        "\ufeff",
-        "\u2060"
-    ]:
-        text = text.replace(char, "")
-
-    return text
-
-
-# ============================================================
-# CASUAL MESSAGE
-# ============================================================
-
-def is_casual(message):
-    return message.strip().lower() in {
+    if q in {
         "hi",
         "hello",
         "hey",
         "hii",
         "hiii",
+        "helo",
         "hi!",
         "hello!",
         "hey!",
-        "good morning",
-        "good afternoon",
-        "good evening",
+    }:
+        return (
+            "Hello! 👋 I'm My AI.\n\n"
+            "Ask me Mathematics, Physics, Chemistry, "
+            "Biology or general questions."
+        )
+
+    if q == "good morning":
+        return "Good morning! ☀️ How can I help you?"
+
+    if q == "good afternoon":
+        return "Good afternoon! 👋 How can I help you?"
+
+    if q == "good evening":
+        return "Good evening! 🌙 How can I help you?"
+
+    # --------------------------------------------------------
+    # COMMON
+    # --------------------------------------------------------
+
+    if q in {
+        "how are you",
+        "how are you?",
+    }:
+        return "I'm doing great! 🤖 Ask me a difficult question."
+
+    if q in {
+        "who are you",
+        "who are you?",
+        "what are you",
+        "what are you?",
+    }:
+        return (
+            "I'm My AI 🤖, a study assistant for "
+            "Mathematics, Physics, Chemistry and Biology."
+        )
+
+    if q in {
+        "what can you do",
+        "what can you do?",
+        "help",
+        "help me",
+    }:
+        return (
+            "I can help with:\n\n"
+            "🧮 Mathematics\n"
+            "⚡ Physics\n"
+            "🧪 Chemistry\n"
+            "🧬 Biology\n"
+            "🔢 Large calculations\n"
+            "📷 Questions from images\n"
+            "🎤 Voice input"
+        )
+
+    if q in {
         "thanks",
         "thank you",
+        "thankyou",
+        "thx",
+        "ty",
+    }:
+        return "You're welcome! 😊"
+
+    if q in {
         "ok",
-        "okay"
-    }
+        "okay",
+        "cool",
+        "nice",
+        "great",
+    }:
+        return "👍 Great! Ask your next question."
 
-
-# ============================================================
-# MCQ EXTRACTION
-# ============================================================
-
-def extract_mcq_options(text):
-    options = re.findall(
-        r"(?:^|\n)\s*[A-D]\s*[\)\.:\-]\s*(.+)",
-        text,
-        re.IGNORECASE
-    )
-
-    return [x.strip() for x in options]
-
-
-# ============================================================
-# KNOWN SURD SOLVER
-# ============================================================
-
-def solve_known_surds(question):
-    """
-    Handles common exact nested-surds patterns.
-
-    Most useful example:
-
-    (√(5+2√6) + √(5-2√6))
-    /
-    (√(5+2√6) - √(5-2√6))
-
-    and the reversed +/- version.
-    """
-
-    q = normalize_math_text(question)
-    compact = re.sub(r"\s+", "", q)
-
-    # --------------------------------------------------------
-    # Pattern recognition
-    # --------------------------------------------------------
-
-    has_a = (
-        "√(5+2√6)" in compact
-        or "√(5+2√(6))" in compact
-    )
-
-    has_b = (
-        "√(5-2√6)" in compact
-        or "√(5-2√(6))" in compact
-    )
-
-    if not (has_a and has_b):
-        return None
-
-    a = math.sqrt(
-        5 + 2 * math.sqrt(6)
-    )
-
-    b = math.sqrt(
-        5 - 2 * math.sqrt(6)
-    )
-
-    # --------------------------------------------------------
-    # Explicit plus-over-minus
-    # --------------------------------------------------------
-
-    if (
-        "√(5+2√6)+√(5-2√6)" in compact
-        and
-        "√(5+2√6)-√(5-2√6)" in compact
-    ):
-
-        numerator = a + b
-        denominator = a - b
-
-        if abs(denominator) < 1e-12:
-            return None
-
-        value = numerator / denominator
-
-        return f"""
-### Solution
-
-Let
-
-A = √(5 + 2√6)
-
-B = √(5 − 2√6)
-
-We use:
-
-√(5 + 2√6) = √3 + √2
-
-and
-
-√(5 − 2√6) = √3 − √2
-
-Therefore,
-
-N = (A + B) / (A − B)
-
-N = [(√3 + √2) + (√3 − √2)]
-    / [(√3 + √2) − (√3 − √2)]
-
-N = 2√3 / 2√2
-
-N = √(3/2)
-
-### Final Answer
-
-**√(3/2) ≈ {fmt(value)} ✅**
-""".strip()
-
-    # --------------------------------------------------------
-    # Explicit minus-over-plus
-    # --------------------------------------------------------
-
-    if (
-        "√(5+2√6)-√(5-2√6)" in compact
-        and
-        "√(5+2√6)+√(5-2√6)" in compact
-    ):
-
-        numerator = a - b
-        denominator = a + b
-
-        if abs(denominator) < 1e-12:
-            return None
-
-        value = numerator / denominator
-
-        return f"""
-### Solution
-
-Let
-
-A = √(5 + 2√6)
-
-B = √(5 − 2√6)
-
-We use:
-
-√(5 + 2√6) = √3 + √2
-
-and
-
-√(5 − 2√6) = √3 − √2
-
-Therefore,
-
-N = (A − B) / (A + B)
-
-N = [(√3 + √2) − (√3 − √2)]
-    / [(√3 + √2) + (√3 − √2)]
-
-N = 2√2 / 2√3
-
-N = √(2/3)
-
-### Final Answer
-
-**√(2/3) ≈ {fmt(value)} ✅**
-""".strip()
+    if q in {
+        "bye",
+        "goodbye",
+        "see you",
+        "see ya",
+    }:
+        return "Goodbye! 👋"
 
     return None
 
 
 # ============================================================
-# MATH FALLBACK
+# FOLLOW-UP DETECTION
 # ============================================================
 
-def stream_math_ai(question):
-    """
-    Dedicated mathematics route.
+def is_followup(question):
+    q = question.strip().lower()
 
-    This handles:
-    - roots
-    - surds
-    - algebra
-    - real numbers
-    - MCQs
-    - copied svg -> √ text
-    """
+    # Very common short follow-ups
+    short_followups = {
+        "other",
+        "others",
+        "another",
+        "another one",
+        "more",
+        "more examples",
+        "next",
+        "also",
+        "and another",
+        "what about",
+        "what about it",
+        "same",
+        "same question",
+        "explain more",
+        "more detail",
+        "top three",
+        "top 3",
+        "top five",
+        "top 5",
+        "which one",
+        "which is easiest",
+        "which one is easiest",
+        "which is better",
+        "why",
+        "why?",
+        "how",
+        "how?",
+    }
 
-    normalized = normalize_math_text(question)
+    if q in short_followups:
+        return True
 
-    options = extract_mcq_options(normalized)
+    # Prefix-based follow-ups
+    prefixes = (
+        "and ",
+        "also ",
+        "what about ",
+        "how about ",
+        "then ",
+        "another ",
+        "other ",
+        "more ",
+        "compare ",
+        "difference ",
+        "differences ",
+        "give another ",
+        "give me another ",
+        "tell me another ",
+        "what is the other ",
+        "what are the other ",
+        "which one ",
+        "which is ",
+        "why is ",
+        "why are ",
+        "how is ",
+        "how are ",
+    )
 
-    options_text = ""
+    if q.startswith(prefixes):
+        return True
 
-    if options:
-        options_text = (
-            "\n\nThe question includes these options:\n"
-            + "\n".join(
-                f"{chr(65+i)}) {value}"
-                for i, value in enumerate(options[:4])
-            )
+    # Very short questions usually depend on
+    # the previous message.
+    if len(q.split()) <= 3:
+        return True
+
+    return False
+
+
+def build_ai_context(question):
+    history = session.get(
+        "chat_history",
+        [],
+    )
+
+    if not history:
+        return question
+
+    if not is_followup(question):
+        return question
+
+    # Include several recent turns so that
+    # follow-up questions have useful context.
+    recent = history[-4:]
+
+    parts = [
+        "The following is the recent conversation.",
+        "Use it to understand the user's new question.",
+        "",
+    ]
+
+    for item in recent:
+        parts.append(
+            "User: " + item["question"]
         )
 
-    prompt = f"""
-Solve the following mathematics question carefully.
-
-IMPORTANT:
-In this project, copied text 'svg' means √.
-
-Original question:
-{normalized}
-
-{options_text}
-
-Instructions:
-1. Reconstruct the mathematical expression as faithfully as possible.
-2. Do not replace √ with x.
-3. Show a short solution.
-4. For surds, simplify exactly when possible.
-5. If it is an MCQ, select one of the given options if correct.
-6. Check the final result numerically where useful.
-7. End with:
-### Final Answer
-**answer ✅**
-"""
-
-    try:
-
-        stream = ollama.chat(
-            model=BIG_MODEL,
-            messages=[
-                {
-                    "role": "system",
-                    "content": MATH_SYSTEM_PROMPT
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            stream=True,
-            keep_alive=KEEP_ALIVE,
-            options={
-                "temperature": 0.05,
-                "num_predict": 500
-            }
+        parts.append(
+            "My AI: " + item["answer"]
         )
 
-        for chunk in stream:
-            text = chunk["message"]["content"]
+        parts.append("")
 
-            if text:
-                yield text
+    parts.append(
+        "New user question: " + question
+    )
 
-    except Exception as error:
+    parts.append("")
+    parts.append(
+        "Answer the new question using the conversation context."
+    )
 
-        print("Math AI error:", error)
-
-        yield (
-            "❌ I couldn't solve the mathematical expression."
-        )
+    return "\n".join(parts)
 
 
-def looks_like_math(question):
+def save_history(question, answer):
+    history = session.get(
+        "chat_history",
+        [],
+    )
+
+    history.append(
+        {
+            "question": question,
+            "answer": answer[:8000],
+        }
+    )
+
+    # Keep the latest 10 turns.
+    session["chat_history"] = history[-10:]
+
+    session.modified = True
+
+
+# ============================================================
+# SUBJECT DETECTION
+# ============================================================
+
+def detect_subject(question):
     q = question.lower()
 
-    math_terms = [
+    math_words = [
+        "equation",
+        "quadratic",
+        "algebra",
+        "surds",
         "sqrt",
         "√",
         "svg",
-        "solve",
-        "simplify",
-        "find the value",
-        "real number",
-        "surds",
-        "quadratic",
-        "equation",
+        "trigonometry",
+        "sin",
+        "cos",
+        "tan",
+        "geometry",
+        "probability",
+        "permutation",
+        "combination",
+        "sequence",
+        "series",
         "polynomial",
-        "root",
-        "fraction"
+        "coordinate",
+        "logarithm",
+        "matrix",
+        "determinant",
+        "calculus",
+        "integral",
+        "differentiate",
+        "limit",
     ]
 
-    return any(
-        term in q
-        for term in math_terms
+    physics_words = [
+        "force",
+        "velocity",
+        "acceleration",
+        "momentum",
+        "newton",
+        "work",
+        "energy",
+        "power",
+        "friction",
+        "gravitation",
+        "projectile",
+        "current",
+        "voltage",
+        "resistance",
+        "resistor",
+        "circuit",
+        "magnetic",
+        "electric field",
+        "lens",
+        "mirror",
+        "refraction",
+        "heat",
+        "temperature",
+        "pressure",
+        "density",
+        "fluid",
+        "motion",
+    ]
+
+    chemistry_words = [
+        "mole",
+        "moles",
+        "molar",
+        "molarity",
+        "molality",
+        "stoichiometry",
+        "limiting reagent",
+        "oxidation",
+        "reduction",
+        "redox",
+        "acid",
+        "base",
+        "ph",
+        "salt",
+        "equilibrium",
+        "enthalpy",
+        "electrochemistry",
+        "organic",
+        "alkane",
+        "alkene",
+        "alkyne",
+        "benzene",
+        "alcohol",
+        "aldehyde",
+        "ketone",
+        "ester",
+        "ion",
+        "atom",
+        "electron",
+        "compound",
+        "reaction",
+        "chemical",
+    ]
+
+    biology_words = [
+        "cell",
+        "mitosis",
+        "meiosis",
+        "chromosome",
+        "gene",
+        "genetics",
+        "allele",
+        "dna",
+        "rna",
+        "protein",
+        "enzyme",
+        "photosynthesis",
+        "respiration",
+        "plant",
+        "animal",
+        "tissue",
+        "organ",
+        "ecosystem",
+        "ecology",
+        "evolution",
+        "hormone",
+        "neuron",
+        "digestion",
+        "reproduction",
+        "heredity",
+        "blood",
+        "heart",
+        "kidney",
+        "lung",
+        "brain",
+    ]
+
+    scores = {
+        "math": sum(word in q for word in math_words),
+        "physics": sum(word in q for word in physics_words),
+        "chemistry": sum(word in q for word in chemistry_words),
+        "biology": sum(word in q for word in biology_words),
+    }
+
+    subject = max(
+        scores,
+        key=scores.get,
     )
+
+    if scores[subject] == 0:
+        return "general"
+
+    return subject
+
+
+def get_prompt(subject):
+    if subject == "math":
+        return MATH_SYSTEM_PROMPT
+
+    if subject == "physics":
+        return PHYSICS_SYSTEM_PROMPT
+
+    if subject == "chemistry":
+        return CHEMISTRY_SYSTEM_PROMPT
+
+    if subject == "biology":
+        return BIOLOGY_SYSTEM_PROMPT
+
+    return SYSTEM_PROMPT
 
 
 # ============================================================
-# MIXED CIRCUIT SOLVER
+# SAFE CALCULATOR
 # ============================================================
 
-def solve_mixed_circuit(question):
+ALLOWED_BINARY_OPERATORS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.FloorDiv: operator.floordiv,
+    ast.Mod: operator.mod,
+    ast.Pow: operator.pow,
+}
 
-    problem = get_problem_text(question)
-    q = problem.lower()
+ALLOWED_UNARY_OPERATORS = {
+    ast.UAdd: operator.pos,
+    ast.USub: operator.neg,
+}
 
-    if "parallel combination" not in q:
+
+def safe_calculate(expression):
+    expression = expression.strip()
+
+    if not expression or len(expression) > 1000:
         return None
-
-    if "series" not in q:
-        return None
-
-    voltage = extract_voltage(problem)
-
-    if voltage is None:
-        return None
-
-    parallel_match = re.search(
-        r"parallel\s+combination\s+of\s+"
-        r"(\d+(?:\.\d+)?)\s*(?:Ω|ohm|ohms)"
-        r"\s*(?:and|&)\s*"
-        r"(\d+(?:\.\d+)?)\s*(?:Ω|ohm|ohms)",
-        problem,
-        re.IGNORECASE
-    )
-
-    if not parallel_match:
-        return None
-
-    r1 = float(parallel_match.group(1))
-    r2 = float(parallel_match.group(2))
-
-    all_resistors = extract_resistors(problem)
-
-    if len(all_resistors) < 3:
-        return None
-
-    remaining = all_resistors.copy()
 
     try:
-        remaining.remove(r1)
-        remaining.remove(r2)
+        tree = ast.parse(
+            expression,
+            mode="eval",
+        )
+    except (SyntaxError, ValueError):
+        return None
+
+    def calculate(node):
+
+        if isinstance(node, ast.Constant):
+            if isinstance(
+                node.value,
+                (int, float),
+            ):
+                return node.value
+
+            raise ValueError()
+
+        if isinstance(node, ast.BinOp):
+
+            operation = ALLOWED_BINARY_OPERATORS.get(
+                type(node.op)
+            )
+
+            if operation is None:
+                raise ValueError()
+
+            left = calculate(node.left)
+            right = calculate(node.right)
+
+            if (
+                isinstance(node.op, ast.Pow)
+                and abs(right) > 10000
+            ):
+                raise ValueError()
+
+            return operation(left, right)
+
+        if isinstance(node, ast.UnaryOp):
+
+            operation = ALLOWED_UNARY_OPERATORS.get(
+                type(node.op)
+            )
+
+            if operation is None:
+                raise ValueError()
+
+            return operation(
+                calculate(node.operand)
+            )
+
+        raise ValueError()
+
+    try:
+        return calculate(tree.body)
+
+    except (
+        ArithmeticError,
+        OverflowError,
+        ValueError,
+        ZeroDivisionError,
+    ):
+        return None
+
+
+def clean_calculator_expression(text):
+    expression = text.strip()
+
+    expression = expression.replace("×", "*")
+    expression = expression.replace("÷", "/")
+    expression = expression.replace("−", "-")
+    expression = expression.replace("–", "-")
+    expression = expression.replace("—", "-")
+    expression = expression.replace("^", "**")
+
+    expression = re.sub(
+        r"(?<=\d),(?=\d)",
+        "",
+        expression,
+    )
+
+    expression = re.sub(
+        r"^(what is|calculate|find|solve|evaluate)\s+",
+        "",
+        expression,
+        flags=re.IGNORECASE,
+    )
+
+    return expression.strip()
+
+
+def looks_like_calculation(text):
+    expression = clean_calculator_expression(text)
+
+    if not re.fullmatch(
+        r"[0-9\s\.\+\-\*\/%\(\)]+",
+        expression,
+    ):
+        return False
+
+    return bool(
+        re.search(
+            r"[\+\-\*\/%]",
+            expression,
+        )
+    )
+
+
+def solve_calculation(question):
+    if not looks_like_calculation(question):
+        return None
+
+    expression = clean_calculator_expression(
+        question
+    )
+
+    result = safe_calculate(
+        expression
+    )
+
+    if result is None:
+        return None
+
+    if isinstance(result, int):
+        answer = f"{result:,}"
+
+    elif isinstance(result, float):
+
+        if not math.isfinite(result):
+            return None
+
+        if result.is_integer():
+            answer = f"{int(result):,}"
+        else:
+            answer = f"{result:.12g}"
+
+    else:
+        return None
+
+    return f"""
+### Calculation
+
+**Expression**
+
+{expression}
+
+**Answer**
+
+**{answer} ✅**
+""".strip()
+
+
+# ============================================================
+# MATH
+# ============================================================
+
+def normalize_math_text(text):
+    text = text.replace("svg", "√")
+    text = text.replace("SVG", "√")
+
+    superscripts = str.maketrans(
+        "⁰¹²³⁴⁵⁶⁷⁸⁹",
+        "0123456789",
+    )
+
+    return text.translate(
+        superscripts
+    )
+
+
+def fmt(value):
+    if abs(value - round(value)) < 1e-10:
+        return str(int(round(value)))
+
+    return (
+        f"{value:.6f}"
+        .rstrip("0")
+        .rstrip(".")
+    )
+
+
+def solve_power_recurrence(question):
+    q = normalize_math_text(
+        question.lower()
+    )
+
+    given = re.search(
+        r"x\s*\+\s*1\s*/\s*x\s*=\s*"
+        r"(-?\d+(?:\.\d+)?)",
+        q,
+    )
+
+    if not given:
+        return None
+
+    a = float(
+        given.group(1)
+    )
+
+    target = re.search(
+        r"x\s*(?:(?:\^|\*\*)\s*)?(\d+)"
+        r"\s*\+\s*1\s*/\s*x\s*"
+        r"(?:(?:\^|\*\*)\s*)?\1",
+        q,
+    )
+
+    if not target:
+        return None
+
+    n = int(
+        target.group(1)
+    )
+
+    if n < 1 or n > 50:
+        return None
+
+    values = {
+        0: 2,
+        1: a,
+    }
+
+    for k in range(1, n):
+        values[k + 1] = (
+            a * values[k]
+            - values[k - 1]
+        )
+
+    lines = [
+        "### Solution",
+        "",
+        "Given:",
+        "",
+        f"x + 1/x = {fmt(a)}",
+        "",
+        "Let:",
+        "",
+        "Sₙ = xⁿ + 1/xⁿ",
+        "",
+        "S₀ = 2",
+        "",
+        f"S₁ = {fmt(a)}",
+        "",
+    ]
+
+    for k in range(2, n + 1):
+        lines.extend(
+            [
+                f"**Step {k - 1}: Find S{k}**",
+                "",
+                f"S{k} = {fmt(a)}S{k - 1} − S{k - 2}",
+                "",
+                (
+                    f"S{k} = {fmt(a)}"
+                    f"({fmt(values[k - 1])})"
+                    f" − {fmt(values[k - 2])}"
+                ),
+                "",
+                f"**S{k} = {fmt(values[k])}**",
+                "",
+            ]
+        )
+
+    lines.extend(
+        [
+            "### Final Answer",
+            "",
+            f"**x^{n} + 1/x^{n} = {fmt(values[n])} ✅**",
+        ]
+    )
+
+    return "\n".join(lines)
+
+
+# ============================================================
+# PHYSICS CIRCUIT
+# ============================================================
+
+def solve_circuit(question):
+    q = question.lower()
+
+    if "series" not in q or "parallel" not in q:
+        return None
+
+    voltage_match = re.search(
+        r"(\d+(?:\.\d+)?)\s*"
+        r"(?:v|volt|volts)\b",
+        q,
+    )
+
+    resistor_values = [
+        float(x)
+        for x in re.findall(
+            r"(\d+(?:\.\d+)?)\s*"
+            r"(?:Ω|ohm|ohms)",
+            question,
+            re.IGNORECASE,
+        )
+    ]
+
+    if not voltage_match or len(resistor_values) < 3:
+        return None
+
+    voltage = float(
+        voltage_match.group(1)
+    )
+
+    match = re.search(
+        r"parallel\s+combination\s+of\s+"
+        r"(\d+(?:\.\d+)?)\s*"
+        r"(?:Ω|ohm|ohms)"
+        r"\s*(?:and|&)\s*"
+        r"(\d+(?:\.\d+)?)\s*"
+        r"(?:Ω|ohm|ohms)",
+        question,
+        re.IGNORECASE,
+    )
+
+    if not match:
+        return None
+
+    r1 = float(match.group(1))
+    r2 = float(match.group(2))
+
+    others = resistor_values.copy()
+
+    try:
+        others.remove(r1)
+        others.remove(r2)
     except ValueError:
         return None
 
-    series_resistors = remaining
-
-    if not series_resistors:
+    if not others:
         return None
 
     rp = (
         r1 * r2
-    ) / (
-        r1 + r2
+        / (r1 + r2)
     )
 
-    total_resistance = (
-        sum(series_resistors) + rp
+    rt = (
+        sum(others)
+        + rp
     )
 
-    total_current = (
-        voltage / total_resistance
+    total_i = (
+        voltage
+        / rt
     )
 
-    voltage_drops = [
-        total_current * r
-        for r in series_resistors
+    series_voltages = [
+        total_i * r
+        for r in others
     ]
 
-    parallel_voltage = (
-        voltage - sum(voltage_drops)
+    vp = (
+        voltage
+        - sum(series_voltages)
     )
 
-    i1 = parallel_voltage / r1
-    i2 = parallel_voltage / r2
+    i1 = vp / r1
+    i2 = vp / r2
 
     series_powers = [
-        total_current ** 2 * r
-        for r in series_resistors
+        total_i ** 2 * r
+        for r in others
     ]
 
-    p1 = (
-        parallel_voltage ** 2
-    ) / r1
+    p1 = vp ** 2 / r1
+    p2 = vp ** 2 / r2
 
-    p2 = (
-        parallel_voltage ** 2
-    ) / r2
-
-    total_power = voltage * total_current
+    total_power = (
+        voltage * total_i
+    )
 
     component_power = (
-        sum(series_powers) + p1 + p2
+        sum(series_powers)
+        + p1
+        + p2
     )
 
-    if not close(
-        sum(voltage_drops) + parallel_voltage,
-        voltage
-    ):
-        return None
-
-    if not close(
-        i1 + i2,
-        total_current
-    ):
-        return None
-
-    if not close(
-        component_power,
-        total_power
-    ):
-        return None
-
-    lines = ["### Solution"]
-
-    lines.append(
-        f"""**1. Parallel resistance**
-
-Rₚ = (R₁ × R₂) / (R₁ + R₂)
-
-Rₚ = ({fmt(r1)} × {fmt(r2)}) / ({fmt(r1)} + {fmt(r2)})
-
-**Rₚ = {fmt(rp)} Ω**"""
-    )
-
-    series_expression = " + ".join(
-        fmt(x)
-        for x in series_resistors
-    )
-
-    lines.append(
-        f"""**2. Total resistance**
-
-Rₜ = {series_expression} + {fmt(rp)}
-
-**Rₜ = {fmt(total_resistance)} Ω**"""
-    )
-
-    lines.append(
-        f"""**3. Total current**
-
-I = V / Rₜ
-
-I = {fmt(voltage)} / {fmt(total_resistance)}
-
-**I = {fmt(total_current)} A**"""
-    )
-
-    step = 4
-
-    for resistor, drop in zip(
-        series_resistors,
-        voltage_drops
-    ):
-        lines.append(
-            f"""**{step}. Voltage across {fmt(resistor)} Ω**
-
-V = IR
-
-V = {fmt(total_current)} × {fmt(resistor)}
-
-**V = {fmt(drop)} V**"""
-        )
-
-        step += 1
-
-    lines.append(
-        f"""**{step}. Voltage across the parallel section**
-
-**Vₚ = {fmt(parallel_voltage)} V**
-
-Both parallel branches have the same voltage."""
-    )
-
-    step += 1
-
-    lines.append(
-        f"""**{step}. Current through {fmt(r1)} Ω**
-
-I₁ = Vₚ / R₁
-
-**I₁ = {fmt(i1)} A**"""
-    )
-
-    step += 1
-
-    lines.append(
-        f"""**{step}. Current through {fmt(r2)} Ω**
-
-I₂ = Vₚ / R₂
-
-**I₂ = {fmt(i2)} A**"""
-    )
-
-    step += 1
-
-    for resistor, power in zip(
-        series_resistors,
-        series_powers
-    ):
-        lines.append(
-            f"""**{step}. Power in {fmt(resistor)} Ω**
-
-P = I²R
-
-**P = {fmt(power)} W**"""
-        )
-
-        step += 1
-
-    lines.append(
-        f"""**{step}. Power in {fmt(r1)} Ω**
-
-P = Vₚ² / R
-
-**P = {fmt(p1)} W**"""
-    )
-
-    step += 1
-
-    lines.append(
-        f"""**{step}. Power in {fmt(r2)} Ω**
-
-P = Vₚ² / R
-
-**P = {fmt(p2)} W**"""
-    )
-
-    step += 1
-
-    lines.append(
-        f"""**{step}. Total power**
-
-P = VI
-
-**P = {fmt(total_power)} W**"""
-    )
-
-    lines.append(
-        f"""### Verification
-
-**Voltage:** {fmt(sum(voltage_drops) + parallel_voltage)} V = {fmt(voltage)} V ✅
-
-**Current:** {fmt(i1 + i2)} A = {fmt(total_current)} A ✅
-
-**Power:** {fmt(component_power)} W = {fmt(total_power)} W ✅"""
-    )
-
-    final = [
-        "### Final Answer",
+    lines = [
+        "### Solution",
         "",
-        f"- **Parallel resistance = {fmt(rp)} Ω**",
-        f"- **Total resistance = {fmt(total_resistance)} Ω**",
-        f"- **Total current = {fmt(total_current)} A**"
+        "**1. Parallel resistance**",
+        "",
+        "Rₚ = (R₁ × R₂)/(R₁ + R₂)",
+        "",
+        f"Rₚ = ({fmt(r1)} × {fmt(r2)})/"
+        f"({fmt(r1)} + {fmt(r2)})",
+        "",
+        f"**Rₚ = {fmt(rp)} Ω**",
+        "",
+        "**2. Total resistance**",
+        "",
+        f"Rₜ = {' + '.join(fmt(x) for x in others)} + {fmt(rp)}",
+        "",
+        f"**Rₜ = {fmt(rt)} Ω**",
+        "",
+        "**3. Total current**",
+        "",
+        "I = V/Rₜ",
+        "",
+        f"**I = {fmt(total_i)} A**",
+        "",
+        "**4. Parallel-section voltage**",
+        "",
+        f"**Vₚ = {fmt(vp)} V**",
+        "",
+        f"**5. Current through {fmt(r1)} Ω**",
+        "",
+        f"**I₁ = {fmt(i1)} A**",
+        "",
+        f"**6. Current through {fmt(r2)} Ω**",
+        "",
+        f"**I₂ = {fmt(i2)} A**",
+        "",
+        "**7. Power**",
+        "",
     ]
-
-    for resistor, drop in zip(
-        series_resistors,
-        voltage_drops
-    ):
-        final.append(
-            f"- **Voltage across {fmt(resistor)} Ω = {fmt(drop)} V**"
-        )
-
-    final.extend([
-        f"- **Parallel voltage = {fmt(parallel_voltage)} V**",
-        f"- **Current through {fmt(r1)} Ω = {fmt(i1)} A**",
-        f"- **Current through {fmt(r2)} Ω = {fmt(i2)} A**"
-    ])
 
     for resistor, power in zip(
-        series_resistors,
-        series_powers
+        others,
+        series_powers,
     ):
-        final.append(
-            f"- **Power in {fmt(resistor)} Ω = {fmt(power)} W**"
+        lines.extend(
+            [
+                f"Power in {fmt(resistor)} Ω = **{fmt(power)} W**",
+                "",
+            ]
         )
 
-    final.extend([
-        f"- **Power in {fmt(r1)} Ω = {fmt(p1)} W**",
-        f"- **Power in {fmt(r2)} Ω = {fmt(p2)} W**",
-        f"- **Total power = {fmt(total_power)} W ✅**"
-    ])
+    lines.extend(
+        [
+            f"Power in {fmt(r1)} Ω = **{fmt(p1)} W**",
+            "",
+            f"Power in {fmt(r2)} Ω = **{fmt(p2)} W**",
+            "",
+            f"Total power = **{fmt(total_power)} W**",
+            "",
+            "### Verification",
+            "",
+            f"Sum of resistor powers = {fmt(component_power)} W",
+            "",
+            f"Battery power = {fmt(total_power)} W",
+            "",
+            "**Power check ✅**",
+        ]
+    )
 
-    lines.append("\n".join(final))
-
-    return "\n\n".join(lines)
+    return "\n".join(lines)
 
 
 # ============================================================
-# HEAT SOLVER
+# CHEMISTRY
 # ============================================================
 
-def solve_heat_question(question):
+def solve_iron_hcl(question):
+    q = question.lower()
 
-    problem = get_problem_text(question)
-
-    masses = [
-        float(x)
-        for x in re.findall(
-            r"(\d+(?:\.\d+)?)\s*g(?:ram|rams)?\b",
-            problem,
-            re.IGNORECASE
-        )
-    ]
-
-    specific_heats = [
-        float(x)
-        for x in re.findall(
-            r"(\d+(?:\.\d+)?)\s*J\s*/\s*kg\s*(?:°|deg)?\s*C",
-            problem,
-            re.IGNORECASE
-        )
-    ]
-
-    temperature_pairs = re.findall(
-        r"(\d+(?:\.\d+)?)\s*°?\s*C"
-        r"\s*(?:to|-)\s*"
-        r"(\d+(?:\.\d+)?)\s*°?\s*C",
-        problem,
-        re.IGNORECASE
-    )
-
-    power_match = re.search(
-        r"(\d+(?:\.\d+)?)\s*(?:W|watt|watts)\b",
-        problem,
-        re.IGNORECASE
-    )
-
-    loss_match = re.search(
-        r"(\d+(?:\.\d+)?)\s*%\s*(?:heat\s*)?loss",
-        problem,
-        re.IGNORECASE
-    )
-
-    if not masses or not specific_heats:
+    if "fe" not in q or "hcl" not in q:
         return None
 
-    if not temperature_pairs:
+    if not (
+        "limiting" in q
+        or "hydrogen" in q
+        or "h2" in q
+        or "fecl2" in q
+    ):
         return None
 
-    count = min(
-        len(masses),
-        len(specific_heats),
-        len(temperature_pairs)
+    mass_match = re.search(
+        r"(\d+(?:\.\d+)?)\s*g.*?(?:iron|fe)",
+        question,
+        re.IGNORECASE,
     )
 
-    total_heat = 0
-    blocks = []
-
-    for i in range(count):
-
-        mass = masses[i] / 1000
-        specific_heat = specific_heats[i]
-
-        initial = float(
-            temperature_pairs[i][0]
-        )
-
-        final = float(
-            temperature_pairs[i][1]
-        )
-
-        delta = abs(
-            final - initial
-        )
-
-        heat = (
-            mass
-            * specific_heat
-            * delta
-        )
-
-        total_heat += heat
-
-        blocks.append(
-            {
-                "mass": mass,
-                "c": specific_heat,
-                "delta": delta,
-                "heat": heat
-            }
-        )
-
-    heater_power = (
-        float(power_match.group(1))
-        if power_match
-        else None
+    volume_match = re.search(
+        r"(\d+(?:\.\d+)?)\s*mL.*?(?:hcl|hydrochloric)",
+        question,
+        re.IGNORECASE,
     )
 
-    loss_percent = (
-        float(loss_match.group(1))
-        if loss_match
-        else 0
+    molarity_match = re.search(
+        r"(\d+(?:\.\d+)?)\s*M.*?(?:hcl|hydrochloric)",
+        question,
+        re.IGNORECASE,
     )
 
-    loss_fraction = loss_percent / 100
+    if not (
+        mass_match
+        and volume_match
+        and molarity_match
+    ):
+        return None
 
-    if loss_fraction < 1:
-        supplied_heat = (
-            total_heat / (1 - loss_fraction)
+    mass_fe = float(
+        mass_match.group(1)
+    )
+
+    volume_hcl = (
+        float(volume_match.group(1))
+        / 1000
+    )
+
+    molarity_hcl = float(
+        molarity_match.group(1)
+    )
+
+    fe_moles = mass_fe / 56
+
+    hcl_moles = (
+        molarity_hcl
+        * volume_hcl
+    )
+
+    hcl_required = (
+        2 * fe_moles
+    )
+
+    if hcl_moles < hcl_required:
+        limiting = "HCl"
+        h2_moles = (
+            hcl_moles / 2
         )
+        fe_used = h2_moles
     else:
-        supplied_heat = total_heat
+        limiting = "Fe"
+        h2_moles = fe_moles
+        fe_used = fe_moles
 
-    time_without_loss = (
-        total_heat / heater_power
-        if heater_power
-        else None
+    h2_volume = (
+        h2_moles * 22.4
     )
 
-    time_with_loss = (
-        supplied_heat / heater_power
-        if heater_power
-        else None
+    fecl2_mass = (
+        fe_used * 127
     )
 
-    lines = ["### Solution"]
+    return f"""
+### Solution
 
-    for i, block in enumerate(
-        blocks,
-        start=1
-    ):
-        lines.append(
-            f"""**{i}. Heat required for block {i}**
+Fe + 2HCl → FeCl₂ + H₂
 
-Q = mcΔT
+**1. Moles of Fe**
 
-Q = {fmt(block["mass"])} × {fmt(block["c"])} × {fmt(block["delta"])}
+n = m/M
 
-**Q = {fmt(block["heat"])} J**"""
-        )
+n = {fmt(mass_fe)}/56
 
-    step = len(blocks) + 1
+**n(Fe) = {fmt(fe_moles)} mol**
 
-    lines.append(
-        f"""**{step}. Total useful heat**
+**2. Moles of HCl**
 
-**Q = {fmt(total_heat)} J**"""
-    )
+n = M × V
 
-    step += 1
+V = {fmt(volume_hcl)} L
 
-    if heater_power:
-        lines.append(
-            f"""**{step}. Time without heat loss**
+**n(HCl) = {fmt(hcl_moles)} mol**
 
-t = Q / P
+**3. Limiting reagent**
 
-t = {fmt(total_heat)} / {fmt(heater_power)}
+HCl required = {fmt(hcl_required)} mol
 
-**t = {fmt(time_without_loss)} s**"""
-        )
-        step += 1
+Available HCl = {fmt(hcl_moles)} mol
 
-    if loss_percent > 0:
+**Limiting reagent = {limiting}**
 
-        lines.append(
-            f"""**{step}. Heat required with {fmt(loss_percent)}% heat loss**
+**4. Moles of H₂**
 
-Useful fraction = {fmt(1 - loss_fraction)}
+**{fmt(h2_moles)} mol**
 
-Qₛ = Q / useful fraction
+**5. Volume of H₂ at STP**
 
-**Qₛ = {fmt(supplied_heat)} J**"""
-        )
+V = n × 22.4
 
-        step += 1
+**V(H₂) = {fmt(h2_volume)} L**
 
-        if heater_power:
-            lines.append(
-                f"""**{step}. Time with heat loss**
+**6. Mass of FeCl₂**
 
-t = Qₛ / P
+M = 127 g mol⁻¹
 
-t = {fmt(supplied_heat)} / {fmt(heater_power)}
+**Mass = {fmt(fecl2_mass)} g**
 
-**t = {fmt(time_with_loss)} s**"""
-            )
+### Final Answer
 
-    final = [
-        "### Final Answer",
-        ""
-    ]
-
-    for i, block in enumerate(
-        blocks,
-        start=1
-    ):
-        final.append(
-            f"- **Block {i} heat = {fmt(block['heat'])} J**"
-        )
-
-    final.append(
-        f"- **Total useful heat = {fmt(total_heat)} J**"
-    )
-
-    if heater_power:
-        final.append(
-            f"- **Time without loss = {fmt(time_without_loss)} s**"
-        )
-
-    if loss_percent > 0:
-        final.append(
-            f"- **Heat with loss = {fmt(supplied_heat)} J**"
-        )
-
-        if heater_power:
-            final.append(
-                f"- **Time with loss = {fmt(time_with_loss)} s ✅**"
-            )
-
-    lines.append(
-        "\n".join(final)
-    )
-
-    return "\n\n".join(lines)
+- **Fe = {fmt(fe_moles)} mol**
+- **HCl = {fmt(hcl_moles)} mol**
+- **Limiting reagent = {limiting}**
+- **H₂ = {fmt(h2_moles)} mol**
+- **H₂ volume = {fmt(h2_volume)} L**
+- **FeCl₂ = {fmt(fecl2_mass)} g ✅**
+""".strip()
 
 
-# ============================================================
-# BULB SOLVER
-# ============================================================
-
-def solve_bulb_question(question):
-
+def solve_nacl(question):
     q = question.lower()
-    problem = get_problem_text(question)
 
-    if "bulb" not in q:
+    if "nacl" not in q:
         return None
 
-    powers = [
-        float(x)
-        for x in re.findall(
-            r"(\d+(?:\.\d+)?)\s*(?:W|watt|watts)\b",
-            problem,
-            re.IGNORECASE
-        )
-    ]
+    mass_match = re.search(
+        r"(\d+(?:\.\d+)?)\s*g.*nacl",
+        q,
+    )
 
-    voltage = extract_voltage(problem)
-
-    if voltage is None or len(powers) < 2:
+    if not mass_match:
         return None
 
-    if (
-        "minimum resistance" in q
-        or "least resistance" in q
-        or "lowest resistance" in q
-    ):
-        highest_power = max(powers)
+    mass = float(
+        mass_match.group(1)
+    )
 
-        return f"""### Solution
+    moles = (
+        mass / 58.5
+    )
 
-R = V² / P
+    return f"""
+### Solution
 
-At the same voltage, resistance is inversely proportional to
-rated power.
+Molar mass of NaCl:
 
-Highest rated power = **{fmt(highest_power)} W**
+M = 23 + 35.5
 
-### Final Answer
+M = 58.5 g mol⁻¹
 
-**{fmt(highest_power)} W ✅**
-"""
+n = m/M
 
-    if (
-        "maximum resistance" in q
-        or "greatest resistance" in q
-        or "highest resistance" in q
-    ):
-        lowest_power = min(powers)
+n = {fmt(mass)}/58.5
 
-        return f"""### Solution
-
-R = V² / P
-
-At the same voltage, lower rated power means greater resistance.
-
-Lowest rated power = **{fmt(lowest_power)} W**
+**n = {fmt(moles)} mol**
 
 ### Final Answer
 
-**{fmt(lowest_power)} W ✅**
-"""
-
-    return None
+**{fmt(moles)} mol NaCl ✅**
+""".strip()
 
 
 # ============================================================
-# BASIC ELECTRICITY
+# HUGGING FACE AI
+# IMPORTANT MEMORY FIX IS HERE
 # ============================================================
 
-def solve_basic_electricity(question):
+def stream_text_ai(
+    ai_question,
+    subject,
+    original_question,
+):
+    """
+    Sends the context-aware prompt to Hugging Face.
 
-    q = question.lower()
-    problem = get_problem_text(question)
+    When the stream finishes, save the ORIGINAL user
+    question and the COMPLETE final answer to session history.
 
-    voltage = extract_voltage(problem)
-    resistors = extract_resistors(problem)
+    This fixes:
+        User: suggest a book...
+        AI: ...
+        User: give top three
+        AI: should answer from the previous book answer.
+    """
 
-    power_match = re.search(
-        r"(\d+(?:\.\d+)?)\s*(?:W|watt|watts)\b",
-        problem,
-        re.IGNORECASE
-    )
-
-    power = (
-        float(power_match.group(1))
-        if power_match
-        else None
-    )
-
-    if (
-        voltage is not None
-        and power is not None
-        and "bulb" in q
-        and "resistance" in q
-    ):
-
-        resistance = voltage ** 2 / power
-
-        return f"""### Solution
-
-R = V² / P
-
-R = {fmt(voltage)}² / {fmt(power)}
-
-**R = {fmt(resistance)} Ω**
-
-### Final Answer
-
-**{fmt(resistance)} Ω ✅**
-"""
-
-    if (
-        "series" in q
-        and "parallel combination" not in q
-        and "resistance" in q
-        and len(resistors) >= 2
-    ):
-
-        total = sum(resistors)
-
-        return f"""### Solution
-
-Rₜ = R₁ + R₂ + ...
-
-Rₜ = {' + '.join(fmt(x) for x in resistors)}
-
-**Rₜ = {fmt(total)} Ω**
-
-### Final Answer
-
-**{fmt(total)} Ω ✅**
-"""
-
-    if (
-        "parallel" in q
-        and "parallel combination" not in q
-        and "resistance" in q
-        and len(resistors) == 2
-    ):
-
-        r1, r2 = resistors
-
-        equivalent = (
-            r1 * r2
-        ) / (
-            r1 + r2
+    if not HF_TOKEN or hf_client is None:
+        yield (
+            "❌ Online AI is unavailable because HF_TOKEN is missing.\n\n"
+            "Local calculator and local solvers are still available."
         )
+        return
 
-        return f"""### Solution
-
-Rₚ = (R₁ × R₂) / (R₁ + R₂)
-
-Rₚ = ({fmt(r1)} × {fmt(r2)}) /
-     ({fmt(r1)} + {fmt(r2)})
-
-**Rₚ = {fmt(equivalent)} Ω**
-
-### Final Answer
-
-**{fmt(equivalent)} Ω ✅**
-"""
-
-    if (
-        voltage is not None
-        and power is not None
-        and "current" in q
-    ):
-
-        current = power / voltage
-
-        return f"""### Solution
-
-P = VI
-
-I = P / V
-
-I = {fmt(power)} / {fmt(voltage)}
-
-**I = {fmt(current)} A**
-
-### Final Answer
-
-**{fmt(current)} A ✅**
-"""
-
-    return None
-
-
-# ============================================================
-# PERCENTAGE POWER
-# ============================================================
-
-def solve_percentage_power(question):
-
-    q = question.lower()
-
-    if (
-        "current" in q
-        and "power" in q
-        and "resistor" in q
-        and "increased by 100%" in q
-    ):
-
-        return """### Solution
-
-P = I²R
-
-Current increases by 100%:
-
-I' = 2I
-
-P' = (2I)²R = 4P
-
-Increase:
-
-4P − P = 3P = 300%
-
-### Final Answer
-
-**300% ✅**
-"""
-
-    return None
-
-
-# ============================================================
-# GENERAL OLLAMA STREAM
-# ============================================================
-
-def stream_ollama(question):
-
-    model = (
-        SMALL_MODEL
-        if is_casual(question)
-        else BIG_MODEL
-    )
+    full_answer = ""
 
     try:
 
-        stream = ollama.chat(
-            model=model,
+        stream = hf_client.chat.completions.create(
+            model=TEXT_MODEL,
             messages=[
                 {
                     "role": "system",
-                    "content": SYSTEM_PROMPT
+                    "content": get_prompt(subject),
                 },
                 {
                     "role": "user",
-                    "content": question
-                }
+                    "content": ai_question,
+                },
             ],
             stream=True,
-            keep_alive=KEEP_ALIVE,
-            options={
-                "temperature": 0.2,
-                "num_predict": 400
-            }
+            temperature=0.15,
+            max_tokens=2500,
         )
 
         for chunk in stream:
 
-            text = chunk["message"]["content"]
+            if not chunk.choices:
+                continue
+
+            text = (
+                chunk.choices[0]
+                .delta
+                .content
+            )
 
             if text:
+                full_answer += text
                 yield text
+
+        # ====================================================
+        # IMPORTANT:
+        # SAVE THE FINISHED ONLINE AI ANSWER
+        # ====================================================
+
+        if full_answer.strip():
+
+            save_history(
+                original_question,
+                full_answer,
+            )
 
     except Exception as error:
 
-        print("Ollama error:", error)
+        print(
+            "Hugging Face error:",
+            repr(error),
+        )
 
         yield (
-            "❌ I couldn't connect to my AI brain. "
-            "Please make sure Ollama is running."
+            "❌ Online AI could not answer right now."
         )
 
 
 # ============================================================
-# IMPROVE ANSWER
+# VISION AI
 # ============================================================
 
-def improve_answer(question, old_answer, action):
+def analyze_image(
+    image_data,
+    prompt,
+):
+    if not HF_TOKEN or hf_client is None:
+        return (
+            "❌ Image AI is unavailable because HF_TOKEN is missing."
+        )
+
+    if not image_data.startswith(
+        "data:image/"
+    ):
+        return "❌ Invalid image."
+
+    if len(image_data) > 8_000_000:
+        return (
+            "❌ Image is too large. "
+            "Please select a smaller image."
+        )
+
+    try:
+
+        response = hf_client.chat.completions.create(
+            model=VISION_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": VISION_SYSTEM_PROMPT,
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": (
+                                prompt.strip()
+                                if prompt.strip()
+                                else
+                                "Read this image and solve the question."
+                            ),
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": image_data,
+                            },
+                        },
+                    ],
+                },
+            ],
+            temperature=0.1,
+            max_tokens=2500,
+        )
+
+        return (
+            response.choices[0]
+            .message
+            .content
+        )
+
+    except Exception as error:
+
+        print(
+            "Vision error:",
+            repr(error),
+        )
+
+        return (
+            "❌ I could not analyze that image right now."
+        )
+
+
+# ============================================================
+# HOME
+# ============================================================
+
+@app.route("/")
+def home():
+
+    if "username" not in session:
+
+        return render_template(
+            "index.html",
+            logged_in=False,
+        )
+
+    return render_template(
+        "index.html",
+        logged_in=True,
+        username=session["username"],
+    )
+
+
+# ============================================================
+# REGISTER
+# ============================================================
+
+@app.route(
+    "/register",
+    methods=["POST"],
+)
+def register():
+
+    data = request.get_json(
+        silent=True
+    ) or {}
+
+    username = data.get(
+        "username",
+        "",
+    ).strip()
+
+    email = data.get(
+        "email",
+        "",
+    ).strip().lower()
+
+    phone = data.get(
+        "phone",
+        "",
+    ).strip()
+
+    password = data.get(
+        "password",
+        "",
+    )
+
+    if not username or not password:
+
+        return {
+            "success": False,
+            "message": (
+                "Username and password are required."
+            ),
+        }, 400
+
+    # Email OR phone
+    if not email and not phone:
+
+        return {
+            "success": False,
+            "message": (
+                "Enter either email or phone number."
+            ),
+        }, 400
+
+    if len(password) < 6:
+
+        return {
+            "success": False,
+            "message": (
+                "Password must be at least 6 characters."
+            ),
+        }, 400
+
+    users = load_users()
+
+    for existing_username, user in users.items():
+
+        if (
+            existing_username.lower()
+            == username.lower()
+        ):
+
+            return {
+                "success": False,
+                "message": "Username already exists.",
+            }, 400
+
+        if (
+            email
+            and user.get("email", "").lower()
+            == email
+        ):
+
+            return {
+                "success": False,
+                "message": "Email already registered.",
+            }, 400
+
+        if (
+            phone
+            and user.get("phone", "")
+            == phone
+        ):
+
+            return {
+                "success": False,
+                "message": (
+                    "Phone number already registered."
+                ),
+            }, 400
+
+    users[username] = {
+        "email": email,
+        "phone": phone,
+        "password": generate_password_hash(
+            password
+        ),
+    }
+
+    save_users(users)
+
+    session["username"] = username
+
+    return {
+        "success": True,
+        "message": "Account created successfully.",
+    }
+
+
+# ============================================================
+# LOGIN
+# ============================================================
+
+@app.route(
+    "/login",
+    methods=["POST"],
+)
+def login():
+
+    data = request.get_json(
+        silent=True
+    ) or {}
+
+    login_value = data.get(
+        "login",
+        "",
+    ).strip()
+
+    password = data.get(
+        "password",
+        "",
+    )
+
+    users = load_users()
+
+    for username, user in users.items():
+
+        username_match = (
+            username.lower()
+            == login_value.lower()
+        )
+
+        email_match = (
+            bool(user.get("email"))
+            and
+            user.get("email", "").lower()
+            == login_value.lower()
+        )
+
+        phone_match = (
+            bool(user.get("phone"))
+            and
+            user.get("phone", "")
+            == login_value
+        )
+
+        if (
+            username_match
+            or email_match
+            or phone_match
+        ):
+
+            if check_password_hash(
+                user.get(
+                    "password",
+                    "",
+                ),
+                password,
+            ):
+
+                session["username"] = username
+
+                return {
+                    "success": True,
+                    "message": "Login successful.",
+                }
+
+            break
+
+    return {
+        "success": False,
+        "message": (
+            "Invalid username/email/phone or password."
+        ),
+    }, 401
+
+
+# ============================================================
+# LOGOUT
+# ============================================================
+
+@app.route("/logout")
+def logout():
+
+    session.clear()
+
+    return redirect(
+        url_for("home")
+    )
+
+
+# ============================================================
+# CHAT
+# ============================================================
+
+@app.route(
+    "/chat",
+    methods=["POST"],
+)
+def chat():
+
+    if "username" not in session:
+
+        return Response(
+            "Please login first.",
+            mimetype="text/plain",
+            status=401,
+        )
+
+    data = request.get_json(
+        silent=True
+    ) or {}
+
+    original_question = data.get(
+        "message",
+        "",
+    ).strip()
+
+    image_data = data.get(
+        "image",
+        "",
+    )
+
+    # ========================================================
+    # IMAGE
+    # ========================================================
+
+    if image_data:
+
+        prompt = (
+            original_question
+            if original_question
+            else
+            "Read this image and solve the question."
+        )
+
+        answer = analyze_image(
+            image_data,
+            prompt,
+        )
+
+        save_history(
+            original_question or "Image question",
+            answer,
+        )
+
+        return Response(
+            answer,
+            mimetype="text/plain",
+        )
+
+    # ========================================================
+    # EMPTY
+    # ========================================================
+
+    if not original_question:
+
+        return Response(
+            "Please type a message or select an image.",
+            mimetype="text/plain",
+        )
+
+    # ========================================================
+    # BASIC RESPONSE
+    # ========================================================
+
+    simple = basic_response(
+        original_question
+    )
+
+    if simple:
+
+        # Save the basic response too, because
+        # the next user message may depend on it.
+        save_history(
+            original_question,
+            simple,
+        )
+
+        return Response(
+            simple,
+            mimetype="text/plain",
+        )
+
+    # ========================================================
+    # LOCAL CALCULATOR
+    # ========================================================
+
+    result = solve_calculation(
+        original_question
+    )
+
+    if result:
+
+        save_history(
+            original_question,
+            result,
+        )
+
+        return Response(
+            result,
+            mimetype="text/plain",
+        )
+
+    # ========================================================
+    # LOCAL SOLVERS
+    #
+    # Use only the NEW question here.
+    # This prevents:
+    #
+    # User: x^5...
+    # User: then x^6...
+    #
+    # from re-solving x^5.
+    # ========================================================
+
+    normalized = normalize_math_text(
+        original_question
+    )
+
+    result = solve_power_recurrence(
+        normalized
+    )
+
+    if result:
+
+        save_history(
+            original_question,
+            result,
+        )
+
+        return Response(
+            result,
+            mimetype="text/plain",
+        )
+
+    result = solve_circuit(
+        normalized
+    )
+
+    if result:
+
+        save_history(
+            original_question,
+            result,
+        )
+
+        return Response(
+            result,
+            mimetype="text/plain",
+        )
+
+    result = solve_iron_hcl(
+        normalized
+    )
+
+    if result:
+
+        save_history(
+            original_question,
+            result,
+        )
+
+        return Response(
+            result,
+            mimetype="text/plain",
+        )
+
+    result = solve_nacl(
+        normalized
+    )
+
+    if result:
+
+        save_history(
+            original_question,
+            result,
+        )
+
+        return Response(
+            result,
+            mimetype="text/plain",
+        )
+
+    # ========================================================
+    # ONLINE AI
+    #
+    # IMPORTANT:
+    # 1. build context from previous saved turns
+    # 2. send context to HF
+    # 3. after streaming ends, save ORIGINAL question
+    #    + COMPLETE answer
+    # ========================================================
+
+    ai_question = build_ai_context(
+        normalized
+    )
+
+    subject = detect_subject(
+        normalized
+    )
+
+    return Response(
+        stream_with_context(
+            stream_text_ai(
+                ai_question,
+                subject,
+                original_question,
+            )
+        ),
+        mimetype="text/plain",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+# ============================================================
+# IMPROVE / CHECK / EXPLAIN / SHORTEN
+# ============================================================
+
+@app.route(
+    "/improve",
+    methods=["POST"],
+)
+def improve():
+
+    if "username" not in session:
+
+        return Response(
+            "Please login first.",
+            mimetype="text/plain",
+            status=401,
+        )
+
+    data = request.get_json(
+        silent=True
+    ) or {}
+
+    question = data.get(
+        "question",
+        "",
+    ).strip()
+
+    old_answer = data.get(
+        "answer",
+        "",
+    ).strip()
+
+    action = data.get(
+        "action",
+        "improve",
+    ).strip().lower()
+
+    if not question or not old_answer:
+
+        return Response(
+            "Missing question or answer.",
+            mimetype="text/plain",
+        )
 
     instructions = {
         "improve":
-            "Improve the answer and make it clearer and more accurate.",
+            "Improve the answer and make it clearer and more complete.",
 
         "check":
-            "Check the previous answer for mathematical, physics and factual mistakes. "
-            "Correct any mistakes.",
+            "Check the answer carefully for mistakes and correct them.",
 
         "explain":
-            "Give a slightly more detailed explanation while remaining concise.",
+            "Explain the answer in more detail while keeping it student-friendly.",
 
         "short":
-            "Make the answer shorter while keeping the essential steps and final answer."
+            "Make the answer shorter while keeping important steps.",
     }
 
     instruction = instructions.get(
         action,
-        instructions["improve"]
+        instructions["improve"],
     )
 
-    normalized = normalize_math_text(question)
+    subject = detect_subject(
+        question
+    )
 
     prompt = f"""
 Original question:
 
-{normalized}
+{question}
 
 Previous answer:
 
@@ -1359,232 +2057,29 @@ Task:
 {instruction}
 
 Rules:
-- Treat svg as √ if it appears in this project.
-- Never replace svg with x.
-- Verify calculations carefully.
-- Do not invent missing numbers.
-- Use Markdown.
-- End with a clear Final Answer.
+- Check calculations.
+- Answer every requested part.
+- Keep mathematics readable.
+- Do not output raw LaTeX.
+- Do not invent information.
+- Finish completely.
 """
 
-    try:
-
-        stream = ollama.chat(
-            model=BIG_MODEL,
-            messages=[
-                {
-                    "role": "system",
-                    "content": MATH_SYSTEM_PROMPT
-                    if looks_like_math(normalized)
-                    else SYSTEM_PROMPT
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            stream=True,
-            keep_alive=KEEP_ALIVE,
-            options={
-                "temperature": 0.1,
-                "num_predict": 500
-            }
-        )
-
-        for chunk in stream:
-
-            text = chunk["message"]["content"]
-
-            if text:
-                yield text
-
-    except Exception as error:
-
-        print("Improve error:", error)
-
-        yield "❌ I couldn't improve the answer."
-
-
-# ============================================================
-# HOME
-# ============================================================
-
-@app.route("/")
-def home():
-    return render_template("index.html")
-
-
-# ============================================================
-# CHAT
-# ============================================================
-
-@app.route("/chat", methods=["POST"])
-def chat():
-
-    data = request.get_json(silent=True)
-
-    if not data:
-        return Response(
-            "Please send a message.",
-            mimetype="text/plain"
-        )
-
-    question = data.get(
-        "message",
-        ""
-    ).strip()
-
-    if not question:
-        return Response(
-            "Please type a message.",
-            mimetype="text/plain"
-        )
-
-    # --------------------------------------------------------
-    # Normalize known copied math artifact.
-    # --------------------------------------------------------
-
-    question = normalize_math_text(
-        question
-    )
-
-    # --------------------------------------------------------
-    # Real Numbers / Surds
-    # --------------------------------------------------------
-
-    result = solve_known_surds(question)
-
-    if result:
-        return Response(
-            result,
-            mimetype="text/plain"
-        )
-
-    # --------------------------------------------------------
-    # Fast physics
-    # --------------------------------------------------------
-
-    result = solve_mixed_circuit(question)
-
-    if result:
-        return Response(
-            result,
-            mimetype="text/plain"
-        )
-
-    result = solve_heat_question(question)
-
-    if result:
-        return Response(
-            result,
-            mimetype="text/plain"
-        )
-
-    result = solve_percentage_power(question)
-
-    if result:
-        return Response(
-            result,
-            mimetype="text/plain"
-        )
-
-    result = solve_bulb_question(question)
-
-    if result:
-        return Response(
-            result,
-            mimetype="text/plain"
-        )
-
-    result = solve_basic_electricity(question)
-
-    if result:
-        return Response(
-            result,
-            mimetype="text/plain"
-        )
-
-    # --------------------------------------------------------
-    # Math fallback before general AI.
-    # --------------------------------------------------------
-
-    if looks_like_math(question):
-        return Response(
-            stream_with_context(
-                stream_math_ai(question)
-            ),
-            mimetype="text/plain",
-            headers={
-                "Cache-Control": "no-cache",
-                "X-Accel-Buffering": "no"
-            }
-        )
-
-    # --------------------------------------------------------
-    # General AI fallback.
-    # --------------------------------------------------------
-
+    # Save the improved result after streaming
+    # through the same mechanism.
     return Response(
         stream_with_context(
-            stream_ollama(question)
-        ),
-        mimetype="text/plain",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no"
-        }
-    )
-
-
-# ============================================================
-# IMPROVE ROUTE
-# ============================================================
-
-@app.route("/improve", methods=["POST"])
-def improve():
-
-    data = request.get_json(silent=True)
-
-    if not data:
-        return Response(
-            "Invalid request.",
-            mimetype="text/plain"
-        )
-
-    question = data.get(
-        "question",
-        ""
-    ).strip()
-
-    old_answer = data.get(
-        "answer",
-        ""
-    ).strip()
-
-    action = data.get(
-        "action",
-        "improve"
-    ).strip().lower()
-
-    if not question or not old_answer:
-        return Response(
-            "Missing question or answer.",
-            mimetype="text/plain"
-        )
-
-    return Response(
-        stream_with_context(
-            improve_answer(
+            stream_text_ai(
+                prompt,
+                subject,
                 question,
-                old_answer,
-                action
             )
         ),
         mimetype="text/plain",
         headers={
             "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no"
-        }
+            "X-Accel-Buffering": "no",
+        },
     )
 
 
@@ -1597,23 +2092,61 @@ if __name__ == "__main__":
     print("=" * 70)
     print("MY AI")
     print("=" * 70)
-    print("SVG -> √ normalization : ON")
-    print("Real Numbers / Surds   : ON")
-    print("Physics engine         : ON")
-    print("Circuit verification   : ON")
-    print("Heat solver            : ON")
-    print("Math AI fallback       : ON")
-    print("Improve Answer         : ON")
-    print("Streaming              : ON")
-    print("Keep alive             :", KEEP_ALIVE)
-    print("Big model              :", BIG_MODEL)
-    print("Small model            :", SMALL_MODEL)
-    print("Website                : http://127.0.0.1:5000")
+
+    print(
+        "HF configured :",
+        bool(HF_TOKEN),
+    )
+
+    print(
+        "Login         : ON"
+    )
+
+    print(
+        "Calculator    : ON"
+    )
+
+    print(
+        "Math solver   : ON"
+    )
+
+    print(
+        "Physics       : ON"
+    )
+
+    print(
+        "Chemistry     : ON"
+    )
+
+    print(
+        "Biology AI    : ON"
+    )
+
+    print(
+        "Camera        : ON"
+    )
+
+    print(
+        "Voice         : ON"
+    )
+
+    print(
+        "Creator info  : ON"
+    )
+
+    print(
+        "Follow-ups    : ON"
+    )
+
+    print(
+        "Persistent conversation memory in session: ON"
+    )
+
     print("=" * 70)
 
     app.run(
         host="127.0.0.1",
         port=5000,
         debug=True,
-        threaded=True
+        threaded=True,
     )
