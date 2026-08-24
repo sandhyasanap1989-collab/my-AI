@@ -581,75 +581,63 @@ def get_prompt(subject):
 def is_followup(question):
     q = question.strip().lower()
 
-    if q in {
-        "and world",
-        "world",
-        "and china",
-        "china",
-        "and india",
-        "and usa",
-        "and the world",
-        "what about the world",
-        "what about china",
-        "what about india",
-    }:
+    # Very short follow-up phrases
+    short_followups = {
+        "other",
+        "others",
+        "another",
+        "another one",
+        "more",
+        "more examples",
+        "next",
+        "and another",
+        "also",
+        "also tell me",
+        "what about",
+        "what about it",
+        "then",
+        "same",
+        "same question",
+        "explain more",
+        "more detail",
+        "another one?",
+        "other?",
+    }
+
+    if q in short_followups:
         return True
 
-    return q.startswith(
-        (
-            "and ",
-            "what about ",
-            "how about ",
-            "also ",
-            "compare ",
-            "then ",
-        )
+    # Follow-up phrases that normally depend on
+    # the previous question.
+    prefixes = (
+        "and ",
+        "also ",
+        "what about ",
+        "how about ",
+        "then ",
+        "another ",
+        "other ",
+        "more ",
+        "compare ",
+        "difference ",
+        "differences ",
+        "what is the other ",
+        "what are the other ",
+        "give another ",
+        "give me another ",
+        "tell me another ",
     )
 
+    if q.startswith(prefixes):
+        return True
 
-def build_ai_context(question):
-    history = session.get(
-        "chat_history",
-        [],
-    )
+    # Very short questions are often follow-ups.
+    words = q.split()
 
-    if not history:
-        return question
+    if len(words) <= 3:
+        return True
 
-    if not is_followup(question):
-        return question
-
-    previous = history[-1]
-
-    return (
-        "Previous question:\n"
-        + previous["question"]
-        + "\n\n"
-        "Previous answer:\n"
-        + previous["answer"]
-        + "\n\n"
-        "New follow-up:\n"
-        + question
-        + "\n\n"
-        "Answer the new follow-up using the previous context."
-    )
-
-
-def save_history(question, answer):
-    history = session.get(
-        "chat_history",
-        [],
-    )
-
-    history.append(
-        {
-            "question": question,
-            "answer": answer[:6000],
-        }
-    )
-
-    session["chat_history"] = history[-6:]
-    session.modified = True
+    return False
 
 
 # ============================================================
