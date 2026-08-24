@@ -2,12 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My AI</title>
 
     <style>
@@ -28,15 +23,15 @@
             font-family: inherit;
         }
 
-        /* =====================================================
-           LOGIN / CREATE ACCOUNT
-        ====================================================== */
+        /* =========================
+           AUTH
+        ========================= */
 
         .auth-screen {
             min-height: 100vh;
             display: flex;
-            justify-content: center;
             align-items: center;
+            justify-content: center;
             padding: 20px;
         }
 
@@ -46,14 +41,14 @@
             background: white;
             padding: 30px;
             border-radius: 20px;
-            box-shadow: 0 15px 45px rgba(15, 23, 42, 0.12);
+            box-shadow: 0 15px 45px rgba(0, 0, 0, 0.1);
         }
 
         .logo {
             text-align: center;
-            color: #2563eb;
             font-size: 34px;
             font-weight: 800;
+            color: #2563eb;
             margin-bottom: 7px;
         }
 
@@ -149,7 +144,6 @@
             border-radius: 10px;
             font-weight: 800;
             cursor: pointer;
-            margin-top: 5px;
         }
 
         .auth-button:hover {
@@ -164,9 +158,9 @@
             font-size: 13px;
         }
 
-        /* =====================================================
-           MAIN APP
-        ====================================================== */
+        /* =========================
+           APP
+        ========================= */
 
         .app {
             min-height: 100vh;
@@ -221,10 +215,6 @@
             cursor: pointer;
         }
 
-        .logout:hover {
-            background: #f8fafc;
-        }
-
         .main {
             flex: 1;
             min-width: 0;
@@ -271,6 +261,10 @@
             color: #667085;
             line-height: 1.6;
         }
+
+        /* =========================
+           MESSAGES
+        ========================= */
 
         .message {
             display: flex;
@@ -324,19 +318,14 @@
             color: white;
         }
 
-        .bubble h1,
         .bubble h2,
         .bubble h3 {
             margin: 8px 0;
         }
 
-        .bubble strong {
-            font-weight: 800;
-        }
-
-        /* =====================================================
+        /* =========================
            ACTION BUTTONS
-        ====================================================== */
+        ========================= */
 
         .actions {
             display: flex;
@@ -359,9 +348,9 @@
             background: #eef4ff;
         }
 
-        /* =====================================================
-           IMAGE PREVIEW
-        ====================================================== */
+        /* =========================
+           IMAGE
+        ========================= */
 
         .image-preview-wrap {
             display: none;
@@ -377,11 +366,8 @@
             object-fit: contain;
         }
 
-        .preview-actions {
-            margin-top: 7px;
-        }
-
         .remove-image {
+            margin-top: 7px;
             border: none;
             background: #fee2e2;
             color: #b91c1c;
@@ -391,9 +377,9 @@
             font-size: 12px;
         }
 
-        /* =====================================================
+        /* =========================
            COMPOSER
-        ====================================================== */
+        ========================= */
 
         .composer {
             position: fixed;
@@ -443,6 +429,56 @@
             background: #e2e8f0;
         }
 
+        /* Custom microphone */
+        .voice-btn {
+            position: relative;
+            width: 44px;
+            height: 44px;
+            flex-shrink: 0;
+            border: none;
+            border-radius: 50%;
+            background: #eef2f7;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .voice-btn:hover {
+            background: #e2e8f0;
+        }
+
+        .mic-body {
+            position: relative;
+            width: 13px;
+            height: 19px;
+            background: #111827;
+            border-radius: 8px;
+        }
+
+        .mic-body::before {
+            content: "";
+            position: absolute;
+            left: -5px;
+            bottom: -7px;
+            width: 19px;
+            height: 16px;
+            border: 2px solid #111827;
+            border-top: none;
+            border-radius: 0 0 12px 12px;
+        }
+
+        .mic-body::after {
+            content: "";
+            position: absolute;
+            left: 5px;
+            bottom: -14px;
+            width: 3px;
+            height: 8px;
+            background: #111827;
+            border-radius: 2px;
+        }
+
         .send-btn {
             background: #2563eb;
             color: white;
@@ -471,9 +507,9 @@
             line-height: 1.5;
         }
 
-        /* =====================================================
+        /* =========================
            LOADING
-        ====================================================== */
+        ========================= */
 
         .loading {
             display: inline-flex;
@@ -511,12 +547,11 @@
             }
         }
 
-        /* =====================================================
+        /* =========================
            MOBILE
-        ====================================================== */
+        ========================= */
 
         @media (max-width: 760px) {
-
             .sidebar {
                 display: none;
             }
@@ -543,6 +578,7 @@
             }
 
             .icon-btn,
+            .voice-btn,
             .send-btn {
                 width: 40px;
                 height: 40px;
@@ -554,7 +590,6 @@
         }
 
         @media (max-width: 470px) {
-
             .auth-box {
                 padding: 22px;
             }
@@ -582,9 +617,7 @@
 
     <div class="auth-box">
 
-        <div class="logo">
-            🤖 My AI
-        </div>
+        <div class="logo">🤖 My AI</div>
 
         <div class="subtitle">
             Your PCMB study assistant
@@ -612,7 +645,6 @@
 
         </div>
 
-
         <!-- LOGIN -->
 
         <div
@@ -635,7 +667,6 @@
 
             </div>
 
-
             <div class="field">
 
                 <label>
@@ -655,7 +686,6 @@
                         type="button"
                         class="show-password"
                         onclick="togglePassword('loginPassword')"
-                        title="Show password"
                     >
                         👁
                     </button>
@@ -663,7 +693,6 @@
                 </div>
 
             </div>
-
 
             <button
                 type="button"
@@ -674,7 +703,6 @@
             </button>
 
         </div>
-
 
         <!-- CREATE ACCOUNT -->
 
@@ -698,7 +726,6 @@
 
             </div>
 
-
             <div class="field">
 
                 <label>
@@ -713,7 +740,6 @@
                 >
 
             </div>
-
 
             <div class="field">
 
@@ -730,17 +756,9 @@
 
             </div>
 
-
-            <p
-                style="
-                    font-size:12px;
-                    color:#667085;
-                    margin:-2px 0 14px;
-                "
-            >
+            <p style="font-size:12px;color:#667085;margin:-2px 0 14px;">
                 Enter either an email address or a phone number.
             </p>
-
 
             <div class="field">
 
@@ -761,7 +779,6 @@
                         type="button"
                         class="show-password"
                         onclick="togglePassword('registerPassword')"
-                        title="Show password"
                     >
                         👁
                     </button>
@@ -769,7 +786,6 @@
                 </div>
 
             </div>
-
 
             <button
                 type="button"
@@ -781,7 +797,6 @@
 
         </div>
 
-
         <div
             class="auth-message"
             id="authMessage"
@@ -791,24 +806,19 @@
 
 </div>
 
-
 {% else %}
 
-
 <!-- =========================================================
-     MAIN MY AI APP
+     MAIN APP
 ========================================================== -->
 
 <div class="app">
-
-    <!-- SIDEBAR -->
 
     <aside class="sidebar">
 
         <div class="brand">
             🤖 My AI
         </div>
-
 
         <button
             type="button"
@@ -818,15 +828,10 @@
             ＋ New Chat
         </button>
 
-
         <div class="sidebar-bottom">
 
             Logged in as:
-
-            <strong>
-                {{ username }}
-            </strong>
-
+            <strong>{{ username }}</strong>
 
             <button
                 type="button"
@@ -840,21 +845,11 @@
 
     </aside>
 
-
-    <!-- MAIN -->
-
     <main class="main">
 
         <header class="topbar">
-
-            <div class="top-title">
-                My AI
-            </div>
-
+            <div class="top-title">My AI</div>
         </header>
-
-
-        <!-- CHAT -->
 
         <section
             class="chat"
@@ -871,9 +866,7 @@
                     id="welcome"
                 >
 
-                    <h1>
-                        🤖 My AI
-                    </h1>
+                    <h1>🤖 My AI</h1>
 
                     <p>
                         Hello {{ username }}! 👋
@@ -884,26 +877,17 @@
                         Chemistry, Biology or general questions.
                     </p>
 
-                    <p>
-                        You can also use
-                        🎤 microphone or 📷 camera.
-                    </p>
-
                 </div>
 
             </div>
 
         </section>
 
-
         <!-- COMPOSER -->
 
         <div class="composer">
 
             <div class="composer-box">
-
-
-                <!-- IMAGE PREVIEW -->
 
                 <div
                     class="image-preview-wrap"
@@ -913,44 +897,33 @@
                     <img
                         id="imagePreview"
                         class="image-preview"
-                        alt="Selected image preview"
+                        alt="Selected image"
                     >
-
-                    <div class="preview-actions">
-
-                        <button
-                            type="button"
-                            class="remove-image"
-                            onclick="removeImage()"
-                        >
-                            Remove image
-                        </button>
-
-                    </div>
-
-                </div>
-
-
-                <!-- INPUT ROW -->
-
-                <div class="input-row">
-
-
-                    <!-- MICROPHONE -->
 
                     <button
                         type="button"
-                        class="icon-btn"
+                        class="remove-image"
+                        onclick="removeImage()"
+                    >
+                        Remove image
+                    </button>
+
+                </div>
+
+                <div class="input-row">
+
+                    <!-- CUSTOM MIC -->
+                    <button
+                        type="button"
+                        class="voice-btn"
                         onclick="startDictation()"
                         title="Voice input"
                         aria-label="Voice input"
                     >
-                        🎤
+                        <span class="mic-body"></span>
                     </button>
 
-
                     <!-- CAMERA -->
-
                     <button
                         type="button"
                         class="icon-btn"
@@ -961,7 +934,6 @@
                         📷
                     </button>
 
-
                     <input
                         type="file"
                         id="cameraInput"
@@ -971,26 +943,22 @@
                         onchange="selectImage(event)"
                     >
 
-
-                    <!-- MESSAGE BOX -->
-
+                    <!-- TEXT -->
                     <textarea
                         id="messageInput"
                         placeholder="Ask My AI anything..."
                         rows="1"
+                        oninput="autoResize(this)"
                         onkeydown="handleKey(event)"
                     ></textarea>
 
-
                     <!-- SEND -->
-
                     <button
                         type="button"
                         class="send-btn"
                         id="sendButton"
                         onclick="sendMessage()"
                         title="Send"
-                        aria-label="Send"
                     >
                         ➤
                     </button>
@@ -1011,7 +979,7 @@
 <script>
 
 /* ============================================================
-   AUTH TABS
+   AUTH
 ============================================================ */
 
 function showAuth(type) {
@@ -1031,7 +999,6 @@ function showAuth(type) {
     const authMessage =
         document.getElementById("authMessage");
 
-
     if (type === "login") {
 
         loginForm.classList.add("active");
@@ -1049,16 +1016,11 @@ function showAuth(type) {
         registerTab.classList.add("active");
     }
 
-
     if (authMessage) {
         authMessage.textContent = "";
     }
 }
 
-
-/* ============================================================
-   PASSWORD SHOW / HIDE
-============================================================ */
 
 function togglePassword(id) {
 
@@ -1069,20 +1031,15 @@ function togglePassword(id) {
         return;
     }
 
-    if (input.type === "password") {
-
-        input.type = "text";
-
-    } else {
-
-        input.type = "password";
-
-    }
+    input.type =
+        input.type === "password"
+            ? "text"
+            : "password";
 }
 
 
 /* ============================================================
-   CREATE ACCOUNT
+   REGISTER
 ============================================================ */
 
 async function register() {
@@ -1111,37 +1068,25 @@ async function register() {
             .value;
 
     const message =
-        document.getElementById(
-            "authMessage"
-        );
-
+        document.getElementById("authMessage");
 
     if (!username) {
-
         message.textContent =
             "Please enter a username.";
-
         return;
     }
-
 
     if (!email && !phone) {
-
         message.textContent =
             "Enter either email or phone number.";
-
         return;
     }
-
 
     if (password.length < 6) {
-
         message.textContent =
             "Password must be at least 6 characters.";
-
         return;
     }
-
 
     try {
 
@@ -1163,22 +1108,16 @@ async function register() {
                 }
             );
 
-
         const data =
             await response.json();
 
-
         if (data.success) {
-
             window.location.reload();
-
         } else {
-
             message.textContent =
                 data.message ||
                 "Could not create account.";
         }
-
 
     } catch (error) {
 
@@ -1208,10 +1147,7 @@ async function login() {
             .value;
 
     const message =
-        document.getElementById(
-            "authMessage"
-        );
-
+        document.getElementById("authMessage");
 
     if (!loginValue || !password) {
 
@@ -1220,7 +1156,6 @@ async function login() {
 
         return;
     }
-
 
     try {
 
@@ -1235,27 +1170,21 @@ async function login() {
                     },
                     body: JSON.stringify({
                         login: loginValue,
-                        password: password
+                        password
                     })
                 }
             );
 
-
         const data =
             await response.json();
 
-
         if (data.success) {
-
             window.location.reload();
-
         } else {
-
             message.textContent =
                 data.message ||
                 "Login failed.";
         }
-
 
     } catch (error) {
 
@@ -1268,7 +1197,7 @@ async function login() {
 
 
 /* ============================================================
-   CHAT VARIABLES
+   CHAT STATE
 ============================================================ */
 
 let busy = false;
@@ -1276,7 +1205,7 @@ let selectedImage = null;
 
 
 /* ============================================================
-   HTML ESCAPING
+   ESCAPE HTML
 ============================================================ */
 
 function escapeHtml(text) {
@@ -1289,16 +1218,267 @@ function escapeHtml(text) {
 
 
 /* ============================================================
+   REMOVE ALL UNWANTED LATEX SIGNS
+============================================================ */
+
+function cleanMathFormatting(text) {
+
+    let clean = String(text);
+
+
+    /* -------------------------
+       Remove math delimiters
+    ------------------------- */
+
+    clean = clean.replace(/\\\[/g, "");
+    clean = clean.replace(/\\\]/g, "");
+
+    clean = clean.replace(/\\\(/g, "");
+    clean = clean.replace(/\\\)/g, "");
+
+    clean = clean.replace(/\$\$/g, "");
+    clean = clean.replace(/\$/g, "");
+
+
+    /* -------------------------
+       Remove environments
+    ------------------------- */
+
+    clean = clean.replace(
+        /\\begin\{[^}]*\}/g,
+        ""
+    );
+
+    clean = clean.replace(
+        /\\end\{[^}]*\}/g,
+        ""
+    );
+
+    clean = clean.replace(
+        /\\tag\{[^}]*\}/g,
+        ""
+    );
+
+
+    /* -------------------------
+       Remove / convert commands
+    ------------------------- */
+
+    clean = clean.replace(
+        /\\text\{([^{}]*)\}/g,
+        "$1"
+    );
+
+    clean = clean.replace(
+        /\\mathrm\{([^{}]*)\}/g,
+        "$1"
+    );
+
+    clean = clean.replace(
+        /\\mathbf\{([^{}]*)\}/g,
+        "$1"
+    );
+
+    clean = clean.replace(
+        /\\mathit\{([^{}]*)\}/g,
+        "$1"
+    );
+
+    clean = clean.replace(
+        /\\operatorname\{([^{}]*)\}/g,
+        "$1"
+    );
+
+    clean = clean.replace(
+        /\\boxed\{([^{}]*)\}/g,
+        "$1"
+    );
+
+
+    /* -------------------------
+       Fractions
+    ------------------------- */
+
+    clean = clean.replace(
+        /\\frac\{([^{}]*)\}\{([^{}]*)\}/g,
+        "($1/$2)"
+    );
+
+    clean = clean.replace(
+        /\\dfrac\{([^{}]*)\}\{([^{}]*)\}/g,
+        "($1/$2)"
+    );
+
+    clean = clean.replace(
+        /\\tfrac\{([^{}]*)\}\{([^{}]*)\}/g,
+        "($1/$2)"
+    );
+
+
+    /* -------------------------
+       Math symbols
+    ------------------------- */
+
+    const symbols = {
+        "\\times": "×",
+        "\\cdot": "·",
+        "\\div": "÷",
+        "\\pm": "±",
+        "\\mp": "∓",
+        "\\leq": "≤",
+        "\\le": "≤",
+        "\\geq": "≥",
+        "\\ge": "≥",
+        "\\neq": "≠",
+        "\\ne": "≠",
+        "\\approx": "≈",
+        "\\sim": "∼",
+        "\\infty": "∞",
+        "\\rightarrow": "→",
+        "\\to": "→",
+        "\\leftarrow": "←",
+        "\\Rightarrow": "⇒",
+        "\\Leftarrow": "⇐",
+        "\\sqrt": "√",
+        "\\degree": "°",
+        "\\cdots": "…",
+        "\\ldots": "…"
+    };
+
+    for (const command in symbols) {
+
+        clean = clean.split(command).join(
+            symbols[command]
+        );
+    }
+
+
+    /* -------------------------
+       Spacing commands
+    ------------------------- */
+
+    clean = clean.replace(
+        /\\[,;:!]/g,
+        ""
+    );
+
+    clean = clean.replace(
+        /\\quad/g,
+        " "
+    );
+
+    clean = clean.replace(
+        /\\qquad/g,
+        " "
+    );
+
+    clean = clean.replace(
+        /\\ /g,
+        " "
+    );
+
+
+    /* -------------------------
+       Remove remaining simple
+       LaTeX backslash commands
+    ------------------------- */
+
+    clean = clean.replace(
+        /\\([a-zA-Z]+)/g,
+        "$1"
+    );
+
+
+    /* -------------------------
+       Clean LaTeX braces
+    ------------------------- */
+
+    clean = clean.replace(
+        /\\left/g,
+        ""
+    );
+
+    clean = clean.replace(
+        /\\right/g,
+        ""
+    );
+
+
+    /* -------------------------
+       Superscripts
+    ------------------------- */
+
+    clean = clean.replace(/\^0\b/g, "⁰");
+    clean = clean.replace(/\^1\b/g, "¹");
+    clean = clean.replace(/\^2\b/g, "²");
+    clean = clean.replace(/\^3\b/g, "³");
+    clean = clean.replace(/\^4\b/g, "⁴");
+    clean = clean.replace(/\^5\b/g, "⁵");
+    clean = clean.replace(/\^6\b/g, "⁶");
+    clean = clean.replace(/\^7\b/g, "⁷");
+    clean = clean.replace(/\^8\b/g, "⁸");
+    clean = clean.replace(/\^9\b/g, "⁹");
+
+
+    /* -------------------------
+       Subscripts
+    ------------------------- */
+
+    clean = clean.replace(/_0\b/g, "₀");
+    clean = clean.replace(/_1\b/g, "₁");
+    clean = clean.replace(/_2\b/g, "₂");
+    clean = clean.replace(/_3\b/g, "₃");
+    clean = clean.replace(/_4\b/g, "₄");
+    clean = clean.replace(/_5\b/g, "₅");
+    clean = clean.replace(/_6\b/g, "₆");
+    clean = clean.replace(/_7\b/g, "₇");
+    clean = clean.replace(/_8\b/g, "₈");
+    clean = clean.replace(/_9\b/g, "₉");
+
+
+    /* -------------------------
+       Remove repeated spaces
+    ------------------------- */
+
+    clean = clean.replace(
+        /[ \t]{2,}/g,
+        " "
+    );
+
+
+    /* -------------------------
+       Remove empty brackets
+    ------------------------- */
+
+    clean = clean.replace(
+        /\[\s*\]/g,
+        ""
+    );
+
+    clean = clean.replace(
+        /\{\s*\}/g,
+        ""
+    );
+
+
+    return clean.trim();
+}
+
+
+/* ============================================================
    FORMAT AI ANSWER
 ============================================================ */
 
 function formatAnswer(text) {
 
+    let clean =
+        cleanMathFormatting(text);
+
     let html =
-        escapeHtml(text);
+        escapeHtml(clean);
 
 
-    /* Bold */
+    /* Bold markdown */
 
     html = html.replace(
         /\*\*(.*?)\*\*/gs,
@@ -1313,12 +1493,10 @@ function formatAnswer(text) {
         "<h3>$1</h3>"
     );
 
-
     html = html.replace(
         /^## (.*?)$/gm,
-        "<h3>$1</h3>"
+        "<h2>$1</h2>"
     );
-
 
     html = html.replace(
         /^# (.*?)$/gm,
@@ -1326,33 +1504,15 @@ function formatAnswer(text) {
     );
 
 
-    /*
-       Clean some common raw LaTeX
-       that older answers may contain.
-    */
+    /* Bullets */
 
     html = html.replace(
-        /\\\[/g,
-        ""
-    );
-
-    html = html.replace(
-        /\\\]/g,
-        ""
-    );
-
-    html = html.replace(
-        /\\boxed\{(.*?)\}/g,
-        "$1"
-    );
-
-    html = html.replace(
-        /\\frac\{(.*?)\}\{(.*?)\}/g,
-        "($1/$2)"
+        /^- (.*?)$/gm,
+        "• $1"
     );
 
 
-    /* Line breaks */
+    /* New lines */
 
     html = html.replace(
         /\n/g,
@@ -1428,13 +1588,13 @@ function addMessage(
 
 function openCamera() {
 
-    const cameraInput =
+    const input =
         document.getElementById(
             "cameraInput"
         );
 
-    if (cameraInput) {
-        cameraInput.click();
+    if (input) {
+        input.click();
     }
 }
 
@@ -1444,11 +1604,9 @@ function selectImage(event) {
     const file =
         event.target.files[0];
 
-
     if (!file) {
         return;
     }
-
 
     if (!file.type.startsWith("image/")) {
 
@@ -1459,7 +1617,6 @@ function selectImage(event) {
         return;
     }
 
-
     selectedImage = file;
 
 
@@ -1468,8 +1625,7 @@ function selectImage(event) {
             "imagePreview"
         );
 
-
-    const previewWrap =
+    const wrap =
         document.getElementById(
             "imagePreviewWrap"
         );
@@ -1478,8 +1634,7 @@ function selectImage(event) {
     preview.src =
         URL.createObjectURL(file);
 
-
-    previewWrap.style.display =
+    wrap.style.display =
         "block";
 }
 
@@ -1489,32 +1644,31 @@ function removeImage() {
     selectedImage = null;
 
 
-    const cameraInput =
+    const input =
         document.getElementById(
             "cameraInput"
         );
 
-
-    const previewWrap =
+    const wrap =
         document.getElementById(
             "imagePreviewWrap"
         );
 
 
-    if (cameraInput) {
-        cameraInput.value = "";
+    if (input) {
+        input.value = "";
     }
 
 
-    if (previewWrap) {
-        previewWrap.style.display =
+    if (wrap) {
+        wrap.style.display =
             "none";
     }
 }
 
 
 /* ============================================================
-   COMPRESS IMAGE
+   IMAGE COMPRESSION
 ============================================================ */
 
 function compressImage(file) {
@@ -1522,7 +1676,7 @@ function compressImage(file) {
     return new Promise(
         (resolve, reject) => {
 
-            const image =
+            const img =
                 new Image();
 
             const reader =
@@ -1531,15 +1685,15 @@ function compressImage(file) {
 
             reader.onload = () => {
 
-                image.onload = () => {
+                img.onload = () => {
 
                     const maxSize = 1400;
 
                     let width =
-                        image.width;
+                        img.width;
 
                     let height =
-                        image.height;
+                        img.height;
 
 
                     if (width > maxSize) {
@@ -1590,7 +1744,7 @@ function compressImage(file) {
 
 
                     ctx.drawImage(
-                        image,
+                        img,
                         0,
                         0,
                         width,
@@ -1598,29 +1752,25 @@ function compressImage(file) {
                     );
 
 
-                    const dataUrl =
+                    resolve(
                         canvas.toDataURL(
                             "image/jpeg",
                             0.8
-                        );
-
-
-                    resolve(dataUrl);
+                        )
+                    );
                 };
 
 
-                image.onerror =
+                img.onerror =
                     reject;
 
-
-                image.src =
+                img.src =
                     reader.result;
             };
 
 
             reader.onerror =
                 reject;
-
 
             reader.readAsDataURL(file);
         }
@@ -1629,7 +1779,7 @@ function compressImage(file) {
 
 
 /* ============================================================
-   SEND MESSAGE
+   SEND
 ============================================================ */
 
 async function sendMessage() {
@@ -1643,7 +1793,6 @@ async function sendMessage() {
         document.getElementById(
             "messageInput"
         );
-
 
     const sendButton =
         document.getElementById(
@@ -1730,10 +1879,12 @@ async function sendMessage() {
                 "/chat",
                 {
                     method: "POST",
+
                     headers: {
                         "Content-Type":
                             "application/json"
                     },
+
                     body: JSON.stringify({
                         message: text,
                         image: imageData
@@ -1757,17 +1908,8 @@ async function sendMessage() {
         }
 
 
-        if (!response.body) {
-
-            throw new Error(
-                "No response body"
-            );
-        }
-
-
         const reader =
             response.body.getReader();
-
 
         const decoder =
             new TextDecoder();
@@ -1842,11 +1984,7 @@ async function sendMessage() {
 
     input.value = "";
 
-
-    autoResize(
-        input
-    );
-
+    autoResize(input);
 
     removeImage();
 
@@ -1861,13 +1999,12 @@ async function sendMessage() {
 
     input.focus();
 
-
     scrollBottom();
 }
 
 
 /* ============================================================
-   IMPROVE BUTTONS
+   ACTION BUTTONS
 ============================================================ */
 
 function addActions(
@@ -1879,7 +2016,6 @@ function addActions(
         document.createElement(
             "div"
         );
-
 
     actions.className =
         "actions";
@@ -1903,13 +2039,10 @@ function addActions(
                 );
 
 
-            button.type =
-                "button";
-
+            button.type = "button";
 
             button.className =
                 "action-btn";
-
 
             button.textContent =
                 label;
@@ -1945,7 +2078,7 @@ function addActions(
 
 
 /* ============================================================
-   FIND LAST QUESTION
+   IMPROVE
 ============================================================ */
 
 function findLastQuestion() {
@@ -1969,10 +2102,6 @@ function findLastQuestion() {
     .trim();
 }
 
-
-/* ============================================================
-   IMPROVE ANSWER
-============================================================ */
 
 async function improveAnswer(
     action,
@@ -2010,10 +2139,12 @@ async function improveAnswer(
                 "/improve",
                 {
                     method: "POST",
+
                     headers: {
                         "Content-Type":
                             "application/json"
                     },
+
                     body: JSON.stringify({
                         question,
                         answer: oldAnswer,
@@ -2033,7 +2164,6 @@ async function improveAnswer(
 
         const reader =
             response.body.getReader();
-
 
         const decoder =
             new TextDecoder();
@@ -2076,23 +2206,11 @@ async function improveAnswer(
         }
 
 
-        if (!result.trim()) {
-
-            result =
-                "I couldn't improve the answer.";
-
-            answer.bubble.innerHTML =
-                formatAnswer(result);
-        }
-
-
     } catch (error) {
 
         console.error(
-            "Improve error:",
             error
         );
-
 
         answer.bubble.innerHTML =
             "<strong>❌ Could not improve answer.</strong>";
@@ -2131,10 +2249,8 @@ function startDictation() {
     recognition.lang =
         "en-IN";
 
-
     recognition.continuous =
         false;
-
 
     recognition.interimResults =
         true;
@@ -2199,7 +2315,7 @@ function startDictation() {
 
 
 /* ============================================================
-   TEXT TO SPEECH
+   READ ANSWER
 ============================================================ */
 
 function readAnswer(text) {
@@ -2220,7 +2336,7 @@ function readAnswer(text) {
 
 
     const cleanText =
-        text
+        cleanMathFormatting(text)
             .replace(
                 /[*#]/g,
                 ""
@@ -2239,7 +2355,6 @@ function readAnswer(text) {
 
     speech.rate =
         0.95;
-
 
     speech.pitch =
         1;
@@ -2270,7 +2385,7 @@ function handleKey(event) {
 
 
 /* ============================================================
-   TEXTAREA RESIZE
+   TEXTAREA
 ============================================================ */
 
 function autoResize(textarea) {
@@ -2311,11 +2426,6 @@ function newChat() {
                 Ask Mathematics, Physics,
                 Chemistry, Biology or general questions.
             </p>
-
-            <p>
-                You can also use 🎤 microphone
-                or 📷 camera.
-            </p>
         </div>
     `;
 
@@ -2326,19 +2436,18 @@ function newChat() {
         );
 
 
-    input.value =
-        "";
+    if (input) {
+
+        input.value =
+            "";
+
+        autoResize(input);
+
+        input.focus();
+    }
 
 
     removeImage();
-
-
-    autoResize(
-        input
-    );
-
-
-    input.focus();
 }
 
 
@@ -2360,7 +2469,7 @@ function scrollBottom() {
 
 
     setTimeout(
-        () => {
+        function() {
             chat.scrollTop =
                 chat.scrollHeight;
         },
