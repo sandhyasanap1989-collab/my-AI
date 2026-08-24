@@ -4,10 +4,12 @@ from flask import (
     request,
     Response,
     stream_with_context,
+    session,
 )
 import os
 import re
 import math
+
 from openai import OpenAI
 
 
@@ -17,15 +19,20 @@ from openai import OpenAI
 
 app = Flask(__name__)
 
+# IMPORTANT:
+# Set FLASK_SECRET_KEY in Render Environment Variables.
+app.secret_key = os.getenv(
+    "FLASK_SECRET_KEY",
+    "my-ai-development-secret",
+)
+
 
 # ============================================================
-# HUGGING FACE CONFIGURATION
+# HUGGING FACE
 # ============================================================
 
 HF_TOKEN = os.getenv("HF_TOKEN")
 
-# Hugging Face currently supports this model through
-# the OpenAI-compatible Inference Providers router.
 HF_MODEL = "openai/gpt-oss-120b:cheapest"
 
 hf_client = None
@@ -38,13 +45,14 @@ if HF_TOKEN:
 
 
 # ============================================================
-# GENERAL SYSTEM PROMPT
+# GENERAL AI PROMPT
 # ============================================================
 
 SYSTEM_PROMPT = r"""
-You are My AI, a smart and patient study assistant.
+You are My AI, a helpful study assistant.
 
-You help students with:
+You help with:
+
 - Mathematics
 - Physics
 - Chemistry
@@ -52,125 +60,122 @@ You help students with:
 - General Science
 - General knowledge
 
-IMPORTANT ANSWERING RULES
-=========================
+IMPORTANT COMPLETION RULES
+==========================
 
-1. Read the ENTIRE question before answering.
+1. Read the complete question before answering.
 
-2. If the question has numbered parts such as:
-   1, 2, 3, 4...
-   answer EVERY part.
+2. If there are numbered parts, answer EVERY part.
 
-3. NEVER stop halfway through a sentence.
+3. Never stop in the middle of a sentence.
 
-4. NEVER leave an unfinished equation.
+4. Never leave an equation incomplete.
 
-5. NEVER omit a requested calculation.
+5. Never omit a requested calculation.
 
-6. Before finishing, mentally check:
-   - Did I answer every requested part?
+6. Before finishing, check:
+   - Did I answer every part?
    - Did I include units?
    - Did I check important calculations?
-   - Did I state the final answers clearly?
+   - Did I provide a clear final answer?
 
 7. For numerical questions use:
 
 ### Solution
 
 **1. Step**
+
 Formula
 
 Calculation
 
 **2. Step**
+
 Formula
 
 Calculation
 
 ### Final Answer
 
-Give all final values clearly.
+State all final results clearly.
 
-8. For chemistry:
-   - Balance equations when necessary.
-   - Calculate molar mass carefully.
-   - Show moles, molarity, stoichiometry and limiting reagent when relevant.
-   - Use correct units.
-   - Distinguish atoms, molecules, ions and moles.
+8. If a question is a follow-up such as:
+   "and world"
+   "and China"
+   "what about Japan"
+   understand it using the previous conversation.
 
-9. For physics:
-   - State the relevant law/formula.
-   - Substitute values.
-   - Use SI units when appropriate.
-   - Check dimensions where useful.
-   - Include direction/sign when relevant.
+9. For current facts, do not pretend an old value is an exact live value.
+   Use approximate/estimated wording when appropriate.
 
-10. For mathematics:
-    - Show algebraic steps.
-    - Preserve fractions and radicals.
-    - Do not replace √ with x.
-    - Check the final result.
+10. Do not invent missing information.
 
-11. For biology:
-    - Use correct biological terminology.
-    - For processes, explain them in logical order.
-    - For comparison questions, use clear headings or a table-like structure.
+11. Use simple student-friendly language.
 
-12. For multiple choice questions:
-    - Solve first.
-    - Compare with the options.
-    - Clearly state the correct option.
+12. Always finish the answer completely.
 
-13. If information is missing:
-    - Say exactly what is missing.
-    - Do not invent values.
-
-14. Use simple student-friendly language.
-
-15. For a long question, keep the explanation organized.
-
-16. Always finish with:
+13. Always end with a complete:
 
 ### Final Answer
 
 **Answer ✅**
-
-Never end with an unfinished sentence.
 """
 
 
 # ============================================================
-# MATHEMATICS SYSTEM PROMPT
+# MATH PROMPT
 # ============================================================
 
 MATH_SYSTEM_PROMPT = r"""
 You are My AI's mathematics specialist.
 
-Solve carefully and completely.
+Solve mathematics questions carefully and completely.
 
-Important:
+MATH FORMATTING RULES
+=====================
+
+- NEVER put equations inside [ ... ].
+- NEVER output raw LaTeX commands such as:
+  \frac
+  \boxed
+  \begin
+  \end
+  \tag
+- Do not use broken expressions like x^{,n}.
+- Use simple readable school-style mathematics.
+- Use x², x³, x⁵ where possible.
+- Use √ for square roots.
+- For fractions, use (a/b) when simple.
+- Put equations on separate lines.
+- Never replace √ with x.
 - In this project, copied text "svg" means √.
-- Never treat "svg" as x.
-- Preserve original values.
-- Carefully identify brackets, fractions, powers and radicals.
-- Show the important algebraic steps.
-- For geometry, identify the theorem/formula before using it.
-- For trigonometry, keep exact values when possible.
-- For coordinate geometry, show the formula.
-- For quadratic equations, show the method used.
-- For surds, simplify exact forms when possible.
-- Check the answer where useful.
-- For MCQs, compare against the options.
-- Answer every requested sub-question.
 
-Always end with a complete:
+SOLVING RULES
+=============
+
+- Show the important steps.
+- Do not skip transformations.
+- For algebra, show the identity being used.
+- For quadratic equations, show the method.
+- For trigonometry, show the identity/formula.
+- For geometry, mention the theorem/formula.
+- For sequences and series, show the relevant formula.
+- For coordinate geometry, show the coordinate formula.
+- For probability, clearly define favorable and total outcomes.
+- For surds, simplify exactly where possible.
+- Check the final answer when useful.
+- Answer every numbered part.
+
+Always finish with:
 
 ### Final Answer
+
+**answer ✅**
 """
 
 
 # ============================================================
-# PHYSICS SYSTEM PROMPT
+# PHYSICS PROMPT
 # ============================================================
 
 PHYSICS_SYSTEM_PROMPT = r"""
@@ -178,115 +183,118 @@ You are My AI's physics specialist.
 
 Solve physics questions completely.
 
-For numerical problems:
+For numerical questions use:
 
 ### Given
-List the known values with units.
+
+List known quantities and units.
 
 ### Formula
-Write the relevant equation.
+
+State the relevant law/formula.
 
 ### Solution
-Substitute values carefully.
+
+Substitute values and calculate.
 
 ### Verification
-Check units or the physical relation where useful.
+
+Check units or the physical relation.
 
 ### Final Answer
-State the answer with units.
+
+Give the final answer with units.
 
 Important:
 - Use SI units where appropriate.
-- Distinguish scalar and vector quantities.
-- Use correct signs.
-- Do not invent missing values.
-- For circuits, check voltage, current and power relationships.
-- For mechanics, check Newton's laws, work-energy and momentum.
-- For heat, use correct mass units.
-- For optics, use the correct sign convention when applicable.
-- Complete every numbered part.
+- Show signs/directions where relevant.
+- Do not invent missing data.
+- For circuits, verify current/voltage/power.
+- For mechanics, verify laws and units.
+- For work-energy, check joules.
+- For heat, check mass units.
+- For optics, use an appropriate sign convention.
+- For electricity, distinguish voltage, current, resistance and power.
+- Complete all requested parts.
 """
 
 
 # ============================================================
-# CHEMISTRY SYSTEM PROMPT
+# CHEMISTRY PROMPT
 # ============================================================
 
 CHEMISTRY_SYSTEM_PROMPT = r"""
 You are My AI's chemistry specialist.
 
-Solve chemistry questions completely and carefully.
+Solve chemistry questions completely.
 
-For numerical questions:
-- Write the chemical equation.
-- Balance it if necessary.
-- Calculate molar masses.
-- Convert mass to moles correctly.
-- Use molarity as mol/L.
-- Identify limiting reagent when required.
+For numerical problems:
+- Write the reaction equation when relevant.
+- Balance the equation if necessary.
+- Calculate molar mass carefully.
+- Convert mass to moles.
+- Convert mL to L.
+- Use M = n/V correctly.
 - Use stoichiometric ratios.
-- Calculate particles using Avogadro's number.
-- Use correct gas-volume conditions.
-- Include units at every important stage.
+- Identify limiting reagent.
+- Calculate excess reagent when asked.
+- Calculate gas volume using the stated conditions.
+- Use Avogadro's number when required.
+- Distinguish atoms, ions, molecules and moles.
+- Include units.
 
 For conceptual questions:
-- Explain clearly.
-- Use correct chemical terminology.
-- Distinguish atoms, ions, molecules and compounds.
-- Do not invent data.
-
-For organic chemistry:
-- Identify the reaction type where appropriate.
-- Preserve the structure and stoichiometry.
-
-For equilibrium, acids/bases, electrochemistry and thermochemistry:
-- Show the governing relationship before calculating.
+- Give correct definitions.
+- Explain reactions clearly.
+- Do not invent information.
 
 Always answer every numbered part.
 
-Always end with:
+Always finish with:
 
 ### Final Answer
 """
 
 
 # ============================================================
-# BIOLOGY SYSTEM PROMPT
+# BIOLOGY PROMPT
 # ============================================================
 
 BIOLOGY_SYSTEM_PROMPT = r"""
 You are My AI's biology specialist.
 
-Answer biology questions accurately and clearly.
+Answer biology questions accurately and completely.
 
 For definitions:
-Give a direct definition and one useful explanation.
+Give the definition first, followed by a simple explanation.
 
 For processes:
-Explain events in correct sequence.
+Explain the steps in the correct order.
 
 For comparisons:
 Give clear point-by-point differences.
 
-For diagrams or structures described in text:
-Identify structures carefully and explain their functions.
-
 For genetics:
-- Define alleles/genotypes/phenotypes when necessary.
-- Show crosses step by step.
-- State genotype and phenotype ratios clearly.
+- Identify genotype and phenotype.
+- Show crosses clearly.
+- Calculate ratios and probabilities.
 
-For ecology:
-- Distinguish food chains, food webs, trophic levels and energy flow.
+For cell biology:
+- Identify structures and their functions.
 
-For human biology:
-- Use accurate terminology.
+For human physiology:
 - Explain organs, tissues and systems logically.
 
-Do not invent biological facts.
+For ecology:
+- Explain energy flow, trophic levels, food chains and food webs.
+
+Use correct biological terminology.
+
+Do not invent facts.
+
 Answer every requested part.
 
-Always end with:
+Always finish with:
 
 ### Final Answer
 """
@@ -313,7 +321,7 @@ def basic_response(message):
         return (
             "Hello! 👋 I'm My AI.\n\n"
             "You can ask me Mathematics, Physics, Chemistry, "
-            "Biology, Science, or general questions."
+            "Biology, Science or general questions."
         )
 
     if q in {
@@ -331,7 +339,7 @@ def basic_response(message):
     }:
         return (
             "I'm doing great! 🤖\n\n"
-            "Give me a difficult question and let's solve it."
+            "Give me a difficult PCMB question."
         )
 
     if q in {
@@ -392,7 +400,95 @@ def basic_response(message):
 
 
 # ============================================================
-# GENERAL HELPERS
+# FOLLOW-UP MEMORY
+# ============================================================
+
+def is_followup(question):
+    q = question.strip().lower()
+
+    if q in {
+        "and world",
+        "world",
+        "and china",
+        "china",
+        "and india",
+        "and usa",
+        "and the world",
+        "what about the world",
+        "what about china",
+        "what about india",
+    }:
+        return True
+
+    prefixes = (
+        "and ",
+        "what about ",
+        "how about ",
+        "also ",
+        "compare ",
+        "what about ",
+        "then ",
+    )
+
+    return q.startswith(prefixes)
+
+
+def build_contextual_question(question):
+    history = session.get("chat_history", [])
+
+    if not history:
+        return question
+
+    if not is_followup(question):
+        return question
+
+    previous_question = history[-1].get(
+        "question",
+        "",
+    )
+
+    previous_answer = history[-1].get(
+        "answer",
+        "",
+    )
+
+    return f"""
+Previous question:
+{previous_question}
+
+Previous answer:
+{previous_answer}
+
+New follow-up:
+{question}
+
+Understand the follow-up in the context of the previous conversation.
+Answer only the new follow-up, but use the earlier context when necessary.
+"""
+
+
+def save_turn(question, answer):
+    history = session.get(
+        "chat_history",
+        [],
+    )
+
+    history.append(
+        {
+            "question": question,
+            "answer": answer[:6000],
+        }
+    )
+
+    # Keep only the most recent few turns
+    session["chat_history"] = history[-6:]
+
+    # Needed for Flask session changes
+    session.modified = True
+
+
+# ============================================================
+# HELPERS
 # ============================================================
 
 def fmt(value, decimals=5):
@@ -405,17 +501,7 @@ def fmt(value, decimals=5):
     return f"{value:.{decimals}f}".rstrip("0").rstrip(".")
 
 
-def close(a, b, tolerance=1e-7):
-    return math.isclose(
-        a,
-        b,
-        rel_tol=tolerance,
-        abs_tol=tolerance,
-    )
-
-
 def normalize_math_text(text):
-    # Known copied-text artifact from this project
     text = text.replace("svg", "√")
     text = text.replace("SVG", "√")
 
@@ -535,6 +621,7 @@ def detect_subject(question):
         "pressure",
         "density",
         "fluid",
+        "motion",
     ]
 
     chemistry_words = [
@@ -646,7 +733,7 @@ def subject_prompt(subject):
 
 
 # ============================================================
-# EXACT MATH SOLVER
+# EXACT MATH SOLVERS
 # ============================================================
 
 def solve_known_surds(question):
@@ -666,8 +753,13 @@ def solve_known_surds(question):
     if not (has_a and has_b):
         return None
 
-    a = math.sqrt(5 + 2 * math.sqrt(6))
-    b = math.sqrt(5 - 2 * math.sqrt(6))
+    a = math.sqrt(
+        5 + 2 * math.sqrt(6)
+    )
+
+    b = math.sqrt(
+        5 - 2 * math.sqrt(6)
+    )
 
     if (
         "√(5+2√6)+√(5-2√6)" in compact
@@ -683,7 +775,7 @@ def solve_known_surds(question):
 
 √(5 − 2√6) = √3 − √2
 
-Therefore,
+Therefore:
 
 N = [(√3 + √2) + (√3 − √2)]
     / [(√3 + √2) − (√3 − √2)]
@@ -700,8 +792,98 @@ N = √(3/2)
     return None
 
 
+def solve_power_recurrence(question):
+    """
+    Handles:
+    If x + 1/x = a, find x^n + 1/x^n
+    for small n.
+    """
+
+    q = question.lower()
+
+    match = re.search(
+        r"x\s*\+\s*1/x\s*=\s*(-?\d+(?:\.\d+)?)",
+        q,
+    )
+
+    n_match = re.search(
+        r"x\s*(?:\^|\*\*)\s*(\d+)"
+        r"\s*\+\s*1\s*/\s*x\s*(?:\^|\*\*)\s*\1",
+        q,
+    )
+
+    if not match or not n_match:
+        return None
+
+    a = float(match.group(1))
+    n = int(n_match.group(1))
+
+    if n < 1 or n > 20:
+        return None
+
+    values = {
+        0: 2,
+        1: a,
+    }
+
+    if n >= 2:
+        values[2] = a * a - 2
+
+    for k in range(2, n):
+        values[k + 1] = (
+            a * values[k]
+            - values[k - 1]
+        )
+
+    value = values[n]
+
+    steps = []
+
+    for k in range(2, n + 1):
+        if k == 2:
+            steps.append(
+                f"S₂ = ({fmt(a)})² − 2 = {fmt(values[2])}"
+            )
+        else:
+            steps.append(
+                f"S{k} = {fmt(a)}S{k-1} − S{k-2} = {fmt(values[k])}"
+            )
+
+    return f"""
+### Solution
+
+Given:
+
+x + 1/x = {fmt(a)}
+
+Let:
+
+Sₙ = xⁿ + 1/xⁿ
+
+We use:
+
+Sₙ₊₁ = (x + 1/x)Sₙ − Sₙ₋₁
+
+Also:
+
+S₀ = 2
+
+S₁ = {fmt(a)}
+
+{' '.join(steps)}
+
+Therefore:
+
+S{n} = {fmt(value)}
+
+### Final Answer
+
+**xⁿ + 1/xⁿ = {fmt(value)} ✅**
+""".strip()
+
+
 # ============================================================
-# PHYSICS: SERIES-PARALLEL CIRCUIT
+# PHYSICS SOLVER
 # ============================================================
 
 def solve_circuit(question):
@@ -720,7 +902,9 @@ def solve_circuit(question):
     if not voltage_match:
         return None
 
-    voltage = float(voltage_match.group(1))
+    voltage = float(
+        voltage_match.group(1)
+    )
 
     resistors = [
         float(x)
@@ -734,217 +918,220 @@ def solve_circuit(question):
     if len(resistors) < 3:
         return None
 
-    # Common case:
-    # one resistor in series with two parallel resistors
-    if "parallel combination" in q:
-        match = re.search(
-            r"parallel\s+combination\s+of\s+"
-            r"(\d+(?:\.\d+)?)\s*(?:Ω|ohm|ohms)"
-            r"\s*(?:and|&)\s*"
-            r"(\d+(?:\.\d+)?)\s*(?:Ω|ohm|ohms)",
-            problem,
-            re.IGNORECASE,
-        )
+    match = re.search(
+        r"parallel\s+combination\s+of\s+"
+        r"(\d+(?:\.\d+)?)\s*(?:Ω|ohm|ohms)"
+        r"\s*(?:and|&)\s*"
+        r"(\d+(?:\.\d+)?)\s*(?:Ω|ohm|ohms)",
+        problem,
+        re.IGNORECASE,
+    )
 
-        if not match:
-            return None
+    if not match:
+        return None
 
-        r1 = float(match.group(1))
-        r2 = float(match.group(2))
+    r1 = float(match.group(1))
+    r2 = float(match.group(2))
 
-        remaining = resistors.copy()
+    remaining = resistors.copy()
 
-        try:
-            remaining.remove(r1)
-            remaining.remove(r2)
-        except ValueError:
-            return None
+    try:
+        remaining.remove(r1)
+        remaining.remove(r2)
+    except ValueError:
+        return None
 
-        if not remaining:
-            return None
+    if not remaining:
+        return None
 
-        series = remaining
+    series = remaining
 
-        rp = (r1 * r2) / (r1 + r2)
-        rt = sum(series) + rp
-        total_current = voltage / rt
+    rp = (r1 * r2) / (
+        r1 + r2
+    )
 
-        series_voltage = [
-            total_current * r
-            for r in series
-        ]
+    rt = sum(series) + rp
 
-        vp = voltage - sum(series_voltage)
+    current = voltage / rt
 
-        i1 = vp / r1
-        i2 = vp / r2
+    series_voltage = [
+        current * r
+        for r in series
+    ]
 
-        series_power = [
-            total_current ** 2 * r
-            for r in series
-        ]
+    vp = voltage - sum(
+        series_voltage
+    )
 
-        p1 = vp ** 2 / r1
-        p2 = vp ** 2 / r2
+    i1 = vp / r1
+    i2 = vp / r2
 
-        total_power = voltage * total_current
-        component_power = sum(series_power) + p1 + p2
+    series_power = [
+        current ** 2 * r
+        for r in series
+    ]
 
-        lines = [
-            "### Solution",
-            "",
-            "**1. Parallel resistance**",
-            "",
-            "Rₚ = (R₁ × R₂) / (R₁ + R₂)",
-            "",
-            f"Rₚ = ({fmt(r1)} × {fmt(r2)}) / "
-            f"({fmt(r1)} + {fmt(r2)})",
-            "",
-            f"**Rₚ = {fmt(rp)} Ω**",
-            "",
-            "**2. Total resistance**",
-            "",
-            f"Rₜ = {' + '.join(fmt(r) for r in series)} + {fmt(rp)}",
-            "",
-            f"**Rₜ = {fmt(rt)} Ω**",
-            "",
-            "**3. Total current**",
-            "",
-            "I = V / Rₜ",
-            "",
-            f"I = {fmt(voltage)} / {fmt(rt)}",
-            "",
-            f"**I = {fmt(total_current)} A**",
-            "",
-        ]
+    p1 = vp ** 2 / r1
+    p2 = vp ** 2 / r2
 
-        step = 4
+    total_power = voltage * current
+    component_power = (
+        sum(series_power)
+        + p1
+        + p2
+    )
 
-        for resistor, drop in zip(series, series_voltage):
-            lines.extend([
-                f"**{step}. Voltage across {fmt(resistor)} Ω**",
-                "",
-                "V = IR",
-                "",
-                f"V = {fmt(total_current)} × {fmt(resistor)}",
-                "",
-                f"**V = {fmt(drop)} V**",
-                "",
-            ])
-            step += 1
+    lines = [
+        "### Solution",
+        "",
+        "**1. Parallel resistance**",
+        "",
+        "Rₚ = (R₁ × R₂) / (R₁ + R₂)",
+        "",
+        f"Rₚ = ({fmt(r1)} × {fmt(r2)}) / "
+        f"({fmt(r1)} + {fmt(r2)})",
+        "",
+        f"**Rₚ = {fmt(rp)} Ω**",
+        "",
+        "**2. Total resistance**",
+        "",
+        f"Rₜ = {' + '.join(fmt(r) for r in series)} + {fmt(rp)}",
+        "",
+        f"**Rₜ = {fmt(rt)} Ω**",
+        "",
+        "**3. Total current**",
+        "",
+        "I = V / Rₜ",
+        "",
+        f"I = {fmt(voltage)} / {fmt(rt)}",
+        "",
+        f"**I = {fmt(current)} A**",
+        "",
+    ]
 
+    step = 4
+
+    for resistor, drop in zip(
+        series,
+        series_voltage,
+    ):
         lines.extend([
-            f"**{step}. Voltage across the parallel section**",
+            f"**{step}. Voltage across {fmt(resistor)} Ω**",
             "",
-            f"**Vₚ = {fmt(vp)} V**",
+            "V = IR",
             "",
-        ])
-        step += 1
-
-        lines.extend([
-            f"**{step}. Current through {fmt(r1)} Ω**",
+            f"V = {fmt(current)} × {fmt(resistor)}",
             "",
-            "I₁ = Vₚ / R₁",
-            "",
-            f"**I₁ = {fmt(i1)} A**",
-            "",
-        ])
-        step += 1
-
-        lines.extend([
-            f"**{step}. Current through {fmt(r2)} Ω**",
-            "",
-            "I₂ = Vₚ / R₂",
-            "",
-            f"**I₂ = {fmt(i2)} A**",
-            "",
-        ])
-        step += 1
-
-        lines.extend([
-            f"**{step}. Power in each resistor**",
-            "",
-        ])
-
-        for resistor, power in zip(series, series_power):
-            lines.extend([
-                f"Power in {fmt(resistor)} Ω = I²R",
-                "",
-                f"**P = {fmt(power)} W**",
-                "",
-            ])
-
-        lines.extend([
-            f"Power in {fmt(r1)} Ω = V²/R",
-            "",
-            f"**P = {fmt(p1)} W**",
-            "",
-            f"Power in {fmt(r2)} Ω = V²/R",
-            "",
-            f"**P = {fmt(p2)} W**",
+            f"**V = {fmt(drop)} V**",
             "",
         ])
 
         step += 1
 
+    lines.extend([
+        f"**{step}. Voltage across parallel section**",
+        "",
+        f"**Vₚ = {fmt(vp)} V**",
+        "",
+    ])
+
+    step += 1
+
+    lines.extend([
+        f"**{step}. Current through {fmt(r1)} Ω**",
+        "",
+        "I₁ = Vₚ / R₁",
+        "",
+        f"**I₁ = {fmt(i1)} A**",
+        "",
+    ])
+
+    step += 1
+
+    lines.extend([
+        f"**{step}. Current through {fmt(r2)} Ω**",
+        "",
+        "I₂ = Vₚ / R₂",
+        "",
+        f"**I₂ = {fmt(i2)} A**",
+        "",
+    ])
+
+    step += 1
+
+    lines.extend([
+        f"**{step}. Power dissipated**",
+        "",
+    ])
+
+    for resistor, power in zip(
+        series,
+        series_power,
+    ):
         lines.extend([
-            f"**{step}. Total power**",
+            f"Power in {fmt(resistor)} Ω = I²R",
             "",
-            "P = VI",
+            f"**P = {fmt(power)} W**",
             "",
-            f"P = {fmt(voltage)} × {fmt(total_current)}",
-            "",
-            f"**P = {fmt(total_power)} W**",
-            "",
-            "### Verification",
-            "",
-            f"Sum of component powers = {fmt(component_power)} W",
-            "",
-            f"Battery power = {fmt(total_power)} W",
-            "",
-            "**Power check ✅**",
-            "",
-            "### Final Answer",
-            "",
-            f"- **Parallel resistance = {fmt(rp)} Ω**",
-            f"- **Total resistance = {fmt(rt)} Ω**",
-            f"- **Total current = {fmt(total_current)} A**",
-            f"- **Parallel voltage = {fmt(vp)} V**",
-            f"- **Total power = {fmt(total_power)} W ✅**",
         ])
 
-        return "\n".join(lines)
+    lines.extend([
+        f"Power in {fmt(r1)} Ω = V²/R",
+        "",
+        f"**P = {fmt(p1)} W**",
+        "",
+        f"Power in {fmt(r2)} Ω = V²/R",
+        "",
+        f"**P = {fmt(p2)} W**",
+        "",
+    ])
 
-    return None
+    step += 1
 
+    lines.extend([
+        f"**{step}. Total power**",
+        "",
+        "P = VI",
+        "",
+        f"P = {fmt(voltage)} × {fmt(current)}",
+        "",
+        f"**P = {fmt(total_power)} W**",
+        "",
+        "### Verification",
+        "",
+        f"Component powers = {fmt(component_power)} W",
+        "",
+        f"Battery power = {fmt(total_power)} W",
+        "",
+        "**Power check ✅**",
+        "",
+        "### Final Answer",
+        "",
+        f"- **Parallel resistance = {fmt(rp)} Ω**",
+        f"- **Total resistance = {fmt(rt)} Ω**",
+        f"- **Total current = {fmt(current)} A**",
+        f"- **Parallel voltage = {fmt(vp)} V**",
+        f"- **Total power = {fmt(total_power)} W ✅**",
+    ])
 
-# ============================================================
-# PHYSICS: BASIC ELECTRICITY
-# ============================================================
+    return "\n".join(lines)
+
 
 def solve_basic_electricity(question):
     q = question.lower()
     problem = get_problem_text(question)
 
-    voltage = None
     voltage_match = re.search(
         r"(\d+(?:\.\d+)?)\s*(?:V|volt|volts)\b",
         problem,
         re.IGNORECASE,
     )
 
-    if voltage_match:
-        voltage = float(voltage_match.group(1))
-
-    power = None
     power_match = re.search(
         r"(\d+(?:\.\d+)?)\s*(?:W|watt|watts)\b",
         problem,
         re.IGNORECASE,
     )
-
-    if power_match:
-        power = float(power_match.group(1))
 
     resistors = [
         float(x)
@@ -955,19 +1142,32 @@ def solve_basic_electricity(question):
         )
     ]
 
+    voltage = (
+        float(voltage_match.group(1))
+        if voltage_match
+        else None
+    )
+
+    power = (
+        float(power_match.group(1))
+        if power_match
+        else None
+    )
+
     if (
         voltage is not None
         and power is not None
         and "resistance" in q
     ):
-        resistance = voltage ** 2 / power
+        resistance = (
+            voltage ** 2
+            / power
+        )
 
         return f"""
 ### Solution
 
 P = V²/R
-
-Therefore:
 
 R = V²/P
 
@@ -1013,7 +1213,7 @@ I = {fmt(power)} / {fmt(voltage)}
         return f"""
 ### Solution
 
-For resistors in series:
+For series resistors:
 
 Rₜ = R₁ + R₂ + ...
 
@@ -1033,7 +1233,10 @@ Rₜ = {' + '.join(fmt(x) for x in resistors)}
     ):
         r1, r2 = resistors
 
-        rp = (r1 * r2) / (r1 + r2)
+        rp = (
+            r1 * r2
+            / (r1 + r2)
+        )
 
         return f"""
 ### Solution
@@ -1053,10 +1256,6 @@ Rₚ = ({fmt(r1)} × {fmt(r2)})
     return None
 
 
-# ============================================================
-# PHYSICS: HEAT
-# ============================================================
-
 def solve_heat_question(question):
     problem = get_problem_text(question)
 
@@ -1067,8 +1266,9 @@ def solve_heat_question(question):
     )
 
     c_match = re.search(
-        r"(\d+(?:\.\d+)?)\s*(?:J|j)"
-        r"\s*(?:/|per)\s*"
+        r"(\d+(?:\.\d+)?)\s*"
+        r"(?:J|j)"
+        r"\s*/\s*"
         r"(kg|g)"
         r"\s*(?:°|deg)?\s*C",
         problem,
@@ -1083,47 +1283,69 @@ def solve_heat_question(question):
         re.IGNORECASE,
     )
 
-    if not mass_match or not c_match or not temp_match:
+    if not mass_match:
         return None
 
-    mass = float(mass_match.group(1))
-    mass_unit = mass_match.group(2).lower()
+    if not c_match:
+        return None
 
-    c = float(c_match.group(1))
-    c_unit = c_match.group(2).lower()
+    if not temp_match:
+        return None
 
-    t1 = float(temp_match.group(1))
-    t2 = float(temp_match.group(2))
+    mass = float(
+        mass_match.group(1)
+    )
+
+    mass_unit = (
+        mass_match.group(2)
+        .lower()
+    )
+
+    c = float(
+        c_match.group(1)
+    )
+
+    c_unit = (
+        c_match.group(2)
+        .lower()
+    )
+
+    t1 = float(
+        temp_match.group(1)
+    )
+
+    t2 = float(
+        temp_match.group(2)
+    )
 
     if mass_unit == "g":
         mass_kg = mass / 1000
     else:
         mass_kg = mass
 
-    # Convert J/g°C to J/kg°C
     if c_unit == "g":
         c = c * 1000
 
-    delta_t = abs(t2 - t1)
+    delta_t = abs(
+        t2 - t1
+    )
 
-    heat = mass_kg * c * delta_t
+    heat = (
+        mass_kg
+        * c
+        * delta_t
+    )
 
     return f"""
 ### Solution
 
-Given:
+Q = mcΔT
 
 m = {fmt(mass_kg)} kg
 
 c = {fmt(c)} J kg⁻¹ °C⁻¹
 
-ΔT = |{fmt(t2)} − {fmt(t1)}|
-
 ΔT = {fmt(delta_t)} °C
-
-Use:
-
-Q = mcΔT
 
 Q = {fmt(mass_kg)} × {fmt(c)} × {fmt(delta_t)}
 
@@ -1136,60 +1358,197 @@ Q = {fmt(mass_kg)} × {fmt(c)} × {fmt(delta_t)}
 
 
 # ============================================================
-# CHEMISTRY: MOLES / MOLARITY
+# CHEMISTRY SOLVERS
 # ============================================================
 
-def solve_mole_question(question):
+def solve_iron_hcl(question):
     q = question.lower()
-    problem = get_problem_text(question)
+
+    if (
+        "fe" not in q
+        or "hcl" not in q
+    ):
+        return None
+
+    if not (
+        "limiting" in q
+        or "hydrogen" in q
+        or "fecl2" in q
+    ):
+        return None
 
     mass_match = re.search(
-        r"(\d+(?:\.\d+)?)\s*g",
-        problem,
+        r"(\d+(?:\.\d+)?)\s*g"
+        r".*?"
+        r"(?:iron|fe)",
+        question,
         re.IGNORECASE,
     )
 
-    molar_mass_match = re.search(
-        r"molar\s+mass\s*(?:=|is)\s*"
-        r"(\d+(?:\.\d+)?)\s*g",
-        problem,
+    volume_match = re.search(
+        r"(\d+(?:\.\d+)?)\s*mL"
+        r".*?"
+        r"(?:hcl|hydrochloric)",
+        question,
         re.IGNORECASE,
     )
 
-    if mass_match and molar_mass_match:
-        mass = float(mass_match.group(1))
-        molar_mass = float(molar_mass_match.group(1))
+    molarity_match = re.search(
+        r"(\d+(?:\.\d+)?)\s*M"
+        r".*?"
+        r"(?:hcl|hydrochloric)",
+        question,
+        re.IGNORECASE,
+    )
 
-        if molar_mass > 0:
-            moles = mass / molar_mass
+    if not mass_match:
+        return None
 
-            return f"""
+    if not volume_match:
+        return None
+
+    if not molarity_match:
+        return None
+
+    mass_fe = float(
+        mass_match.group(1)
+    )
+
+    volume_hcl = (
+        float(volume_match.group(1))
+        / 1000
+    )
+
+    molarity_hcl = float(
+        molarity_match.group(1)
+    )
+
+    moles_fe = mass_fe / 56
+    moles_hcl = (
+        molarity_hcl
+        * volume_hcl
+    )
+
+    hcl_needed = (
+        2 * moles_fe
+    )
+
+    if moles_hcl < hcl_needed:
+        limiting = "HCl"
+        h2_moles = moles_hcl / 2
+        fe_used = h2_moles
+    else:
+        limiting = "Fe"
+        h2_moles = moles_fe
+        fe_used = moles_fe
+
+    h2_volume = (
+        h2_moles
+        * 22.4
+    )
+
+    fecl2_mass = (
+        fe_used
+        * 126.9
+    )
+
+    return f"""
 ### Solution
 
-Use:
+Reaction:
+
+Fe + 2HCl → FeCl₂ + H₂
+
+**1. Moles of Fe**
 
 n = m/M
 
-n = {fmt(mass)} / {fmt(molar_mass)}
+n = {fmt(mass_fe)} / 56
 
-**n = {fmt(moles)} mol**
+**n(Fe) = {fmt(moles_fe)} mol**
+
+**2. Moles of HCl**
+
+n = M × V
+
+V = {fmt(volume_hcl)} L
+
+n = {fmt(molarity_hcl)} × {fmt(volume_hcl)}
+
+**n(HCl) = {fmt(moles_hcl)} mol**
+
+**3. Limiting reagent**
+
+1 mol Fe requires 2 mol HCl.
+
+HCl required:
+
+2 × {fmt(moles_fe)}
+
+= {fmt(hcl_needed)} mol
+
+Available HCl:
+
+{fmt(moles_hcl)} mol
+
+Therefore:
+
+**Limiting reagent = {limiting}**
+
+**4. Moles of H₂**
+
+**n(H₂) = {fmt(h2_moles)} mol**
+
+**5. Volume of H₂ at STP**
+
+V = n × 22.4
+
+V = {fmt(h2_moles)} × 22.4
+
+**V(H₂) = {fmt(h2_volume)} L**
+
+**6. Mass of FeCl₂**
+
+M(FeCl₂) = 56 + 2(35.45)
+
+= 126.9 g mol⁻¹
+
+Mass = n × M
+
+Mass = {fmt(fe_used)} × 126.9
+
+**Mass(FeCl₂) = {fmt(fecl2_mass)} g**
 
 ### Final Answer
 
-**{fmt(moles)} mol ✅**
+- **Fe = {fmt(moles_fe)} mol**
+- **HCl = {fmt(moles_hcl)} mol**
+- **Limiting reagent = {limiting}**
+- **H₂ = {fmt(h2_moles)} mol**
+- **H₂ at STP = {fmt(h2_volume)} L**
+- **FeCl₂ = {fmt(fecl2_mass)} g ✅**
 """.strip()
 
-    # Common wording: "5.85 g NaCl, Na=23, Cl=35.5"
-    nacl_match = re.search(
-        r"(\d+(?:\.\d+)?)\s*g.*NaCl",
-        problem,
+
+def solve_mole_question(question):
+    q = question.lower()
+
+    mass_match = re.search(
+        r"(\d+(?:\.\d+)?)\s*g",
+        question,
         re.IGNORECASE,
     )
 
-    if nacl_match:
-        mass = float(nacl_match.group(1))
+    if not mass_match:
+        return None
 
-        molar_mass = 23 + 35.5
+    mass = float(
+        mass_match.group(1)
+    )
+
+    # NaCl special case
+    if "nacl" in q:
+        molar_mass = 58.5
 
         moles = mass / molar_mass
 
@@ -1218,35 +1577,42 @@ n = {fmt(mass)} / 58.5
     return None
 
 
-# ============================================================
-# CHEMISTRY: MOLARITY
-# ============================================================
-
 def solve_molarity(question):
     q = question.lower()
-    problem = get_problem_text(question)
 
-    if "molarity" not in q and not re.search(r"\bM\b", problem):
+    if "molarity" not in q:
         return None
 
     moles_match = re.search(
         r"(\d+(?:\.\d+)?)\s*mol",
-        problem,
+        question,
         re.IGNORECASE,
     )
 
     volume_match = re.search(
         r"(\d+(?:\.\d+)?)\s*(mL|L)",
-        problem,
+        question,
         re.IGNORECASE,
     )
 
-    if not moles_match or not volume_match:
+    if not moles_match:
         return None
 
-    moles = float(moles_match.group(1))
-    volume = float(volume_match.group(1))
-    unit = volume_match.group(2).lower()
+    if not volume_match:
+        return None
+
+    moles = float(
+        moles_match.group(1)
+    )
+
+    volume = float(
+        volume_match.group(1)
+    )
+
+    unit = (
+        volume_match.group(2)
+        .lower()
+    )
 
     if unit == "ml":
         volume /= 1000
@@ -1254,12 +1620,12 @@ def solve_molarity(question):
     if volume <= 0:
         return None
 
-    molarity = moles / volume
+    molarity = (
+        moles / volume
+    )
 
     return f"""
 ### Solution
-
-Molarity:
 
 M = n/V
 
@@ -1278,237 +1644,31 @@ M = {fmt(moles)} / {fmt(volume)}
 
 
 # ============================================================
-# CHEMISTRY: PARTICLES FROM MOLES
+# AI ROUTING
 # ============================================================
 
-def solve_particles(question):
-    q = question.lower()
-
-    if not any(
-        phrase in q
-        for phrase in [
-            "particles",
-            "molecules",
-            "atoms",
-            "ions",
-            "number of particles",
-            "number of molecules",
-            "number of atoms",
-            "number of ions",
-        ]
-    ):
-        return None
-
-    mole_match = re.search(
-        r"(\d+(?:\.\d+)?(?:e[+-]?\d+)?)\s*mol",
-        question,
-        re.IGNORECASE,
-    )
-
-    if not mole_match:
-        return None
-
-    moles = float(mole_match.group(1))
-
-    avogadro = 6.022e23
-
-    count = moles * avogadro
-
-    return f"""
-### Solution
-
-Use:
-
-N = nNₐ
-
-N = {fmt(moles)} × 6.022 × 10²³
-
-**N = {count:.5e}**
-
-### Final Answer
-
-**{count:.5e} particles ✅**
-""".strip()
-
-
-# ============================================================
-# CHEMISTRY: STOICHIOMETRY / LIMITING REAGENT
-# ============================================================
-
-def solve_iron_hcl(question):
-    q = question.lower()
-
-    if "fe" not in q or "hcl" not in q:
-        return None
-
-    if "limiting" not in q and "hydrogen" not in q:
-        return None
-
-    mass_match = re.search(
-        r"(\d+(?:\.\d+)?)\s*g.*iron",
-        question,
-        re.IGNORECASE,
-    )
-
-    volume_match = re.search(
-        r"(\d+(?:\.\d+)?)\s*mL.*hcl",
-        question,
-        re.IGNORECASE,
-    )
-
-    molarity_match = re.search(
-        r"(\d+(?:\.\d+)?)\s*M.*hcl",
-        question,
-        re.IGNORECASE,
-    )
-
-    if not mass_match or not volume_match or not molarity_match:
-        return None
-
-    mass_fe = float(mass_match.group(1))
-    volume_hcl = float(volume_match.group(1)) / 1000
-    molarity_hcl = float(molarity_match.group(1))
-
-    moles_fe = mass_fe / 56
-    moles_hcl = molarity_hcl * volume_hcl
-
-    hcl_needed = 2 * moles_fe
-
-    if moles_hcl < hcl_needed:
-        limiting = "HCl"
-        moles_h2 = moles_hcl / 2
-        moles_fe_used = moles_h2
-    else:
-        limiting = "Fe"
-        moles_h2 = moles_fe
-        moles_fe_used = moles_fe
-
-    h2_volume = moles_h2 * 22.4
-
-    fecl2_mass = moles_fe_used * 126.9
-
-    return f"""
-### Solution
-
-Reaction:
-
-Fe + 2HCl → FeCl₂ + H₂
-
-**1. Moles of Fe**
-
-n = m/M
-
-n(Fe) = {fmt(mass_fe)} / 56
-
-**n(Fe) = {fmt(moles_fe)} mol**
-
-**2. Moles of HCl**
-
-n = M × V
-
-V = {fmt(volume_hcl)} L
-
-n(HCl) = {fmt(molarity_hcl)} × {fmt(volume_hcl)}
-
-**n(HCl) = {fmt(moles_hcl)} mol**
-
-**3. Limiting reagent**
-
-1 mol Fe needs 2 mol HCl.
-
-HCl required = 2 × {fmt(moles_fe)}
-
-= **{fmt(hcl_needed)} mol**
-
-Available HCl = **{fmt(moles_hcl)} mol**
-
-Therefore:
-
-**Limiting reagent = {limiting}**
-
-**4. Moles of H₂**
-
-**n(H₂) = {fmt(moles_h2)} mol**
-
-**5. Volume of H₂ at STP**
-
-V = n × 22.4
-
-V = {fmt(moles_h2)} × 22.4
-
-**V(H₂) = {fmt(h2_volume)} L**
-
-**6. Mass of FeCl₂**
-
-M(FeCl₂) = 56 + 2(35.45)
-
-= 126.9 g mol⁻¹
-
-Mass = n × M
-
-Mass = {fmt(moles_fe_used)} × 126.9
-
-**Mass(FeCl₂) = {fmt(fecl2_mass)} g**
-
-### Final Answer
-
-- **Fe = {fmt(moles_fe)} mol**
-- **HCl = {fmt(moles_hcl)} mol**
-- **Limiting reagent = {limiting}**
-- **H₂ = {fmt(moles_h2)} mol**
-- **H₂ at STP = {fmt(h2_volume)} L**
-- **FeCl₂ = {fmt(fecl2_mass)} g ✅**
-""".strip()
-
-
-# ============================================================
-# BIOLOGY: MONOHYBRID GENETICS
-# ============================================================
-
-def solve_mendel(question):
-    q = question.lower()
-
-    if not any(
-        word in q
-        for word in [
-            "monohybrid",
-            "heterozygous",
-            "genotype",
-            "phenotype",
-            "punnett",
-        ]
-    ):
-        return None
-
-    if "tall" in q and "dwarf" in q:
-        if "tt" in q and "tt" in q:
-            pass
-
-    return None
-
-
-# ============================================================
-# AI RESPONSE
-# ============================================================
-
-def stream_huggingface(question, subject=None):
-
+def stream_huggingface(
+    question,
+    subject="general",
+):
     if not HF_TOKEN or hf_client is None:
         yield (
-            "❌ The AI token is missing.\n\n"
-            "Check Render → Environment → HF_TOKEN."
+            "❌ HF_TOKEN is missing.\n\n"
+            "Check Render → Environment."
         )
         return
 
     try:
-        prompt = subject_prompt(subject)
+        system_prompt = subject_prompt(
+            subject
+        )
 
         stream = hf_client.chat.completions.create(
             model=HF_MODEL,
             messages=[
                 {
                     "role": "system",
-                    "content": prompt,
+                    "content": system_prompt,
                 },
                 {
                     "role": "user",
@@ -1524,7 +1684,11 @@ def stream_huggingface(question, subject=None):
             if not chunk.choices:
                 continue
 
-            text = chunk.choices[0].delta.content
+            text = (
+                chunk.choices[0]
+                .delta
+                .content
+            )
 
             if text:
                 yield text
@@ -1537,8 +1701,8 @@ def stream_huggingface(question, subject=None):
 
         yield (
             "❌ I couldn't connect to the online AI right now.\n\n"
-            "Please check the Hugging Face token and "
-            "Inference Providers permission in Render."
+            "Please check HF_TOKEN and the "
+            "Inference Providers permission."
         )
 
 
@@ -1546,34 +1710,39 @@ def stream_huggingface(question, subject=None):
 # IMPROVE ANSWER
 # ============================================================
 
-def improve_answer(question, old_answer, action):
-
-    actions = {
+def improve_answer(
+    question,
+    old_answer,
+    action,
+):
+    instructions = {
         "improve": (
-            "Improve the previous answer. "
-            "Make it clearer, more accurate and complete."
+            "Improve the answer and make it clearer, "
+            "more accurate and more complete."
         ),
         "check": (
-            "Check the previous answer carefully for "
-            "mathematical, physics, chemistry or biology errors. "
-            "Correct all errors."
+            "Check the previous answer for "
+            "mathematical, physics, chemistry and biology "
+            "mistakes. Correct them."
         ),
         "explain": (
-            "Explain the previous answer in more detail, "
-            "but keep it student-friendly."
+            "Explain the answer in more detail while "
+            "remaining student-friendly."
         ),
         "short": (
-            "Make the previous answer shorter while keeping "
-            "all important steps and the final answer."
+            "Make the answer shorter but keep every "
+            "important step and the final answer."
         ),
     }
 
-    instruction = actions.get(
+    instruction = instructions.get(
         action,
-        actions["improve"],
+        instructions["improve"],
     )
 
-    subject = detect_subject(question)
+    subject = detect_subject(
+        question
+    )
 
     prompt = f"""
 Original question:
@@ -1589,14 +1758,14 @@ Task:
 {instruction}
 
 Important:
-- Check every numerical value.
-- Do not invent missing information.
-- Answer every numbered part.
+- Answer every requested part.
+- Keep equations readable.
+- Do not use raw LaTeX commands.
+- Check all numerical calculations.
+- Do not invent information.
 - Never stop halfway through.
 - End with a complete Final Answer.
 """
-
-    system = subject_prompt(subject)
 
     yield from stream_huggingface(
         prompt,
@@ -1610,17 +1779,23 @@ Important:
 
 @app.route("/")
 def home():
-    return render_template("index.html")
+    return render_template(
+        "index.html"
+    )
 
 
 # ============================================================
-# CHAT API
+# CHAT
 # ============================================================
 
-@app.route("/chat", methods=["POST"])
+@app.route(
+    "/chat",
+    methods=["POST"],
+)
 def chat():
-
-    data = request.get_json(silent=True)
+    data = request.get_json(
+        silent=True
+    )
 
     if not data:
         return Response(
@@ -1628,116 +1803,191 @@ def chat():
             mimetype="text/plain",
         )
 
-    question = data.get(
+    original_question = data.get(
         "message",
         "",
     ).strip()
 
-    if not question:
+    if not original_question:
         return Response(
             "Please type a message.",
             mimetype="text/plain",
         )
 
     # --------------------------------------------------------
-    # Basic responses
+    # BASIC RESPONSES
     # --------------------------------------------------------
 
-    simple = basic_response(question)
+    simple = basic_response(
+        original_question
+    )
 
     if simple:
+        save_turn(
+            original_question,
+            simple,
+        )
+
         return Response(
             simple,
             mimetype="text/plain",
         )
 
     # --------------------------------------------------------
-    # Normalize copied math text
+    # FOLLOW-UP CONTEXT
     # --------------------------------------------------------
 
-    question = normalize_math_text(question)
+    question = build_contextual_question(
+        original_question
+    )
 
     # --------------------------------------------------------
-    # Exact mathematics
+    # NORMALIZE MATH COPY ARTIFACT
     # --------------------------------------------------------
 
-    result = solve_known_surds(question)
+    question = normalize_math_text(
+        question
+    )
+
+    # --------------------------------------------------------
+    # EXACT MATH
+    # --------------------------------------------------------
+
+    result = solve_known_surds(
+        question
+    )
 
     if result:
+        save_turn(
+            original_question,
+            result,
+        )
+
+        return Response(
+            result,
+            mimetype="text/plain",
+        )
+
+    result = solve_power_recurrence(
+        question
+    )
+
+    if result:
+        save_turn(
+            original_question,
+            result,
+        )
+
         return Response(
             result,
             mimetype="text/plain",
         )
 
     # --------------------------------------------------------
-    # Exact physics
+    # EXACT PHYSICS
     # --------------------------------------------------------
 
-    result = solve_circuit(question)
+    result = solve_circuit(
+        question
+    )
 
     if result:
+        save_turn(
+            original_question,
+            result,
+        )
+
         return Response(
             result,
             mimetype="text/plain",
         )
 
-    result = solve_basic_electricity(question)
+    result = solve_basic_electricity(
+        question
+    )
 
     if result:
+        save_turn(
+            original_question,
+            result,
+        )
+
         return Response(
             result,
             mimetype="text/plain",
         )
 
-    result = solve_heat_question(question)
+    result = solve_heat_question(
+        question
+    )
 
     if result:
-        return Response(
+        save_turn(
+            original_question,
             result,
-            mimetype="text/plain",
         )
 
-    # --------------------------------------------------------
-    # Exact chemistry
-    # --------------------------------------------------------
-
-    result = solve_iron_hcl(question)
-
-    if result:
-        return Response(
-            result,
-            mimetype="text/plain",
-        )
-
-    result = solve_molarity(question)
-
-    if result:
-        return Response(
-            result,
-            mimetype="text/plain",
-        )
-
-    result = solve_particles(question)
-
-    if result:
-        return Response(
-            result,
-            mimetype="text/plain",
-        )
-
-    result = solve_mole_question(question)
-
-    if result:
         return Response(
             result,
             mimetype="text/plain",
         )
 
     # --------------------------------------------------------
-    # General AI with automatic PCMB specialist selection
+    # EXACT CHEMISTRY
     # --------------------------------------------------------
 
-    subject = detect_subject(question)
+    result = solve_iron_hcl(
+        question
+    )
+
+    if result:
+        save_turn(
+            original_question,
+            result,
+        )
+
+        return Response(
+            result,
+            mimetype="text/plain",
+        )
+
+    result = solve_molarity(
+        question
+    )
+
+    if result:
+        save_turn(
+            original_question,
+            result,
+        )
+
+        return Response(
+            result,
+            mimetype="text/plain",
+        )
+
+    result = solve_mole_question(
+        question
+    )
+
+    if result:
+        save_turn(
+            original_question,
+            result,
+        )
+
+        return Response(
+            result,
+            mimetype="text/plain",
+        )
+
+    # --------------------------------------------------------
+    # AI
+    # --------------------------------------------------------
+
+    subject = detect_subject(
+        question
+    )
 
     return Response(
         stream_with_context(
@@ -1755,13 +2005,17 @@ def chat():
 
 
 # ============================================================
-# IMPROVE API
+# IMPROVE ROUTE
 # ============================================================
 
-@app.route("/improve", methods=["POST"])
+@app.route(
+    "/improve",
+    methods=["POST"],
+)
 def improve():
-
-    data = request.get_json(silent=True)
+    data = request.get_json(
+        silent=True
+    )
 
     if not data:
         return Response(
@@ -1807,23 +2061,24 @@ def improve():
 
 
 # ============================================================
-# START SERVER
+# LOCAL SERVER
 # ============================================================
 
 if __name__ == "__main__":
-
     print("=" * 70)
     print("MY AI")
     print("=" * 70)
-    print("Hugging Face configured :", bool(HF_TOKEN))
-    print("Math specialist        : ON")
+    print(
+        "Hugging Face configured:",
+        bool(HF_TOKEN),
+    )
+    print("Mathematics specialist : ON")
     print("Physics specialist     : ON")
     print("Chemistry specialist   : ON")
     print("Biology specialist     : ON")
     print("Basic responses        : ON")
+    print("Follow-up memory       : ON")
     print("Long answers           : ON")
-    print("Exact circuit solver   : ON")
-    print("Exact chemistry solver : ON")
     print("Improve Answer         : ON")
     print("=" * 70)
 
