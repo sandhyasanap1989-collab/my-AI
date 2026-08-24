@@ -8,6 +8,7 @@ from flask import (
     redirect,
     url_for,
 )
+
 import os
 import re
 import math
@@ -24,7 +25,7 @@ from openai import OpenAI
 
 
 # ============================================================
-# APP CONFIG
+# APP
 # ============================================================
 
 app = Flask(__name__)
@@ -41,8 +42,6 @@ USERS_FILE = "users.json"
 # CREATOR INFORMATION
 # ============================================================
 
-CREATOR_NAME = "Soham Chandrahas Sanap"
-
 CREATOR_RESPONSE = """
 🤖 My creator is **Soham Chandrahas Sanap**.
 
@@ -52,8 +51,7 @@ at Nimbark English School in Beed district, Maharashtra, India.
 His main interests are Mathematics and web development.
 
 He built My AI as an AI study assistant to help students
-with their studies, including Mathematics, Physics, Chemistry
-and Biology.
+with Mathematics, Physics, Chemistry and Biology.
 """.strip()
 
 
@@ -64,8 +62,6 @@ and Biology.
 HF_TOKEN = os.getenv("HF_TOKEN")
 
 TEXT_MODEL = "openai/gpt-oss-120b:cheapest"
-
-# Vision model used for image questions.
 VISION_MODEL = "Qwen/Qwen2.5-VL-3B-Instruct:cheapest"
 
 hf_client = None
@@ -78,7 +74,7 @@ if HF_TOKEN:
 
 
 # ============================================================
-# USER STORAGE
+# USERS
 # ============================================================
 
 def load_users():
@@ -93,13 +89,10 @@ def load_users():
         ) as file:
             data = json.load(file)
 
-        if isinstance(data, dict):
-            return data
+        return data if isinstance(data, dict) else {}
 
     except (OSError, json.JSONDecodeError):
-        pass
-
-    return {}
+        return {}
 
 
 def save_users(users):
@@ -122,48 +115,46 @@ def save_users(users):
 SYSTEM_PROMPT = """
 You are My AI, a helpful PCMB study assistant.
 
-Subjects:
-- Mathematics
-- Physics
-- Chemistry
-- Biology
-- General science
-- General questions
+You help with:
+Mathematics, Physics, Chemistry, Biology, Science and general questions.
 
-Rules:
-- Read the complete question.
+IMPORTANT:
 - Answer every requested part.
 - Never stop halfway through a sentence.
 - Never leave an equation unfinished.
 - Show important calculations.
 - Use simple student-friendly language.
 - Do not invent missing information.
-- For follow-up questions, use previous context.
-- For current facts, use approximate wording when appropriate.
+- Understand short follow-up questions using previous context.
 - Always finish with a clear Final Answer.
+
+FORMATTING:
+Do not output raw LaTeX commands.
+Do not use:
+\\( \\)
+\\[ \\]
+\\frac
+\\boxed
+\\text{}
+\\begin{}
+\\end{}
+$$
+
+Use normal readable text instead.
 """
 
 
-MATH_SYSTEM_PROMPT = r"""
+MATH_SYSTEM_PROMPT = """
 You are My AI's Mathematics specialist.
 
-Formatting rules:
-- Do not use raw LaTeX commands.
-- Do not output \frac, \boxed, \begin, \end or similar raw commands.
-- Do not put equations inside [ ... ].
-- Use readable notation such as x², x³, x⁵ and √.
-- Never replace √ with x.
-- In this project, "svg" means √.
-- Show important algebraic steps.
-- Answer every numbered part.
-- Check calculations.
-- Never leave an equation incomplete.
-
-Always finish with:
-
-### Final Answer
-
-**answer ✅**
+Rules:
+- Solve step by step.
+- Use simple textbook-style mathematics.
+- Use x², x³, x⁵ and √.
+- Do not use raw LaTeX.
+- Do not use \\frac, \\boxed, \\text{}, \\begin{} or \\end{}.
+- Answer every part.
+- Check the final result.
 """
 
 
@@ -172,22 +163,16 @@ You are My AI's Physics specialist.
 
 For numerical questions use:
 
-### Given
-Known values and units.
+Given
+Formula
+Substitution
+Calculation
+Verification
+Final Answer
 
-### Formula
-Relevant equation.
-
-### Solution
-Substitute values and calculate.
-
-### Verification
-Check units or the physical relation.
-
-### Final Answer
-Give the result with units.
-
-Complete every requested part.
+Use correct units.
+Answer every requested part.
+Do not output raw LaTeX.
 """
 
 
@@ -195,58 +180,50 @@ CHEMISTRY_SYSTEM_PROMPT = """
 You are My AI's Chemistry specialist.
 
 For numerical questions:
-- Write and balance the reaction when necessary.
+- Balance the equation if needed.
 - Calculate molar mass carefully.
-- Convert mL to L.
+- Convert units correctly.
 - Calculate moles and molarity.
 - Use stoichiometric ratios.
 - Identify limiting reagent.
-- Calculate products.
 - Include units.
-- Answer every requested part.
-
-Finish with a clear Final Answer.
+- Complete every part.
+- Do not output raw LaTeX.
 """
 
 
 BIOLOGY_SYSTEM_PROMPT = """
 You are My AI's Biology specialist.
 
-Explain biology accurately and clearly.
+Explain biology clearly and accurately.
 
 For processes:
-- Give events in correct order.
+Explain steps in order.
 
 For comparisons:
-- Compare every requested point.
+Compare every requested point.
 
 For genetics:
-- Show genotype and phenotype ratios.
-- Show probabilities clearly.
+Show genotype, phenotype and probability clearly.
 
 Do not invent biological facts.
-Complete every requested part.
+Do not output raw LaTeX.
 """
 
 
 VISION_SYSTEM_PROMPT = """
 You are My AI's image-question specialist.
 
-The user has uploaded an image.
+Read the uploaded image carefully.
 
-Read the image carefully.
+If it contains Mathematics, Physics, Chemistry or Biology,
+solve or explain the question step by step.
 
-If it contains:
-- Mathematics: solve it step by step.
-- Physics: solve it with formulas and units.
-- Chemistry: solve it carefully with equations and calculations.
-- Biology: identify structures or answer the question accurately.
+Transcribe important visible text when useful.
 
-Transcribe important text from the image when needed.
+Do not invent information that is not visible.
 
-Do not invent text that is not visible.
-
-End with a clear Final Answer.
+Do not output raw LaTeX.
 """
 
 
@@ -257,11 +234,9 @@ End with a clear Final Answer.
 def basic_response(message):
     q = message.strip().lower()
 
-    # --------------------------------------------------------
-    # CREATOR
-    # --------------------------------------------------------
+    # ---------------- CREATOR ----------------
 
-    if q in {
+    creator_questions = {
         "who created you",
         "who created you?",
         "who made you",
@@ -272,18 +247,31 @@ def basic_response(message):
         "who developed you?",
         "who built you",
         "who built you?",
-        "who is soham chandrahas sanap",
-        "who is soham chandrahas sanap?",
-        "tell me about your creator",
-        "tell me about your creator?",
         "who is your developer",
         "who is your developer?",
-    }:
+        "who created",
+        "who created?",
+        "you are created by",
+        "you were created by",
+        "you were made by",
+        "who made this ai",
+        "who made this ai?",
+        "who built this ai",
+        "who built this ai?",
+        "who is behind you",
+        "who is behind this ai",
+        "who is your maker",
+        "who is your maker?",
+        "tell me about your creator",
+        "tell me about your creator?",
+        "who is soham chandrahas sanap",
+        "who is soham chandrahas sanap?",
+    }
+
+    if q in creator_questions:
         return CREATOR_RESPONSE
 
-    # --------------------------------------------------------
-    # GREETINGS
-    # --------------------------------------------------------
+    # ---------------- GREETINGS ----------------
 
     if q in {
         "hi",
@@ -302,29 +290,20 @@ def basic_response(message):
             "Biology or general questions."
         )
 
-    if q == "good morning":
-        return "Good morning! ☀️ How can I help you?"
+    if q in {
+        "good morning",
+        "good afternoon",
+        "good evening",
+    }:
+        return f"{q.title()}! 👋 How can I help you?"
 
-    if q == "good afternoon":
-        return "Good afternoon! 👋 How can I help you?"
-
-    if q == "good evening":
-        return "Good evening! 🌙 How can I help you?"
-
-    # --------------------------------------------------------
-    # COMMON QUESTIONS
-    # --------------------------------------------------------
+    # ---------------- COMMON ----------------
 
     if q in {
         "how are you",
         "how are you?",
-        "how r u",
-        "how r u?",
     }:
-        return (
-            "I'm doing great! 🤖\n\n"
-            "Give me a difficult question."
-        )
+        return "I'm doing great! 🤖 Ask me a difficult question."
 
     if q in {
         "who are you",
@@ -351,8 +330,7 @@ def basic_response(message):
             "🧬 Biology\n"
             "🔢 Large calculations\n"
             "📷 Questions from images\n"
-            "🎤 Voice input\n"
-            "📚 General questions"
+            "🎤 Voice input"
         )
 
     if q in {
@@ -385,6 +363,107 @@ def basic_response(message):
 
 
 # ============================================================
+# FOLLOW-UP DETECTION
+# ============================================================
+
+def is_followup(question):
+    q = question.strip().lower()
+
+    short_followups = {
+        "other",
+        "others",
+        "another",
+        "another one",
+        "more",
+        "more examples",
+        "next",
+        "also",
+        "and another",
+        "what about",
+        "what about it",
+        "same",
+        "same question",
+        "explain more",
+        "more detail",
+    }
+
+    if q in short_followups:
+        return True
+
+    prefixes = (
+        "and ",
+        "also ",
+        "what about ",
+        "how about ",
+        "then ",
+        "another ",
+        "other ",
+        "more ",
+        "compare ",
+        "difference ",
+        "differences ",
+        "give another ",
+        "give me another ",
+        "tell me another ",
+        "what is the other ",
+        "what are the other ",
+    )
+
+    if q.startswith(prefixes):
+        return True
+
+    # Very short questions usually depend on
+    # the previous message.
+    if len(q.split()) <= 3:
+        return True
+
+    return False
+
+
+def build_ai_context(question):
+    history = session.get(
+        "chat_history",
+        [],
+    )
+
+    if not history:
+        return question
+
+    if not is_followup(question):
+        return question
+
+    previous = history[-1]
+
+    return (
+        "Previous question:\n"
+        + previous["question"]
+        + "\n\n"
+        "Previous answer:\n"
+        + previous["answer"]
+        + "\n\n"
+        "New follow-up:\n"
+        + question
+        + "\n\n"
+        "Answer the new follow-up using the previous context."
+    )
+
+
+def save_history(question, answer):
+    history = session.get(
+        "chat_history",
+        [],
+    )
+
+    history.append({
+        "question": question,
+        "answer": answer[:6000],
+    })
+
+    session["chat_history"] = history[-6:]
+    session.modified = True
+
+
+# ============================================================
 # SUBJECT DETECTION
 # ============================================================
 
@@ -392,159 +471,61 @@ def detect_subject(question):
     q = question.lower()
 
     math_words = [
-        "equation",
-        "quadratic",
-        "algebra",
-        "surds",
-        "sqrt",
-        "√",
-        "svg",
-        "trigonometry",
-        "sin",
-        "cos",
-        "tan",
-        "geometry",
-        "probability",
-        "permutation",
-        "combination",
-        "sequence",
-        "series",
-        "polynomial",
-        "coordinate",
-        "logarithm",
-        "matrix",
-        "determinant",
-        "calculus",
-        "integral",
-        "differentiate",
+        "equation", "quadratic", "algebra",
+        "surds", "sqrt", "√", "svg",
+        "trigonometry", "sin", "cos", "tan",
+        "geometry", "probability", "sequence",
+        "series", "polynomial", "coordinate",
+        "logarithm", "matrix", "determinant",
+        "calculus", "integral", "differentiate",
         "limit",
     ]
 
     physics_words = [
-        "force",
-        "velocity",
-        "acceleration",
-        "momentum",
-        "newton",
-        "work",
-        "energy",
-        "power",
-        "friction",
-        "gravitation",
-        "projectile",
-        "current",
-        "voltage",
-        "resistance",
-        "resistor",
-        "circuit",
-        "magnetic",
-        "electric field",
-        "potential",
-        "lens",
-        "mirror",
-        "refraction",
-        "wavelength",
-        "frequency",
-        "heat",
-        "specific heat",
-        "temperature",
-        "pressure",
-        "density",
-        "fluid",
-        "motion",
+        "force", "velocity", "acceleration",
+        "momentum", "newton", "work", "energy",
+        "power", "friction", "gravitation",
+        "projectile", "current", "voltage",
+        "resistance", "resistor", "circuit",
+        "magnetic", "electric field",
+        "lens", "mirror", "refraction",
+        "heat", "temperature", "pressure",
+        "density", "fluid", "motion",
     ]
 
     chemistry_words = [
-        "mole",
-        "moles",
-        "molar",
-        "molarity",
-        "molality",
-        "stoichiometry",
-        "limiting reagent",
-        "oxidation",
-        "reduction",
-        "redox",
-        "acid",
-        "base",
-        "ph",
-        "salt",
-        "equilibrium",
-        "enthalpy",
-        "thermochemistry",
-        "electrochemistry",
-        "organic",
-        "alkane",
-        "alkene",
-        "alkyne",
-        "benzene",
-        "alcohol",
-        "aldehyde",
-        "ketone",
-        "ester",
-        "ion",
-        "atom",
-        "electron",
-        "proton",
-        "periodic table",
-        "compound",
-        "reaction",
-        "chemical",
+        "mole", "moles", "molar",
+        "molarity", "molality", "stoichiometry",
+        "limiting reagent", "oxidation",
+        "reduction", "redox", "acid",
+        "base", "ph", "salt", "equilibrium",
+        "enthalpy", "electrochemistry",
+        "organic", "alkane", "alkene",
+        "alkyne", "benzene", "alcohol",
+        "aldehyde", "ketone", "ester",
+        "ion", "atom", "electron",
+        "compound", "reaction", "chemical",
     ]
 
     biology_words = [
-        "cell",
-        "mitosis",
-        "meiosis",
-        "chromosome",
-        "gene",
-        "genetics",
-        "allele",
-        "dna",
-        "rna",
-        "protein",
-        "enzyme",
-        "photosynthesis",
-        "respiration",
-        "plant",
-        "animal",
-        "tissue",
-        "organ",
-        "ecosystem",
-        "ecology",
-        "evolution",
-        "hormone",
-        "neuron",
-        "nervous",
-        "digestion",
-        "reproduction",
-        "fertilisation",
-        "fertilization",
-        "heredity",
-        "blood",
-        "heart",
-        "kidney",
-        "lung",
-        "brain",
+        "cell", "mitosis", "meiosis",
+        "chromosome", "gene", "genetics",
+        "allele", "dna", "rna", "protein",
+        "enzyme", "photosynthesis",
+        "respiration", "plant", "animal",
+        "tissue", "organ", "ecosystem",
+        "ecology", "evolution", "hormone",
+        "neuron", "digestion",
+        "reproduction", "heredity",
+        "blood", "heart", "kidney",
+        "lung", "brain",
     ]
 
     scores = {
-        "math": sum(
-            word in q
-            for word in math_words
-        ),
-        "physics": sum(
-            word in q
-            for word in physics_words
-        ),
-        "chemistry": sum(
-            word in q
-            for word in chemistry_words
-        ),
-        "biology": sum(
-            word in q
-            for word in biology_words
-        ),
+        "math": sum(word in q for word in math_words),
+        "physics": sum(word in q for word in physics_words),
+        "chemistry": sum(word in q for word in chemistry_words),
+        "biology": sum(word in q for word in biology_words),
     }
 
     subject = max(
@@ -552,10 +533,7 @@ def detect_subject(question):
         key=scores.get,
     )
 
-    if scores[subject] == 0:
-        return "general"
-
-    return subject
+    return subject if scores[subject] else "general"
 
 
 def get_prompt(subject):
@@ -575,73 +553,7 @@ def get_prompt(subject):
 
 
 # ============================================================
-# FOLLOW-UP MEMORY
-# ============================================================
-
-def is_followup(question):
-    q = question.strip().lower()
-
-    # Very short follow-up phrases
-    short_followups = {
-        "other",
-        "others",
-        "another",
-        "another one",
-        "more",
-        "more examples",
-        "next",
-        "and another",
-        "also",
-        "also tell me",
-        "what about",
-        "what about it",
-        "then",
-        "same",
-        "same question",
-        "explain more",
-        "more detail",
-        "another one?",
-        "other?",
-    }
-
-    if q in short_followups:
-        return True
-
-    # Follow-up phrases that normally depend on
-    # the previous question.
-    prefixes = (
-        "and ",
-        "also ",
-        "what about ",
-        "how about ",
-        "then ",
-        "another ",
-        "other ",
-        "more ",
-        "compare ",
-        "difference ",
-        "differences ",
-        "what is the other ",
-        "what are the other ",
-        "give another ",
-        "give me another ",
-        "tell me another ",
-    )
-
-    if q.startswith(prefixes):
-        return True
-
-    # Very short questions are often follow-ups.
-    words = q.split()
-
-    if len(words) <= 3:
-        return True
-
-    return False
-
-
-# ============================================================
-# SAFE CALCULATOR
+# CALCULATOR
 # ============================================================
 
 ALLOWED_BINARY_OPERATORS = {
@@ -663,10 +575,7 @@ ALLOWED_UNARY_OPERATORS = {
 def safe_calculate(expression):
     expression = expression.strip()
 
-    if not expression:
-        return None
-
-    if len(expression) > 1000:
+    if not expression or len(expression) > 1000:
         return None
 
     try:
@@ -680,7 +589,6 @@ def safe_calculate(expression):
     def calculate(node):
 
         if isinstance(node, ast.Constant):
-
             if isinstance(
                 node.value,
                 (int, float),
@@ -691,47 +599,28 @@ def safe_calculate(expression):
 
         if isinstance(node, ast.BinOp):
 
-            operation = (
-                ALLOWED_BINARY_OPERATORS.get(
-                    type(node.op)
-                )
+            operation = ALLOWED_BINARY_OPERATORS.get(
+                type(node.op)
             )
 
             if operation is None:
                 raise ValueError()
 
-            left = calculate(
-                node.left
-            )
+            left = calculate(node.left)
+            right = calculate(node.right)
 
-            right = calculate(
-                node.right
-            )
-
-            # Avoid extremely large powers.
             if (
-                isinstance(
-                    node.op,
-                    ast.Pow,
-                )
+                isinstance(node.op, ast.Pow)
                 and abs(right) > 10000
             ):
                 raise ValueError()
 
-            return operation(
-                left,
-                right,
-            )
+            return operation(left, right)
 
-        if isinstance(
-            node,
-            ast.UnaryOp,
-        ):
+        if isinstance(node, ast.UnaryOp):
 
-            operation = (
-                ALLOWED_UNARY_OPERATORS.get(
-                    type(node.op)
-                )
+            operation = ALLOWED_UNARY_OPERATORS.get(
+                type(node.op)
             )
 
             if operation is None:
@@ -744,9 +633,7 @@ def safe_calculate(expression):
         raise ValueError()
 
     try:
-        return calculate(
-            tree.body
-        )
+        return calculate(tree.body)
 
     except (
         ArithmeticError,
@@ -760,38 +647,13 @@ def safe_calculate(expression):
 def clean_calculator_expression(text):
     expression = text.strip()
 
-    expression = expression.replace(
-        "×",
-        "*",
-    )
+    expression = expression.replace("×", "*")
+    expression = expression.replace("÷", "/")
+    expression = expression.replace("−", "-")
+    expression = expression.replace("–", "-")
+    expression = expression.replace("—", "-")
+    expression = expression.replace("^", "**")
 
-    expression = expression.replace(
-        "÷",
-        "/",
-    )
-
-    expression = expression.replace(
-        "−",
-        "-",
-    )
-
-    expression = expression.replace(
-        "–",
-        "-",
-    )
-
-    expression = expression.replace(
-        "—",
-        "-",
-    )
-
-    # ^ means power in calculator mode.
-    expression = expression.replace(
-        "^",
-        "**",
-    )
-
-    # Remove commas from big numbers.
     expression = re.sub(
         r"(?<=\d),(?=\d)",
         "",
@@ -809,9 +671,7 @@ def clean_calculator_expression(text):
 
 
 def looks_like_calculation(text):
-    expression = clean_calculator_expression(
-        text
-    )
+    expression = clean_calculator_expression(text)
 
     if not re.fullmatch(
         r"[0-9\s\.\+\-\*\/%\(\)]+",
@@ -828,24 +688,17 @@ def looks_like_calculation(text):
 
 
 def solve_calculation(question):
-    if not looks_like_calculation(
-        question
-    ):
+    if not looks_like_calculation(question):
         return None
 
-    expression = clean_calculator_expression(
-        question
-    )
+    expression = clean_calculator_expression(question)
 
-    result = safe_calculate(
-        expression
-    )
+    result = safe_calculate(expression)
 
     if result is None:
         return None
 
     if isinstance(result, int):
-
         answer = f"{result:,}"
 
     elif isinstance(result, float):
@@ -875,37 +728,24 @@ def solve_calculation(question):
 
 
 # ============================================================
-# MATH HELPERS
+# MATH
 # ============================================================
 
 def normalize_math_text(text):
-    text = text.replace(
-        "svg",
-        "√",
-    )
+    text = text.replace("svg", "√")
+    text = text.replace("SVG", "√")
 
-    text = text.replace(
-        "SVG",
-        "√",
-    )
-
-    superscript_map = str.maketrans(
+    superscripts = str.maketrans(
         "⁰¹²³⁴⁵⁶⁷⁸⁹",
         "0123456789",
     )
 
-    return text.translate(
-        superscript_map
-    )
+    return text.translate(superscripts)
 
 
 def fmt(value):
-    if abs(
-        value - round(value)
-    ) < 1e-10:
-        return str(
-            int(round(value))
-        )
+    if abs(value - round(value)) < 1e-10:
+        return str(int(round(value)))
 
     return (
         f"{value:.6f}"
@@ -914,27 +754,11 @@ def fmt(value):
     )
 
 
-# ============================================================
-# MATH: x + 1/x = a
-# ============================================================
-
 def solve_power_recurrence(question):
-    """
-    Supports:
-        x^5
-        x**5
-        x⁵
-
-    Example:
-        If x + 1/x = 5,
-        find x⁵ + 1/x⁵.
-    """
-
     q = normalize_math_text(
         question.lower()
     )
 
-    # Find x + 1/x = number
     given = re.search(
         r"x\s*\+\s*1\s*/\s*x\s*=\s*"
         r"(-?\d+(?:\.\d+)?)",
@@ -944,22 +768,11 @@ def solve_power_recurrence(question):
     if not given:
         return None
 
-    a = float(
-        given.group(1)
-    )
+    a = float(given.group(1))
 
-    # After superscript conversion x⁵ becomes x5.
-    #
-    # Recognizes:
-    # x^5
-    # x**5
-    # x5
-    #
-    # and the same exponent after 1/x.
     target = re.search(
         r"x\s*(?:(?:\^|\*\*)\s*)?(\d+)"
-        r"\s*\+\s*"
-        r"1\s*/\s*x\s*"
+        r"\s*\+\s*1\s*/\s*x\s*"
         r"(?:(?:\^|\*\*)\s*)?\1",
         q,
     )
@@ -967,17 +780,10 @@ def solve_power_recurrence(question):
     if not target:
         return None
 
-    n = int(
-        target.group(1)
-    )
+    n = int(target.group(1))
 
     if n < 1 or n > 50:
         return None
-
-    # Recurrence:
-    # S0 = 2
-    # S1 = a
-    # S(n+1) = a*S(n) - S(n-1)
 
     values = {
         0: 2,
@@ -1001,10 +807,6 @@ def solve_power_recurrence(question):
         "",
         "Sₙ = xⁿ + 1/xⁿ",
         "",
-        "We use:",
-        "",
-        "Sₙ₊₁ = (x + 1/x)Sₙ − Sₙ₋₁",
-        "",
         "S₀ = 2",
         "",
         f"S₁ = {fmt(a)}",
@@ -1012,120 +814,35 @@ def solve_power_recurrence(question):
     ]
 
     for k in range(2, n + 1):
-
-        lines.extend(
-            [
-                f"**Step {k - 1}: Find S{k}**",
-                "",
-                f"S{k} = {fmt(a)}S{k - 1} − S{k - 2}",
-                "",
-                (
-                    f"S{k} = {fmt(a)}"
-                    f"({fmt(values[k - 1])})"
-                    f" − {fmt(values[k - 2])}"
-                ),
-                "",
-                f"**S{k} = {fmt(values[k])}**",
-                "",
-            ]
-        )
-
-    lines.extend(
-        [
-            "### Final Answer",
+        lines.extend([
+            f"**Step {k - 1}: Find S{k}**",
             "",
-            f"**x^{n} + 1/x^{n} = {fmt(values[n])} ✅**",
-        ]
-    )
+            f"S{k} = {fmt(a)}S{k - 1} − S{k - 2}",
+            "",
+            f"S{k} = {fmt(a)}({fmt(values[k - 1])}) "
+            f"− {fmt(values[k - 2])}",
+            "",
+            f"**S{k} = {fmt(values[k])}**",
+            "",
+        ])
+
+    lines.extend([
+        "### Final Answer",
+        "",
+        f"**x^{n} + 1/x^{n} = {fmt(values[n])} ✅**",
+    ])
 
     return "\n".join(lines)
 
 
 # ============================================================
-# MATH: KNOWN SURDS
-# ============================================================
-
-def solve_known_surds(question):
-    q = normalize_math_text(
-        question
-    )
-
-    compact = re.sub(
-        r"\s+",
-        "",
-        q,
-    )
-
-    has_a = (
-        "√(5+2√6)" in compact
-        or "√(5+2√(6))" in compact
-    )
-
-    has_b = (
-        "√(5-2√6)" in compact
-        or "√(5-2√(6))" in compact
-    )
-
-    if not has_a or not has_b:
-        return None
-
-    a = math.sqrt(
-        5 + 2 * math.sqrt(6)
-    )
-
-    b = math.sqrt(
-        5 - 2 * math.sqrt(6)
-    )
-
-    if (
-        "√(5+2√6)+√(5-2√6)"
-        in compact
-        and
-        "√(5+2√6)-√(5-2√6)"
-        in compact
-    ):
-
-        value = (
-            a + b
-        ) / (
-            a - b
-        )
-
-        return f"""
-### Solution
-
-√(5 + 2√6) = √3 + √2
-
-√(5 − 2√6) = √3 − √2
-
-Therefore:
-
-N = [(√3 + √2) + (√3 − √2)]
-    / [(√3 + √2) − (√3 − √2)]
-
-N = 2√3 / 2√2
-
-N = √(3/2)
-
-### Final Answer
-
-**√(3/2) ≈ {fmt(value)} ✅**
-""".strip()
-
-    return None
-
-
-# ============================================================
-# PHYSICS: SERIES + PARALLEL CIRCUIT
+# PHYSICS
 # ============================================================
 
 def solve_circuit(question):
     q = question.lower()
 
-    if (
-        "series" not in q
-        or "parallel" not in q
-    ):
+    if "series" not in q or "parallel" not in q:
         return None
 
     voltage_match = re.search(
@@ -1144,10 +861,7 @@ def solve_circuit(question):
         )
     ]
 
-    if not voltage_match:
-        return None
-
-    if len(resistor_values) < 3:
+    if not voltage_match or len(resistor_values) < 3:
         return None
 
     voltage = float(
@@ -1168,13 +882,8 @@ def solve_circuit(question):
     if not match:
         return None
 
-    r1 = float(
-        match.group(1)
-    )
-
-    r2 = float(
-        match.group(2)
-    )
+    r1 = float(match.group(1))
+    r2 = float(match.group(2))
 
     others = resistor_values.copy()
 
@@ -1187,30 +896,16 @@ def solve_circuit(question):
     if not others:
         return None
 
-    rp = (
-        r1 * r2
-        / (r1 + r2)
-    )
-
-    rt = (
-        sum(others)
-        + rp
-    )
-
-    total_i = (
-        voltage
-        / rt
-    )
+    rp = r1 * r2 / (r1 + r2)
+    rt = sum(others) + rp
+    total_i = voltage / rt
 
     series_voltages = [
         total_i * r
         for r in others
     ]
 
-    vp = (
-        voltage
-        - sum(series_voltages)
-    )
+    vp = voltage - sum(series_voltages)
 
     i1 = vp / r1
     i2 = vp / r2
@@ -1220,25 +915,12 @@ def solve_circuit(question):
         for r in others
     ]
 
-    p1 = (
-        vp ** 2
-        / r1
-    )
+    p1 = vp ** 2 / r1
+    p2 = vp ** 2 / r2
 
-    p2 = (
-        vp ** 2
-        / r2
-    )
-
-    total_power = (
-        voltage
-        * total_i
-    )
-
+    total_power = voltage * total_i
     component_power = (
-        sum(series_powers)
-        + p1
-        + p2
+        sum(series_powers) + p1 + p2
     )
 
     lines = [
@@ -1255,8 +937,7 @@ def solve_circuit(question):
         "",
         "**2. Total resistance**",
         "",
-        f"Rₜ = {' + '.join(fmt(x) for x in others)}"
-        f" + {fmt(rp)}",
+        f"Rₜ = {' + '.join(fmt(x) for x in others)} + {fmt(rp)}",
         "",
         f"**Rₜ = {fmt(rt)} Ω**",
         "",
@@ -1264,147 +945,60 @@ def solve_circuit(question):
         "",
         "I = V/Rₜ",
         "",
-        f"I = {fmt(voltage)}/{fmt(rt)}",
-        "",
         f"**I = {fmt(total_i)} A**",
         "",
+        "**4. Parallel-section voltage**",
+        "",
+        f"**Vₚ = {fmt(vp)} V**",
+        "",
+        f"**5. Current through {fmt(r1)} Ω**",
+        "",
+        f"**I₁ = {fmt(i1)} A**",
+        "",
+        f"**6. Current through {fmt(r2)} Ω**",
+        "",
+        f"**I₂ = {fmt(i2)} A**",
+        "",
+        "**7. Power**",
+        "",
     ]
-
-    step = 4
-
-    for resistor, drop in zip(
-        others,
-        series_voltages,
-    ):
-        lines.extend(
-            [
-                f"**{step}. Voltage across {fmt(resistor)} Ω**",
-                "",
-                "V = IR",
-                "",
-                f"V = {fmt(total_i)} × {fmt(resistor)}",
-                "",
-                f"**V = {fmt(drop)} V**",
-                "",
-            ]
-        )
-
-        step += 1
-
-    lines.extend(
-        [
-            f"**{step}. Parallel-section voltage**",
-            "",
-            f"**Vₚ = {fmt(vp)} V**",
-            "",
-        ]
-    )
-
-    step += 1
-
-    lines.extend(
-        [
-            f"**{step}. Current through {fmt(r1)} Ω**",
-            "",
-            "I₁ = Vₚ/R₁",
-            "",
-            f"**I₁ = {fmt(i1)} A**",
-            "",
-        ]
-    )
-
-    step += 1
-
-    lines.extend(
-        [
-            f"**{step}. Current through {fmt(r2)} Ω**",
-            "",
-            "I₂ = Vₚ/R₂",
-            "",
-            f"**I₂ = {fmt(i2)} A**",
-            "",
-        ]
-    )
-
-    step += 1
-
-    lines.extend(
-        [
-            f"**{step}. Power dissipated**",
-            "",
-        ]
-    )
 
     for resistor, power in zip(
         others,
         series_powers,
     ):
-        lines.extend(
-            [
-                f"Power in {fmt(resistor)} Ω = I²R",
-                "",
-                f"**P = {fmt(power)} W**",
-                "",
-            ]
-        )
+        lines.extend([
+            f"Power in {fmt(resistor)} Ω = **{fmt(power)} W**",
+            "",
+        ])
 
-    lines.extend(
-        [
-            f"Power in {fmt(r1)} Ω = V²/R",
-            "",
-            f"**P = {fmt(p1)} W**",
-            "",
-            f"Power in {fmt(r2)} Ω = V²/R",
-            "",
-            f"**P = {fmt(p2)} W**",
-            "",
-        ]
-    )
-
-    step += 1
-
-    lines.extend(
-        [
-            f"**{step}. Total power**",
-            "",
-            "P = VI",
-            "",
-            f"P = {fmt(voltage)} × {fmt(total_i)}",
-            "",
-            f"**P = {fmt(total_power)} W**",
-            "",
-            "### Verification",
-            "",
-            f"Component powers = {fmt(component_power)} W",
-            "",
-            f"Battery power = {fmt(total_power)} W",
-            "",
-            "**Power check ✅**",
-            "",
-            "### Final Answer",
-            "",
-            f"- **Parallel resistance = {fmt(rp)} Ω**",
-            f"- **Total resistance = {fmt(rt)} Ω**",
-            f"- **Total current = {fmt(total_i)} A**",
-            f"- **Parallel voltage = {fmt(vp)} V**",
-            f"- **Total power = {fmt(total_power)} W ✅**",
-        ]
-    )
+    lines.extend([
+        f"Power in {fmt(r1)} Ω = **{fmt(p1)} W**",
+        "",
+        f"Power in {fmt(r2)} Ω = **{fmt(p2)} W**",
+        "",
+        f"Total power = **{fmt(total_power)} W**",
+        "",
+        "### Verification",
+        "",
+        f"Sum of resistor powers = {fmt(component_power)} W",
+        "",
+        f"Battery power = {fmt(total_power)} W",
+        "",
+        "**Power check ✅**",
+    ])
 
     return "\n".join(lines)
 
 
 # ============================================================
-# CHEMISTRY: FE + HCL
+# CHEMISTRY
 # ============================================================
 
 def solve_iron_hcl(question):
     q = question.lower()
 
-    if (
-        "fe" not in q
-        or "hcl" not in q
-    ):
+    if "fe" not in q or "hcl" not in q:
         return None
 
     if not (
@@ -1416,30 +1010,27 @@ def solve_iron_hcl(question):
         return None
 
     mass_match = re.search(
-        r"(\d+(?:\.\d+)?)\s*g.*?"
-        r"(?:iron|fe)",
+        r"(\d+(?:\.\d+)?)\s*g.*?(?:iron|fe)",
         question,
         re.IGNORECASE,
     )
 
     volume_match = re.search(
-        r"(\d+(?:\.\d+)?)\s*mL.*?"
-        r"(?:HCl|hydrochloric)",
+        r"(\d+(?:\.\d+)?)\s*mL.*?(?:hcl|hydrochloric)",
         question,
         re.IGNORECASE,
     )
 
     molarity_match = re.search(
-        r"(\d+(?:\.\d+)?)\s*M.*?"
-        r"(?:HCl|hydrochloric)",
+        r"(\d+(?:\.\d+)?)\s*M.*?(?:hcl|hydrochloric)",
         question,
         re.IGNORECASE,
     )
 
-    if (
-        not mass_match
-        or not volume_match
-        or not molarity_match
+    if not (
+        mass_match
+        and volume_match
+        and molarity_match
     ):
         return None
 
@@ -1456,37 +1047,21 @@ def solve_iron_hcl(question):
         molarity_match.group(1)
     )
 
-    fe_moles = (
-        mass_fe / 56
-    )
-
-    hcl_moles = (
-        molarity_hcl
-        * volume_hcl
-    )
-
-    hcl_required = (
-        2 * fe_moles
-    )
+    fe_moles = mass_fe / 56
+    hcl_moles = molarity_hcl * volume_hcl
+    hcl_required = 2 * fe_moles
 
     if hcl_moles < hcl_required:
         limiting = "HCl"
-        h2_moles = (
-            hcl_moles / 2
-        )
+        h2_moles = hcl_moles / 2
         fe_used = h2_moles
     else:
         limiting = "Fe"
         h2_moles = fe_moles
         fe_used = fe_moles
 
-    h2_volume = (
-        h2_moles * 22.4
-    )
-
-    fecl2_mass = (
-        fe_used * 127
-    )
+    h2_volume = h2_moles * 22.4
+    fecl2_mass = fe_used * 127
 
     return f"""
 ### Solution
@@ -1507,23 +1082,19 @@ n = M × V
 
 V = {fmt(volume_hcl)} L
 
-n = {fmt(molarity_hcl)} × {fmt(volume_hcl)}
-
 **n(HCl) = {fmt(hcl_moles)} mol**
 
 **3. Limiting reagent**
 
-HCl required = 2 × {fmt(fe_moles)}
+HCl required = {fmt(hcl_required)} mol
 
-= **{fmt(hcl_required)} mol**
-
-Available HCl = **{fmt(hcl_moles)} mol**
+Available HCl = {fmt(hcl_moles)} mol
 
 **Limiting reagent = {limiting}**
 
 **4. Moles of H₂**
 
-**n(H₂) = {fmt(h2_moles)} mol**
+**{fmt(h2_moles)} mol**
 
 **5. Volume of H₂ at STP**
 
@@ -1533,26 +1104,20 @@ V = n × 22.4
 
 **6. Mass of FeCl₂**
 
-M(FeCl₂) = 56 + 2(35.5)
+M = 127 g mol⁻¹
 
-= 127 g mol⁻¹
-
-**Mass(FeCl₂) = {fmt(fecl2_mass)} g**
+**Mass = {fmt(fecl2_mass)} g**
 
 ### Final Answer
 
-- **Fe = {fmt(fe_moles)} mol**
-- **HCl = {fmt(hcl_moles)} mol**
-- **Limiting reagent = {limiting}**
-- **H₂ = {fmt(h2_moles)} mol**
-- **H₂ at STP = {fmt(h2_volume)} L**
-- **FeCl₂ = {fmt(fecl2_mass)} g ✅**
+- Fe = **{fmt(fe_moles)} mol**
+- HCl = **{fmt(hcl_moles)} mol**
+- Limiting reagent = **{limiting}**
+- H₂ = **{fmt(h2_moles)} mol**
+- H₂ volume = **{fmt(h2_volume)} L**
+- FeCl₂ = **{fmt(fecl2_mass)} g ✅**
 """.strip()
 
-
-# ============================================================
-# CHEMISTRY: NaCl
-# ============================================================
 
 def solve_nacl(question):
     q = question.lower()
@@ -1572,10 +1137,7 @@ def solve_nacl(question):
         mass_match.group(1)
     )
 
-    molar_mass = 58.5
-    moles = (
-        mass / molar_mass
-    )
+    moles = mass / 58.5
 
     return f"""
 ### Solution
@@ -1599,14 +1161,14 @@ n = {fmt(mass)}/58.5
 
 
 # ============================================================
-# HUGGING FACE TEXT AI
+# TEXT AI
 # ============================================================
 
 def stream_text_ai(question, subject):
     if not HF_TOKEN or hf_client is None:
         yield (
             "❌ Online AI is unavailable because HF_TOKEN is missing.\n\n"
-            "Local calculator and exact solvers are still available."
+            "Local calculator and local solvers are still available."
         )
         return
 
@@ -1643,7 +1205,7 @@ def stream_text_ai(question, subject):
 
     except Exception as error:
         print(
-            "Hugging Face text error:",
+            "Hugging Face error:",
             repr(error),
         )
 
@@ -1653,7 +1215,7 @@ def stream_text_ai(question, subject):
 
 
 # ============================================================
-# VISION AI
+# VISION
 # ============================================================
 
 def analyze_image(image_data, prompt):
@@ -1662,18 +1224,13 @@ def analyze_image(image_data, prompt):
             "❌ Image AI is unavailable because HF_TOKEN is missing."
         )
 
-    if not image_data.startswith(
-        "data:image/"
-    ):
-        return (
-            "❌ Invalid image data."
-        )
+    if not image_data.startswith("data:image/"):
+        return "❌ Invalid image."
 
-    # Prevent very large payloads.
     if len(image_data) > 8_000_000:
         return (
             "❌ Image is too large. "
-            "Please use a smaller image."
+            "Please select a smaller image."
         )
 
     try:
@@ -1693,7 +1250,7 @@ def analyze_image(image_data, prompt):
                                 prompt.strip()
                                 if prompt.strip()
                                 else
-                                "Read the image and solve the question shown in it."
+                                "Read this image and solve the question."
                             ),
                         },
                         {
@@ -1709,32 +1266,25 @@ def analyze_image(image_data, prompt):
             max_tokens=2000,
         )
 
-        return (
-            response.choices[0]
-            .message
-            .content
-        )
+        return response.choices[0].message.content
 
     except Exception as error:
         print(
-            "Hugging Face vision error:",
+            "Vision error:",
             repr(error),
         )
 
         return (
-            "❌ I couldn't analyze the image right now.\n\n"
-            "Please check the Hugging Face connection "
-            "and try again."
+            "❌ I could not analyze that image right now."
         )
 
 
 # ============================================================
-# HOME / LOGIN PAGE
+# HOME
 # ============================================================
 
 @app.route("/")
 def home():
-
     if "username" not in session:
         return render_template(
             "index.html",
@@ -1785,26 +1335,19 @@ def register():
     if not username or not password:
         return {
             "success": False,
-            "message": (
-                "Username and password are required."
-            ),
+            "message": "Username and password are required.",
         }, 400
 
-    # Email OR phone.
     if not email and not phone:
         return {
             "success": False,
-            "message": (
-                "Enter either email or phone number."
-            ),
+            "message": "Enter either email or phone number.",
         }, 400
 
     if len(password) < 6:
         return {
             "success": False,
-            "message": (
-                "Password must be at least 6 characters."
-            ),
+            "message": "Password must be at least 6 characters.",
         }, 400
 
     users = load_users()
@@ -1837,9 +1380,7 @@ def register():
         ):
             return {
                 "success": False,
-                "message": (
-                    "Phone number already registered."
-                ),
+                "message": "Phone number already registered.",
             }, 400
 
     users[username] = {
@@ -1895,15 +1436,13 @@ def login():
 
         email_match = (
             bool(user.get("email"))
-            and
-            user.get("email", "").lower()
+            and user.get("email", "").lower()
             == login_value.lower()
         )
 
         phone_match = (
             bool(user.get("phone"))
-            and
-            user.get("phone", "")
+            and user.get("phone", "")
             == login_value
         )
 
@@ -1914,12 +1453,10 @@ def login():
         ):
 
             if check_password_hash(
-                user.get(
-                    "password",
-                    "",
-                ),
+                user.get("password", ""),
                 password,
             ):
+
                 session["username"] = username
 
                 return {
@@ -1931,9 +1468,7 @@ def login():
 
     return {
         "success": False,
-        "message": (
-            "Invalid username/email/phone or password."
-        ),
+        "message": "Invalid username/email/phone or password.",
     }, 401
 
 
@@ -1944,10 +1479,7 @@ def login():
 @app.route("/logout")
 def logout():
     session.clear()
-
-    return redirect(
-        url_for("home")
-    )
+    return redirect(url_for("home"))
 
 
 # ============================================================
@@ -1981,17 +1513,14 @@ def chat():
         "",
     )
 
-    # --------------------------------------------------------
-    # IMAGE
-    # --------------------------------------------------------
+    # ---------------- IMAGE ----------------
 
     if image_data:
 
         prompt = (
             original_question
-            if original_question
-            else
-            "Read this image and solve the question shown in it."
+            or
+            "Read this image and solve the question."
         )
 
         answer = analyze_image(
@@ -2009,39 +1538,25 @@ def chat():
             mimetype="text/plain",
         )
 
-    # --------------------------------------------------------
-    # EMPTY
-    # --------------------------------------------------------
-
     if not original_question:
         return Response(
             "Please type a message or select an image.",
             mimetype="text/plain",
         )
 
-    # --------------------------------------------------------
-    # BASIC
-    # --------------------------------------------------------
+    # ---------------- BASIC ----------------
 
     simple = basic_response(
         original_question
     )
 
     if simple:
-
-        save_history(
-            original_question,
-            simple,
-        )
-
         return Response(
             simple,
             mimetype="text/plain",
         )
 
-    # --------------------------------------------------------
-    # LOCAL CALCULATOR
-    # --------------------------------------------------------
+    # ---------------- CALCULATOR ----------------
 
     result = solve_calculation(
         original_question
@@ -2059,34 +1574,13 @@ def chat():
             mimetype="text/plain",
         )
 
-    # --------------------------------------------------------
-    # LOCAL SOLVERS
-    #
-    # IMPORTANT:
-    # These use only the new question.
-    # --------------------------------------------------------
+    # ---------------- LOCAL SOLVERS ----------------
 
     normalized = normalize_math_text(
         original_question
     )
 
     result = solve_power_recurrence(
-        normalized
-    )
-
-    if result:
-
-        save_history(
-            original_question,
-            result,
-        )
-
-        return Response(
-            result,
-            mimetype="text/plain",
-        )
-
-    result = solve_known_surds(
         normalized
     )
 
@@ -2150,9 +1644,7 @@ def chat():
             mimetype="text/plain",
         )
 
-    # --------------------------------------------------------
-    # ONLINE AI
-    # --------------------------------------------------------
+    # ---------------- ONLINE AI ----------------
 
     ai_question = build_ai_context(
         normalized
@@ -2178,7 +1670,7 @@ def chat():
 
 
 # ============================================================
-# IMPROVE / CHECK / EXPLAIN / SHORT
+# IMPROVE
 # ============================================================
 
 @app.route(
@@ -2213,32 +1705,21 @@ def improve():
         "improve",
     ).strip().lower()
 
-    if (
-        not question
-        or not old_answer
-    ):
+    if not question or not old_answer:
         return Response(
             "Missing question or answer.",
             mimetype="text/plain",
         )
 
     instructions = {
-        "improve": (
-            "Improve the answer and make it "
-            "clearer, more accurate and complete."
-        ),
-        "check": (
-            "Check the answer carefully for "
-            "mistakes and correct them."
-        ),
-        "explain": (
-            "Explain the answer in more detail "
-            "while keeping it student-friendly."
-        ),
-        "short": (
-            "Make the answer shorter while "
-            "keeping the important steps and result."
-        ),
+        "improve":
+            "Improve the answer and make it clearer and more complete.",
+        "check":
+            "Check the answer for mistakes and correct them.",
+        "explain":
+            "Explain the answer in more detail.",
+        "short":
+            "Make the answer shorter while keeping important steps.",
     }
 
     instruction = instructions.get(
@@ -2264,11 +1745,10 @@ Task:
 {instruction}
 
 Rules:
-- Check calculations.
+- Check all calculations.
 - Answer every requested part.
-- Keep mathematics readable.
-- Do not use broken raw LaTeX.
-- Do not invent information.
+- Use readable mathematics.
+- Do not output raw LaTeX.
 - Finish completely.
 """
 
@@ -2288,31 +1768,26 @@ Rules:
 
 
 # ============================================================
-# SERVER
+# START
 # ============================================================
 
 if __name__ == "__main__":
 
-    print("=" * 70)
+    print("=" * 65)
     print("MY AI")
-    print("=" * 70)
-    print(
-        "Hugging Face configured:",
-        bool(HF_TOKEN),
-    )
-    print("Creator information     : ON")
-    print("Login system            : ON")
-    print("Create account          : ON")
-    print("Password hashing        : ON")
-    print("Calculator              : ON")
-    print("Math solver             : ON")
-    print("Physics solver          : ON")
-    print("Chemistry solver        : ON")
-    print("Biology AI              : ON")
-    print("Image questions         : ON")
-    print("Follow-up context       : ON")
-    print("Improve tools           : ON")
-    print("=" * 70)
+    print("=" * 65)
+    print("HF configured :", bool(HF_TOKEN))
+    print("Login         : ON")
+    print("Calculator    : ON")
+    print("Math solver   : ON")
+    print("Physics       : ON")
+    print("Chemistry     : ON")
+    print("Biology AI    : ON")
+    print("Camera        : ON")
+    print("Voice         : ON")
+    print("Creator info  : ON")
+    print("Follow-ups    : ON")
+    print("=" * 65)
 
     app.run(
         host="127.0.0.1",
