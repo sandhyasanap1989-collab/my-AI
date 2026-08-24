@@ -1,12 +1,26 @@
-from flask import Flask, render_template, request, Response, session, redirect, url_for
+from flask import (
+    Flask,
+    render_template,
+    request,
+    Response,
+    session,
+    redirect,
+    url_for,
+)
+
 import os
 import re
 import json
 import ast
 import math
 import operator
+import threading
 
-from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import (
+    generate_password_hash,
+    check_password_hash,
+)
+
 from openai import OpenAI
 
 
@@ -22,6 +36,9 @@ app.secret_key = os.getenv(
 )
 
 USERS_FILE = "users.json"
+QUESTION_SETS_FILE = "question_sets.json"
+
+FILE_LOCK = threading.Lock()
 
 
 # ============================================================
@@ -30,8 +47,6 @@ USERS_FILE = "users.json"
 
 HF_TOKEN = os.getenv("HF_TOKEN")
 
-# Hugging Face says omitting the provider suffix selects
-# the fastest available provider automatically.
 TEXT_MODEL = "openai/gpt-oss-120b"
 VISION_MODEL = "Qwen/Qwen2.5-VL-7B-Instruct"
 
@@ -49,7 +64,7 @@ if HF_TOKEN:
 # ============================================================
 
 CREATOR_RESPONSE = """
-My creator is **Soham Chandrahas Sanap**.
+My creator is Soham Chandrahas Sanap.
 
 He is 15 years old and is studying in Class 10 in 2026
 at Nimbark English School in Beed district, Maharashtra, India.
@@ -59,6 +74,7 @@ His main interests are Mathematics and web development.
 He built My AI as an AI study assistant to help students
 with Mathematics, Physics, Chemistry and Biology.
 """.strip()
+
 
 CREATOR_QUESTIONS = {
     "who created you",
@@ -93,26 +109,140 @@ def is_creator_question(question):
 
 
 # ============================================================
-# USER STORAGE
+# USER FILE
 # ============================================================
 
-def load_users():
-    if not os.path.exists(USERS_FILE):
-        return {}
+def load_json_file(path, default):
+    if not os.path.exists(path):
+        return default
 
     try:
-        with open(USERS_FILE, "r", encoding="utf-8") as file:
+        with open(
+            path,
+            "r",
+            encoding="utf-8",
+        ) as file:
             data = json.load(file)
 
-        return data if isinstance(data, dict) else {}
+        return data
 
-    except (OSError, json.JSONDecodeError):
-        return {}
+    except (
+        OSError,
+        json.JSONDecodeError,
+    ):
+        return default
+
+
+def save_json_file(path, data):
+    temp_path = path + ".tmp"
+
+    with open(
+        temp_path,
+        "w",
+        encoding="utf-8",
+    ) as file:
+        json.dump(
+            data,
+            file,
+            indent=2,
+        )
+
+    os.replace(
+        temp_path,
+        path,
+    )
+
+
+def load_users():
+    data = load_json_file(
+        USERS_FILE,
+        {},
+    )
+
+    return data if isinstance(data, dict) else {}
 
 
 def save_users(users):
-    with open(USERS_FILE, "w", encoding="utf-8") as file:
-        json.dump(users, file, indent=2)
+    with FILE_LOCK:
+        save_json_file(
+            USERS_FILE,
+            users,
+        )
+
+
+# ============================================================
+# QUESTION-SET STORAGE
+#
+# Stored on server instead of Flask's cookie session.
+# ============================================================
+
+def load_question_sets():
+    data = load_json_file(
+        QUESTION_SETS_FILE,
+        {},
+    )
+
+    return data if isinstance(data, dict) else {}
+
+
+def get_current_username():
+    return session.get("username")
+
+
+def get_question_set():
+    username = get_current_username()
+
+    if not username:
+        return None
+
+    all_sets = load_question_sets()
+
+    return all_sets.get(username)
+
+
+def save_question_set(
+    request_text,
+    answer,
+    subject,
+    difficulty,
+):
+    username = get_current_username()
+
+    if not username:
+        return
+
+    all_sets = load_question_sets()
+
+    all_sets[username] = {
+        "request": request_text,
+        "answer": answer,
+        "subject": subject,
+        "difficulty": difficulty,
+    }
+
+    with FILE_LOCK:
+        save_json_file(
+            QUESTION_SETS_FILE,
+            all_sets,
+        )
+
+
+def clear_question_set():
+    username = get_current_username()
+
+    if not username:
+        return
+
+    all_sets = load_question_sets()
+
+    if username in all_sets:
+        del all_sets[username]
+
+        with FILE_LOCK:
+            save_json_file(
+                QUESTION_SETS_FILE,
+                all_sets,
+            )
 
 
 # ============================================================
@@ -120,48 +250,29 @@ def save_users(users):
 # ============================================================
 
 GENERAL_PROMPT = """
-You are My AI, a student study assistant.
+You are My AI, a high-quality student study assistant.
 
 You help with:
-- Mathematics
-- Physics
-- Chemistry
-- Biology
-- General science
-- Academic questions
-
-Handle basic through very difficult questions.
+Mathematics, Physics, Chemistry, Biology and academic questions.
 
 Rules:
-1. Read the complete question.
+1. Read the entire question.
 2. Identify exactly what is being asked.
 3. Never guess.
 4. Answer every requested part.
 5. Show useful calculations.
-6. Check important arithmetic.
+6. Check arithmetic.
 7. Check units when relevant.
 8. Verify important results.
-9. Understand relevant follow-up context.
-10. Keep simple answers concise.
-11. Give useful derivations for difficult questions.
-12. Finish completely.
+9. Use only relevant conversation context.
+10. Never invent user information.
+11. Finish the answer completely.
 
-Never output raw LaTeX commands such as:
-\\(
-\\)
-\\[
-\\]
-\\frac
-\\boxed
-\\text{}
-\\begin{}
-\\end{}
-$$
+Never output raw LaTeX commands.
 
 Use readable notation such as:
 x²
 x³
-x⁵
 √2
 a/b
 F = ma
@@ -170,9 +281,11 @@ F = ma
 
 
 MATH_PROMPT = """
-You are an expert Mathematics solver.
+You are My AI's expert Mathematics solver.
 
-Handle:
+Handle basic through very difficult mathematics.
+
+Topics:
 - Algebra
 - Trigonometry
 - Trigonometric identities
@@ -201,33 +314,31 @@ Handle:
 - Calculus
 - JEE Main
 - JEE Advanced
-- Olympiad-style mathematics
+- Olympiad mathematics
 
 For difficult problems:
 1. Understand the exact target.
-2. Identify relevant information.
-3. Choose a correct method.
-4. Derive step by step.
-5. Simplify carefully.
-6. Check algebra.
+2. Identify useful information.
+3. Choose the correct method.
+4. Derive carefully.
+5. Check algebra.
+6. Check arithmetic.
 7. Check the final result.
 8. Verify MCQ options.
-9. For identities, actually prove the identity.
+9. For identities, actually prove them.
 10. Never guess.
-
-For equations, check roots.
-For inequalities, check equality cases.
-For probability, check validity.
-For geometry, respect all constraints.
 
 Never output raw LaTeX.
 """
 
 
 PHYSICS_PROMPT = """
-You are an expert Physics solver for school, JEE Main and JEE Advanced.
+You are My AI's expert Physics solver.
 
-Handle:
+Handle school, JEE Main, JEE Advanced and very difficult
+multi-step Physics problems.
+
+Topics:
 - Kinematics
 - Newton's laws
 - Friction
@@ -236,7 +347,7 @@ Handle:
 - Centre of mass
 - Circular motion
 - Rotation
-- Rolling motion
+- Rolling
 - Gravitation
 - SHM
 - Oscillations
@@ -255,10 +366,10 @@ Handle:
 
 For difficult problems:
 1. Understand the physical setup.
-2. Identify all relevant bodies.
+2. Identify all bodies.
 3. Identify forces and constraints.
 4. Choose coordinates.
-5. Find equilibrium if needed.
+5. Find equilibrium when required.
 6. Write governing equations.
 7. Use approximations only when justified.
 8. Derive the requested quantity.
@@ -267,22 +378,22 @@ For difficult problems:
 11. Check limiting cases when useful.
 12. Verify the final result.
 
-For small-oscillation problems:
+For small oscillations:
 - Find equilibrium first.
-- Define a small displacement.
-- Find the restoring force.
+- Define displacement.
+- Find restoring force.
 - Apply the correct approximation.
-- Compare with the SHM relation.
+- Compare with SHM.
 
 Never guess.
-Do not output raw LaTeX.
+Never output raw LaTeX.
 """
 
 
 CHEMISTRY_PROMPT = """
-You are an expert Chemistry solver.
+You are My AI's expert Chemistry solver.
 
-Handle school, JEE Main and JEE Advanced questions.
+Handle school, JEE Main and JEE Advanced.
 
 Topics:
 - Mole concept
@@ -301,24 +412,20 @@ Topics:
 - Isomerism
 - Reaction mechanisms
 
-For numerical problems:
-Given
-Formula/reaction
-Substitution
-Calculation
-Verification
-Final Answer
+For numericals:
+Given → formula/reaction → substitution → calculation
+→ verification → final answer.
 
 Check units, molar masses, ratios and limiting reagent.
+
 Never guess.
-Do not output raw LaTeX.
 """
 
 
 BIOLOGY_PROMPT = """
-You are an expert Biology solver.
+You are My AI's expert Biology solver.
 
-Handle school and competitive Biology questions.
+Handle school and competitive Biology.
 
 Topics:
 - Cell biology
@@ -335,12 +442,10 @@ Topics:
 - Ecology
 
 For difficult questions:
-1. Identify the exact concept.
-2. State relevant facts.
-3. Explain the process in order.
-4. Compare alternatives when needed.
-5. For genetics, calculate probabilities carefully.
-6. For MCQs, evaluate the options.
+- identify the exact concept
+- explain the process
+- compare alternatives
+- calculate genetics probabilities carefully
 
 Do not invent facts.
 """
@@ -351,42 +456,34 @@ You are My AI's academic image-question solver.
 
 Read the entire uploaded image.
 
-Identify whether it is:
+Identify:
 - Mathematics
 - Physics
 - Chemistry
 - Biology
 - General academic content
 
-Then solve it.
+Then solve the question.
 
-For Mathematics:
-- Read all visible numbers and symbols.
-- Reconstruct the question.
-- Solve step by step.
-- Check algebra and arithmetic.
+Mathematics:
+Read all visible numbers and symbols and solve carefully.
 
-For Physics:
-- Identify the physical system.
-- Extract given values.
-- Choose the correct laws.
-- Derive the result.
-- Check dimensions and units.
+Physics:
+Identify the physical system, values, laws, equations,
+and derive the result with unit checks.
 
-For Chemistry:
-- Read values and equations.
-- Balance reactions when necessary.
-- Calculate carefully.
+Chemistry:
+Read reactions and numerical information and solve carefully.
 
-For Biology:
-- Read labels and diagrams.
-- Answer all requested parts.
+Biology:
+Read diagrams and labels carefully.
 
-Do not invent text that is not visible.
-If something is unclear, say what is unclear.
-Do not merely describe the image.
+Do not invent anything that is not visible.
+If something is unclear, say exactly what is unclear.
 Actually solve the question.
-Do not output raw LaTeX.
+Do not merely describe the image.
+
+Never output raw LaTeX.
 """
 
 
@@ -397,11 +494,169 @@ def get_prompt(subject):
         "chemistry": CHEMISTRY_PROMPT,
         "biology": BIOLOGY_PROMPT,
         "general": GENERAL_PROMPT,
-    }.get(subject, GENERAL_PROMPT)
+    }.get(
+        subject,
+        GENERAL_PROMPT,
+    )
 
 
 # ============================================================
-# BASIC ANSWERS
+# OUTPUT CLEANING
+# ============================================================
+
+def clean_ai_output(text):
+    if not text:
+        return ""
+
+    text = str(text)
+
+    replacements = {
+        "\\[": "",
+        "\\]": "",
+        "\\(": "",
+        "\\)": "",
+        "$$": "",
+        "\\times": "×",
+        "\\cdot": "·",
+        "\\div": "÷",
+        "\\pm": "±",
+        "\\mp": "∓",
+        "\\leq": "≤",
+        "\\le": "≤",
+        "\\geq": "≥",
+        "\\ge": "≥",
+        "\\neq": "≠",
+        "\\ne": "≠",
+        "\\approx": "≈",
+        "\\infty": "∞",
+        "\\rightarrow": "→",
+        "\\to": "→",
+        "\\Rightarrow": "⇒",
+        "\\Leftarrow": "⇐",
+        "\\Omega": "Ω",
+        "\\mu": "μ",
+        "\\lambda": "λ",
+        "\\rho": "ρ",
+        "\\sigma": "σ",
+        "\\epsilon": "ε",
+        "\\theta": "θ",
+        "\\alpha": "α",
+        "\\beta": "β",
+        "\\gamma": "γ",
+        "\\Delta": "Δ",
+        "\\omega": "ω",
+        "\\pi": "π",
+        "\\circ": "°",
+        "\\quad": " ",
+        "\\qquad": " ",
+    }
+
+    for old, new in replacements.items():
+        text = text.replace(
+            old,
+            new,
+        )
+
+    text = re.sub(
+        r"\\frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}",
+        r"(\1/\2)",
+        text,
+    )
+
+    text = re.sub(
+        r"\\dfrac\s*\{([^{}]*)\}\s*\{([^{}]*)\}",
+        r"(\1/\2)",
+        text,
+    )
+
+    text = re.sub(
+        r"\\text\s*\{([^{}]*)\}",
+        r"\1",
+        text,
+    )
+
+    text = re.sub(
+        r"\\mathrm\s*\{([^{}]*)\}",
+        r"\1",
+        text,
+    )
+
+    text = re.sub(
+        r"\\mathbf\s*\{([^{}]*)\}",
+        r"\1",
+        text,
+    )
+
+    text = re.sub(
+        r"\\boxed\s*\{([^{}]*)\}",
+        r"\1",
+        text,
+    )
+
+    text = text.replace(
+        "\\left",
+        "",
+    )
+
+    text = text.replace(
+        "\\right",
+        "",
+    )
+
+    text = re.sub(
+        r"\\([a-zA-Z]+)",
+        r"\1",
+        text,
+    )
+
+    text = re.sub(
+        r"[ \t]{2,}",
+        " ",
+        text,
+    )
+
+    text = re.sub(
+        r"\n{3,}",
+        "\n\n",
+        text,
+    )
+
+    return text.strip()
+
+
+# ============================================================
+# HISTORY
+# ============================================================
+
+def get_history():
+    return session.get(
+        "chat_history",
+        [],
+    )
+
+
+def save_history(
+    question,
+    answer,
+    category="normal",
+):
+    history = get_history()
+
+    history.append(
+        {
+            "question": question,
+            "answer": answer[:12000],
+            "category": category,
+        }
+    )
+
+    # Avoid huge cookie/session growth.
+    session["chat_history"] = history[-8:]
+    session.modified = True
+
+
+# ============================================================
+# CREATOR / BASIC
 # ============================================================
 
 def basic_response(question):
@@ -417,9 +672,6 @@ def basic_response(question):
         "hii",
         "hiii",
         "helo",
-        "hi!",
-        "hello!",
-        "hey!",
     }:
         return (
             "Hello! 👋 I'm My AI.\n\n"
@@ -451,310 +703,170 @@ def basic_response(question):
 
 
 # ============================================================
-# MEMORY
-#
-# IMPORTANT:
-# creator information, normal chat and question sets are
-# completely separated.
-# ============================================================
-
-def save_history(question, answer, category="normal"):
-    history = session.get("chat_history", [])
-
-    history.append({
-        "question": question,
-        "answer": answer[:12000],
-        "category": category,
-    })
-
-    session["chat_history"] = history[-15:]
-    session.modified = True
-
-
-def save_question_set(
-    request_text,
-    answer,
-    subject,
-    difficulty,
-):
-    session["question_set"] = {
-        "request": request_text,
-        "answer": answer[:60000],
-        "subject": subject,
-        "difficulty": difficulty,
-    }
-
-    session.modified = True
-
-
-def get_question_set():
-    return session.get("question_set")
-
-
-def clear_question_set():
-    session.pop("question_set", None)
-    session.modified = True
-
-
-# ============================================================
-# FOLLOW-UP / CONTINUATION
-# ============================================================
-
-def continuation_count(question):
-    q = question.strip().lower()
-
-    patterns = [
-        r"^other\s+(\d+)\s+questions?$",
-        r"^another\s+(\d+)\s+questions?$",
-        r"^next\s+(\d+)\s+questions?$",
-        r"^more\s+(\d+)\s+questions?$",
-        r"^remaining\s+(\d+)\s+questions?$",
-        r"^give\s+(?:me\s+)?(?:the\s+)?other\s+(\d+)\s+questions?$",
-        r"^give\s+(?:me\s+)?another\s+(\d+)\s+questions?$",
-    ]
-
-    for pattern in patterns:
-        match = re.match(pattern, q)
-
-        if match:
-            return min(
-                max(int(match.group(1)), 1),
-                50,
-            )
-
-    return None
-
-
-def is_question_set_modification(question):
-    q = question.strip().lower()
-
-    return q in {
-        "with options",
-        "add options",
-        "give options",
-        "with answers",
-        "give answers",
-        "give answer key",
-        "answer key",
-        "show answers",
-    }
-
-
-def is_followup(question):
-    q = question.strip().lower()
-
-    if continuation_count(question) is not None:
-        return True
-
-    if is_question_set_modification(question):
-        return True
-
-    short = {
-        "other",
-        "others",
-        "another",
-        "another one",
-        "more",
-        "more examples",
-        "also",
-        "top three",
-        "top 3",
-        "top five",
-        "top 5",
-        "which one",
-        "which one is easiest",
-        "which is easiest",
-        "which is better",
-        "why",
-        "why?",
-        "how",
-        "how?",
-        "explain more",
-        "continue",
-    }
-
-    if q in short:
-        return True
-
-    prefixes = (
-        "and ",
-        "also ",
-        "what about ",
-        "how about ",
-        "then ",
-        "compare ",
-        "difference ",
-        "differences ",
-        "which one ",
-        "which is ",
-        "why is ",
-        "why are ",
-        "how is ",
-        "how are ",
-    )
-
-    if q.startswith(prefixes):
-        return True
-
-    return len(q.split()) <= 3
-
-
-# ============================================================
-# QUESTION NUMBER HELPERS
-# ============================================================
-
-def extract_question_numbers(text):
-    numbers = re.findall(
-        r"(?:^|\n)\s*(?:\*\*)?(\d+)\.",
-        text,
-    )
-
-    return sorted({
-        int(n)
-        for n in numbers
-    })
-
-
-def last_question_number(text):
-    numbers = extract_question_numbers(text)
-
-    return max(numbers) if numbers else 0
-
-
-# ============================================================
-# NORMAL CONTEXT
-# ============================================================
-
-def build_normal_context(question):
-    history = session.get(
-        "chat_history",
-        [],
-    )
-
-    # NEVER include creator category automatically.
-    useful = [
-        item
-        for item in history
-        if item.get("category") == "normal"
-    ]
-
-    if not useful:
-        return question
-
-    if not is_followup(question):
-        return question
-
-    recent = useful[-5:]
-
-    parts = [
-        "RELEVANT RECENT CONVERSATION:",
-        "",
-    ]
-
-    for item in recent:
-        parts.append(
-            "USER:\n" + item["question"]
-        )
-        parts.append(
-            "MY AI:\n" + item["answer"]
-        )
-        parts.append("")
-
-    parts.append(
-        "NEW USER QUESTION:\n" + question
-    )
-
-    parts.append(
-        "\nAnswer using only relevant previous context."
-    )
-
-    return "\n".join(parts)
-
-
-# ============================================================
-# SUBJECT DETECTION
+# SUBJECT
 # ============================================================
 
 def detect_subject(question):
     q = question.lower()
 
-    scores = {
-        "math": 0,
-        "physics": 0,
-        "chemistry": 0,
-        "biology": 0,
+    groups = {
+        "math": [
+            "equation",
+            "algebra",
+            "quadratic",
+            "polynomial",
+            "trigonometry",
+            "trigonometric",
+            "sin",
+            "cos",
+            "tan",
+            "sec",
+            "cosec",
+            "geometry",
+            "identity",
+            "surds",
+            "probability",
+            "sequence",
+            "series",
+            "binomial",
+            "permutation",
+            "combination",
+            "matrix",
+            "determinant",
+            "calculus",
+            "integral",
+            "derivative",
+            "logarithm",
+            "vector",
+            "complex",
+            "inequality",
+            "number theory",
+            "divisibility",
+            "function",
+            "proof",
+        ],
+
+        "physics": [
+            "force",
+            "velocity",
+            "acceleration",
+            "momentum",
+            "newton",
+            "work",
+            "energy",
+            "power",
+            "friction",
+            "gravitation",
+            "projectile",
+            "current",
+            "voltage",
+            "resistance",
+            "resistor",
+            "circuit",
+            "electric",
+            "magnetic",
+            "lens",
+            "mirror",
+            "refraction",
+            "heat",
+            "temperature",
+            "pressure",
+            "density",
+            "rotation",
+            "rotational",
+            "torque",
+            "angular momentum",
+            "oscillation",
+            "oscillations",
+            "shm",
+            "wave",
+            "capacitor",
+            "induction",
+            "electromagnetic",
+        ],
+
+        "chemistry": [
+            "mole",
+            "molarity",
+            "molality",
+            "stoichiometry",
+            "limiting reagent",
+            "oxidation",
+            "reduction",
+            "redox",
+            "acid",
+            "base",
+            "ph",
+            "salt",
+            "equilibrium",
+            "enthalpy",
+            "electrochemistry",
+            "organic",
+            "alkane",
+            "alkene",
+            "alkyne",
+            "benzene",
+            "alcohol",
+            "aldehyde",
+            "ketone",
+            "reaction",
+            "atom",
+            "electron",
+            "compound",
+            "kinetics",
+        ],
+
+        "biology": [
+            "cell",
+            "mitosis",
+            "meiosis",
+            "chromosome",
+            "gene",
+            "genetics",
+            "allele",
+            "dna",
+            "rna",
+            "protein",
+            "enzyme",
+            "photosynthesis",
+            "respiration",
+            "plant",
+            "animal",
+            "tissue",
+            "organ",
+            "ecosystem",
+            "ecology",
+            "evolution",
+            "hormone",
+            "neuron",
+            "digestion",
+            "reproduction",
+            "heredity",
+            "blood",
+            "heart",
+            "kidney",
+            "lung",
+            "brain",
+        ],
     }
 
-    math_words = [
-        "equation", "algebra", "quadratic", "polynomial",
-        "trigonometry", "trigonometric", "sin", "cos",
-        "tan", "sec", "cosec", "geometry", "identity",
-        "surds", "probability", "permutation",
-        "combination", "sequence", "series", "matrix",
-        "determinant", "calculus", "integral", "derivative",
-        "logarithm", "vector", "complex", "binomial",
-        "inequality", "number theory", "divisibility",
-        "function", "proof",
-    ]
-
-    physics_words = [
-        "force", "velocity", "acceleration", "momentum",
-        "newton", "work", "energy", "power", "friction",
-        "gravitation", "projectile", "current", "voltage",
-        "resistance", "resistor", "circuit", "electric",
-        "magnetic", "lens", "mirror", "refraction",
-        "heat", "temperature", "pressure", "density",
-        "rotation", "rotational", "torque", "angular momentum",
-        "oscillation", "oscillations", "shm", "wave",
-        "capacitor", "induction", "electromagnetic",
-    ]
-
-    chemistry_words = [
-        "mole", "molarity", "molality", "stoichiometry",
-        "limiting reagent", "oxidation", "reduction",
-        "redox", "acid", "base", "ph", "salt",
-        "equilibrium", "enthalpy", "electrochemistry",
-        "organic", "alkane", "alkene", "alkyne", "benzene",
-        "alcohol", "aldehyde", "ketone", "reaction",
-        "atom", "electron", "compound", "kinetics",
-    ]
-
-    biology_words = [
-        "cell", "mitosis", "meiosis", "chromosome", "gene",
-        "genetics", "allele", "dna", "rna", "protein",
-        "enzyme", "photosynthesis", "respiration", "plant",
-        "animal", "tissue", "organ", "ecosystem", "ecology",
-        "evolution", "hormone", "neuron", "digestion",
-        "reproduction", "heredity", "blood", "heart",
-        "kidney", "lung", "brain",
-    ]
-
-    for word in math_words:
-        if word in q:
-            scores["math"] += 1
-
-    for word in physics_words:
-        if word in q:
-            scores["physics"] += 1
-
-    for word in chemistry_words:
-        if word in q:
-            scores["chemistry"] += 1
-
-    for word in biology_words:
-        if word in q:
-            scores["biology"] += 1
+    scores = {
+        subject: sum(
+            word in q
+            for word in words
+        )
+        for subject, words in groups.items()
+    }
 
     subject = max(
         scores,
         key=scores.get,
     )
 
-    return (
-        subject
-        if scores[subject] > 0
-        else "general"
-    )
+    if scores[subject] == 0:
+        return "general"
+
+    return subject
 
 
 # ============================================================
@@ -766,7 +878,7 @@ def detect_difficulty(question):
 
     score = 0
 
-    hard_words = [
+    hard_terms = [
         "jee advanced",
         "jee adv",
         "olympiad",
@@ -798,8 +910,8 @@ def detect_difficulty(question):
         "electromagnetic induction",
     ]
 
-    for word in hard_words:
-        if word in q:
+    for term in hard_terms:
+        if term in q:
             score += 2
 
     if len(q) > 300:
@@ -818,8 +930,79 @@ def detect_difficulty(question):
 
 
 # ============================================================
-# QUESTION GENERATION
+# QUESTION COMMANDS
 # ============================================================
+
+def continuation_count(question):
+    q = question.strip().lower()
+
+    patterns = [
+        r"^other\s+(\d+)\s+questions?$",
+        r"^another\s+(\d+)\s+questions?$",
+        r"^next\s+(\d+)\s+questions?$",
+        r"^more\s+(\d+)\s+questions?$",
+        r"^remaining\s+(\d+)\s+questions?$",
+        r"^give\s+(?:me\s+)?(?:the\s+)?other\s+(\d+)\s+questions?$",
+        r"^give\s+(?:me\s+)?another\s+(\d+)\s+questions?$",
+    ]
+
+    for pattern in patterns:
+        match = re.match(
+            pattern,
+            q,
+        )
+
+        if match:
+            return min(
+                max(
+                    int(match.group(1)),
+                    1,
+                ),
+                50,
+            )
+
+    return None
+
+
+def answer_key_command(question):
+    q = question.strip().lower()
+
+    return q in {
+        "answers",
+        "answer",
+        "answer key",
+        "show answers",
+        "ans",
+        "ans of all",
+        "answers of all",
+        "answer all",
+        "give ans",
+        "give ans of all",
+        "give answers",
+    }
+
+
+def options_command(question):
+    q = question.strip().lower()
+
+    return q in {
+        "with options",
+        "add options",
+        "give options",
+    }
+
+
+def explanation_command(question):
+    q = question.strip().lower()
+
+    return q in {
+        "explain all",
+        "explain answers",
+        "explain all questions",
+        "solutions",
+        "solve all",
+    }
+
 
 def is_question_generation(question):
     q = question.lower()
@@ -827,7 +1010,13 @@ def is_question_generation(question):
     if continuation_count(question) is not None:
         return True
 
-    if is_question_set_modification(question):
+    if answer_key_command(question):
+        return True
+
+    if options_command(question):
+        return True
+
+    if explanation_command(question):
         return True
 
     phrases = [
@@ -865,11 +1054,17 @@ def requested_question_count(question):
     ]
 
     for pattern in patterns:
-        match = re.search(pattern, q)
+        match = re.search(
+            pattern,
+            q,
+        )
 
         if match:
             return min(
-                max(int(match.group(1)), 1),
+                max(
+                    int(match.group(1)),
+                    1,
+                ),
                 50,
             )
 
@@ -877,53 +1072,673 @@ def requested_question_count(question):
 
 
 # ============================================================
-# QUESTION SET: "WITH OPTIONS"
+# QUESTION NUMBERING
 # ============================================================
 
-def modify_question_set(
-    question_set,
-    user_request,
+def extract_question_numbers(text):
+    numbers = re.findall(
+        r"(?:^|\n)\s*(?:\*\*)?(\d+)\.",
+        text,
+    )
+
+    return sorted(
+        set(
+            int(number)
+            for number in numbers
+        )
+    )
+
+
+def last_question_number(text):
+    numbers = extract_question_numbers(
+        text
+    )
+
+    return (
+        max(numbers)
+        if numbers
+        else 0
+    )
+
+
+# ============================================================
+# NORMAL CONTEXT
+#
+# CREATOR INFORMATION IS NEVER INCLUDED.
+# QUESTION SET IS NEVER INCLUDED HERE.
+# ============================================================
+
+def build_normal_context(question):
+    history = get_history()
+
+    useful = [
+        item
+        for item in history
+        if item.get("category") == "normal"
+    ]
+
+    # A long/independent question should not inherit random
+    # older context.
+    if len(question.split()) > 6:
+        return question
+
+    if not useful:
+        return question
+
+    recent = useful[-4:]
+
+    parts = [
+        "RELEVANT RECENT CONVERSATION:",
+        "",
+    ]
+
+    for item in recent:
+        parts.append(
+            "USER:\n" + item["question"]
+        )
+
+        parts.append(
+            "MY AI:\n" + item["answer"]
+        )
+
+        parts.append("")
+
+    parts.append(
+        "NEW USER QUESTION:\n"
+        + question
+    )
+
+    parts.append(
+        "\nAnswer only using relevant context."
+    )
+
+    return "\n".join(parts)
+
+
+# ============================================================
+# TEXT AI
+# ============================================================
+
+def text_call(
+    instructions,
+    user_input,
+    reasoning="medium",
+    max_tokens=6000,
 ):
+    if not hf_client:
+        raise RuntimeError(
+            "HF_TOKEN is missing."
+        )
+
+    try:
+        response = hf_client.responses.create(
+            model=TEXT_MODEL,
+            instructions=instructions,
+            input=user_input,
+            reasoning={
+                "effort": reasoning,
+            },
+            max_output_tokens=max_tokens,
+        )
+
+        return clean_ai_output(
+            response.output_text or ""
+        )
+
+    except Exception as response_error:
+        print(
+            "RESPONSES API ERROR:",
+            repr(response_error),
+        )
+
+        # Fallback for providers that don't expose Responses API.
+        completion = hf_client.chat.completions.create(
+            model=TEXT_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": instructions,
+                },
+                {
+                    "role": "user",
+                    "content": user_input,
+                },
+            ],
+            temperature=0.05,
+            max_tokens=max_tokens,
+        )
+
+        if not completion.choices:
+            return ""
+
+        return clean_ai_output(
+            completion.choices[0]
+            .message
+            .content
+            or ""
+        )
+
+
+# ============================================================
+# QUESTION BATCH GENERATOR
+# ============================================================
+
+def generate_question_batch(
+    subject,
+    difficulty,
+    start_number,
+    end_number,
+    previous_context="",
+):
+    count = (
+        end_number
+        - start_number
+        + 1
+    )
+
     prompt = get_prompt(
-        question_set["subject"]
+        subject
     )
 
     prompt += f"""
 
-QUESTION SET MODIFICATION
+QUESTION GENERATION MODE
 
-Previous request:
-{question_set["request"]}
+Generate exactly {count} MCQ questions.
 
-Previous questions:
-{question_set["answer"]}
+Number:
+{start_number} through {end_number}
 
-New user request:
-{user_request}
+Requirements:
+- Same subject: {subject}
+- Difficulty: {difficulty}
+- Every question must be complete.
+- Give A, B, C and D options.
+- Make each question different.
+- Do not give answers.
+- Do not restart numbering.
+- Do not add unrelated commentary.
+- Use readable mathematical notation.
+- Before finishing, check every number exists.
 
-The user wants to modify the PREVIOUS QUESTION SET.
-
-Rules:
-- Stay on exactly the same subject.
-- Do not talk about the creator.
-- Do not use unrelated conversation.
-- Keep all existing questions.
-- Add or change only what the user requested.
-- If the user says "with options", add A, B, C and D
-  to every question.
-- Return the complete question set.
+Previous context:
+{previous_context}
 """
 
+    # Five/ten-question batches stay safely below one giant output.
     return text_call(
         instructions=prompt,
         user_input=prompt,
         reasoning="medium",
-        max_tokens=14000,
+        max_tokens=min(
+            max(
+                5000,
+                count * 1100,
+            ),
+            10000,
+        ),
+    )
+
+
+def generate_questions_in_batches(
+    subject,
+    difficulty,
+    total,
+    start_number=1,
+    previous_context="",
+):
+    parts = []
+
+    current = start_number
+
+    final_number = (
+        start_number
+        + total
+        - 1
+    )
+
+    while current <= final_number:
+
+        batch_end = min(
+            current + 4,
+            final_number,
+        )
+
+        batch = generate_question_batch(
+            subject=subject,
+            difficulty=difficulty,
+            start_number=current,
+            end_number=batch_end,
+            previous_context=previous_context,
+        )
+
+        if not batch.strip():
+            raise RuntimeError(
+                f"Empty batch {current}-{batch_end}"
+            )
+
+        expected = set(
+            range(
+                current,
+                batch_end + 1,
+            )
+        )
+
+        found = set(
+            extract_question_numbers(
+                batch
+            )
+        )
+
+        missing = sorted(
+            expected - found
+        )
+
+        # Repair missing question numbers.
+        attempts = 0
+
+        while missing and attempts < 2:
+
+            attempts += 1
+
+            repair = generate_question_batch(
+                subject=subject,
+                difficulty=difficulty,
+                start_number=missing[0],
+                end_number=missing[-1],
+                previous_context=batch,
+            )
+
+            batch += (
+                "\n\n"
+                + repair
+            )
+
+            found = set(
+                extract_question_numbers(
+                    batch
+                )
+            )
+
+            missing = sorted(
+                expected - found
+            )
+
+        if missing:
+            raise RuntimeError(
+                "Missing question numbers: "
+                + ", ".join(
+                    map(str, missing)
+                )
+            )
+
+        parts.append(
+            batch
+        )
+
+        current = (
+            batch_end
+            + 1
+        )
+
+    final_text = "\n\n".join(
+        parts
+    )
+
+    # Final number check.
+    actual = set(
+        extract_question_numbers(
+            final_text
+        )
+    )
+
+    expected_final = set(
+        range(
+            start_number,
+            final_number + 1,
+        )
+    )
+
+    missing_final = sorted(
+        expected_final - actual
+    )
+
+    if missing_final:
+        raise RuntimeError(
+            "Final question-set validation failed: "
+            + ", ".join(
+                map(str, missing_final)
+            )
+        )
+
+    return clean_ai_output(
+        final_text
     )
 
 
 # ============================================================
-# SAFE CALCULATOR
+# QUESTION-SET COMMANDS
+# ============================================================
+
+def modify_question_set(
+    question_set,
+    command,
+):
+    q = command.strip().lower()
+
+    subject = question_set["subject"]
+    old_set = question_set["answer"]
+
+    # --------------------------------------------------------
+    # ANSWERS OF ALL
+    # --------------------------------------------------------
+
+    if answer_key_command(command):
+
+        prompt = get_prompt(
+            subject
+        )
+
+        prompt += """
+
+The user wants the ANSWERS OF ALL QUESTIONS in the
+previous question set.
+
+Rules:
+- Use only the previous question set below.
+- Do not talk about the creator.
+- Do not generate new questions.
+- Answer every question.
+- Keep the same numbering.
+- Give the correct option.
+- Give a short explanation for each.
+- Check calculations carefully.
+- Do not stop early.
+"""
+
+        result = text_call(
+            instructions=prompt,
+            user_input=(
+                "Previous question set:\n\n"
+                + old_set
+                + "\n\nGive the answers of all questions."
+            ),
+            reasoning="high",
+            max_tokens=16000,
+        )
+
+        return result
+
+    # --------------------------------------------------------
+    # ADD OPTIONS
+    # --------------------------------------------------------
+
+    if options_command(command):
+
+        prompt = get_prompt(
+            subject
+        )
+
+        prompt += """
+
+Add exactly four options A, B, C and D to every question
+in the existing question set.
+
+Rules:
+- Keep the same questions.
+- Keep the same numbering.
+- Keep the same subject.
+- Do not talk about the creator.
+- Do not answer the questions.
+- Return the COMPLETE question set.
+"""
+
+        return text_call(
+            instructions=prompt,
+            user_input=(
+                "Existing question set:\n\n"
+                + old_set
+                + "\n\nUser request:\n"
+                + command
+            ),
+            reasoning="medium",
+            max_tokens=16000,
+        )
+
+    # --------------------------------------------------------
+    # EXPLANATIONS
+    # --------------------------------------------------------
+
+    if explanation_command(command):
+
+        prompt = get_prompt(
+            subject
+        )
+
+        prompt += """
+
+Solve every question in the existing question set.
+
+Rules:
+- Keep the original numbering.
+- Solve every question.
+- Show useful steps.
+- Do not skip any question.
+- Do not talk about the creator.
+"""
+
+        return text_call(
+            instructions=prompt,
+            user_input=(
+                "Existing question set:\n\n"
+                + old_set
+                + "\n\nUser request:\n"
+                + command
+            ),
+            reasoning="high",
+            max_tokens=18000,
+        )
+
+    return None
+
+
+# ============================================================
+# ADVANCED VERIFIER
+# ============================================================
+
+def verify_advanced_answer(
+    question,
+    answer,
+    subject,
+):
+    if subject not in {
+        "math",
+        "physics",
+    }:
+        return answer
+
+    verifier_prompt = """
+You are a strict verifier for Mathematics and Physics.
+
+Check the proposed answer.
+
+Check:
+- equation correctness
+- algebra
+- arithmetic
+- signs
+- dimensions
+- units
+- limiting cases where useful
+- MCQ option
+
+If wrong, correct it.
+
+Return only the corrected educational answer.
+Do not mention private reasoning.
+Do not output raw LaTeX.
+"""
+
+    try:
+
+        checked = text_call(
+            instructions=verifier_prompt,
+            user_input=(
+                "QUESTION:\n"
+                + question
+                + "\n\nPROPOSED ANSWER:\n"
+                + answer
+            ),
+            reasoning="high",
+            max_tokens=10000,
+        )
+
+        return (
+            checked
+            if checked.strip()
+            else answer
+        )
+
+    except Exception as error:
+
+        print(
+            "VERIFIER ERROR:",
+            repr(error),
+        )
+
+        return answer
+
+
+# ============================================================
+# CAMERA / IMAGE
+# ============================================================
+
+def analyze_image(
+    image_data,
+    question,
+):
+    if not hf_client:
+        return (
+            "❌ HF_TOKEN is missing.\n\n"
+            "Check Render → Environment → HF_TOKEN."
+        )
+
+    if not image_data.startswith(
+        "data:image/"
+    ):
+        return "❌ Invalid image data."
+
+    if len(image_data) > 12_000_000:
+        return (
+            "❌ Image is too large.\n\n"
+            "Please use a smaller or clearer image."
+        )
+
+    prompt = (
+        question.strip()
+        if question.strip()
+        else
+        "Read this image carefully and solve the academic question step by step."
+    )
+
+    try:
+
+        response = hf_client.responses.create(
+            model=VISION_MODEL,
+            instructions=VISION_PROMPT,
+            input=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "input_text",
+                            "text": prompt,
+                        },
+                        {
+                            "type": "input_image",
+                            "image_url": image_data,
+                        },
+                    ],
+                }
+            ],
+            max_output_tokens=7000,
+        )
+
+        answer = clean_ai_output(
+            response.output_text or ""
+        )
+
+        if answer:
+            return answer
+
+    except Exception as error:
+
+        print(
+            "VISION RESPONSES ERROR:",
+            repr(error),
+        )
+
+    # Fallback to Chat Completions
+    try:
+
+        response = hf_client.chat.completions.create(
+            model=VISION_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": VISION_PROMPT,
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": prompt,
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": image_data,
+                            },
+                        },
+                    ],
+                },
+            ],
+            temperature=0.05,
+            max_tokens=7000,
+        )
+
+        if response.choices:
+
+            answer = clean_ai_output(
+                response.choices[0]
+                .message
+                .content
+                or ""
+            )
+
+            if answer:
+                return answer
+
+    except Exception as error:
+
+        print(
+            "VISION FALLBACK ERROR:",
+            repr(error),
+        )
+
+        return (
+            "❌ Vision AI error:\n\n"
+            + str(error)
+        )
+
+    return (
+        "❌ Vision AI could not analyze the image."
+    )
+
+
+# ============================================================
+# LOCAL CALCULATOR
 # ============================================================
 
 ALLOWED_BINARY_OPERATORS = {
@@ -943,41 +1758,65 @@ ALLOWED_UNARY_OPERATORS = {
 
 
 def safe_calculate(expression):
+
     try:
+
         tree = ast.parse(
             expression,
             mode="eval",
         )
+
     except (
         SyntaxError,
         ValueError,
     ):
+
         return None
 
     def calculate(node):
-        if isinstance(node, ast.Constant):
+
+        if isinstance(
+            node,
+            ast.Constant,
+        ):
+
             if isinstance(
                 node.value,
                 (int, float),
             ):
                 return node.value
+
             raise ValueError()
 
-        if isinstance(node, ast.UnaryOp):
-            operation = ALLOWED_UNARY_OPERATORS.get(
-                type(node.op)
+        if isinstance(
+            node,
+            ast.UnaryOp,
+        ):
+
+            operation = (
+                ALLOWED_UNARY_OPERATORS.get(
+                    type(node.op)
+                )
             )
 
             if operation is None:
                 raise ValueError()
 
             return operation(
-                calculate(node.operand)
+                calculate(
+                    node.operand
+                )
             )
 
-        if isinstance(node, ast.BinOp):
-            operation = ALLOWED_BINARY_OPERATORS.get(
-                type(node.op)
+        if isinstance(
+            node,
+            ast.BinOp,
+        ):
+
+            operation = (
+                ALLOWED_BINARY_OPERATORS.get(
+                    type(node.op)
+                )
             )
 
             if operation is None:
@@ -986,12 +1825,16 @@ def safe_calculate(expression):
             left = calculate(
                 node.left
             )
+
             right = calculate(
                 node.right
             )
 
             if (
-                isinstance(node.op, ast.Pow)
+                isinstance(
+                    node.op,
+                    ast.Pow,
+                )
                 and abs(right) > 10000
             ):
                 raise ValueError()
@@ -1004,7 +1847,10 @@ def safe_calculate(expression):
         raise ValueError()
 
     try:
-        return calculate(tree.body)
+
+        return calculate(
+            tree.body
+        )
 
     except (
         ArithmeticError,
@@ -1012,16 +1858,33 @@ def safe_calculate(expression):
         ValueError,
         ZeroDivisionError,
     ):
+
         return None
 
 
 def solve_calculation(question):
+
     q = question.strip()
 
-    q = q.replace("×", "*")
-    q = q.replace("÷", "/")
-    q = q.replace("−", "-")
-    q = q.replace("^", "**")
+    q = q.replace(
+        "×",
+        "*",
+    )
+
+    q = q.replace(
+        "÷",
+        "/",
+    )
+
+    q = q.replace(
+        "−",
+        "-",
+    )
+
+    q = q.replace(
+        "^",
+        "**",
+    )
 
     q = re.sub(
         r"(?<=\d),(?=\d)",
@@ -1048,16 +1911,25 @@ def solve_calculation(question):
     ):
         return None
 
-    result = safe_calculate(q)
+    result = safe_calculate(
+        q
+    )
 
     if result is None:
         return None
 
-    if isinstance(result, int):
+    if isinstance(
+        result,
+        int,
+    ):
+
         answer = f"{result:,}"
 
     else:
-        if not math.isfinite(result):
+
+        if not math.isfinite(
+            result
+        ):
             return None
 
         answer = (
@@ -1073,10 +1945,11 @@ def solve_calculation(question):
 
 
 # ============================================================
-# x + 1/x SOLVER
+# x + 1/x
 # ============================================================
 
 def solve_power_recurrence(question):
+
     q = question.lower()
 
     given = re.search(
@@ -1113,7 +1986,11 @@ def solve_power_recurrence(question):
         1: a,
     }
 
-    for k in range(1, n):
+    for k in range(
+        1,
+        n,
+    ):
+
         values[k + 1] = (
             a * values[k]
             - values[k - 1]
@@ -1131,454 +2008,57 @@ def solve_power_recurrence(question):
         "",
     ]
 
-    for k in range(2, n + 1):
-        lines.extend([
-            f"**Step {k - 1}:**",
-            "",
-            f"S{k} = {a:g}S{k-1} − S{k-2}",
+    for k in range(
+        2,
+        n + 1,
+    ):
+
+        lines.extend(
+            [
+                f"**Step {k - 1}:**",
+                "",
+                f"S{k} = {a:g}S{k-1} − S{k-2}",
+                "",
+                (
+                    f"S{k} = {a:g}"
+                    f"({values[k - 1]:g})"
+                    f" − {values[k - 2]:g}"
+                ),
+                "",
+                f"**S{k} = {values[k]:g}**",
+                "",
+            ]
+        )
+
+    lines.extend(
+        [
+            "### Final Answer",
             "",
             (
-                f"S{k} = {a:g}"
-                f"({values[k - 1]:g})"
-                f" − {values[k - 2]:g}"
+                f"**x^{n} + 1/x^{n} = "
+                f"{values[n]:g} ✅**"
             ),
-            "",
-            f"**S{k} = {values[k]:g}**",
-            "",
-        ])
-
-    lines.extend([
-        "### Final Answer",
-        "",
-        (
-            f"**x^{n} + 1/x^{n} = "
-            f"{values[n]:g} ✅**"
-        ),
-    ])
+        ]
+    )
 
     return "\n".join(lines)
 
 
 # ============================================================
-# HUGGING FACE TEXT CALL
-# ============================================================
-
-def text_call(
-    instructions,
-    user_input,
-    reasoning="medium",
-    max_tokens=6000,
-):
-    if not hf_client:
-        raise RuntimeError(
-            "HF_TOKEN is missing."
-        )
-
-    try:
-        response = hf_client.responses.create(
-            model=TEXT_MODEL,
-            instructions=instructions,
-            input=user_input,
-            reasoning={
-                "effort": reasoning,
-            },
-            max_output_tokens=max_tokens,
-        )
-
-        return (
-            response.output_text
-            or ""
-        )
-
-    except Exception as response_error:
-        print(
-            "RESPONSES API ERROR:",
-            repr(response_error),
-        )
-
-        # Fallback to Chat Completions.
-        response = hf_client.chat.completions.create(
-            model=TEXT_MODEL,
-            messages=[
-                {
-                    "role": "system",
-                    "content": instructions,
-                },
-                {
-                    "role": "user",
-                    "content": user_input,
-                },
-            ],
-            temperature=0.05,
-            max_tokens=max_tokens,
-        )
-
-        if response.choices:
-            return (
-                response.choices[0]
-                .message
-                .content
-                or ""
-            )
-
-        return ""
-
-
-# ============================================================
-# QUESTION BATCH GENERATION
-# ============================================================
-
-def generate_question_batch(
-    subject,
-    difficulty,
-    start_number,
-    end_number,
-    previous_context="",
-):
-    count = (
-        end_number
-        - start_number
-        + 1
-    )
-
-    prompt = get_prompt(subject)
-
-    prompt += f"""
-
-QUESTION GENERATION MODE
-
-Generate exactly {count} multiple-choice questions.
-
-Start at Question {start_number}.
-End at Question {end_number}.
-
-Requirements:
-- Same subject: {subject}
-- Difficulty: {difficulty}
-- Every question must be complete.
-- Give A, B, C and D options.
-- Make each question different.
-- Do not provide answers unless explicitly requested.
-- Do not restart numbering.
-- Do not add unrelated commentary.
-- Before finishing, verify every number exists.
-
-Previous context:
-{previous_context}
-"""
-
-    return text_call(
-        instructions=prompt,
-        user_input=prompt,
-        reasoning="medium",
-        max_tokens=min(
-            max(
-                5000,
-                count * 1200,
-            ),
-            10000,
-        ),
-    )
-
-
-def generate_questions_in_batches(
-    subject,
-    difficulty,
-    total,
-    start_number=1,
-    previous_context="",
-):
-    pieces = []
-
-    current = start_number
-    final_number = (
-        start_number + total - 1
-    )
-
-    while current <= final_number:
-        batch_end = min(
-            current + 4,
-            final_number,
-        )
-
-        batch = generate_question_batch(
-            subject=subject,
-            difficulty=difficulty,
-            start_number=current,
-            end_number=batch_end,
-            previous_context=previous_context,
-        )
-
-        if not batch.strip():
-            raise RuntimeError(
-                f"Empty batch {current}-{batch_end}."
-            )
-
-        expected = set(
-            range(
-                current,
-                batch_end + 1,
-            )
-        )
-
-        found = set(
-            extract_question_numbers(batch)
-        )
-
-        missing = sorted(
-            expected - found
-        )
-
-        # Repair only the missing questions.
-        attempts = 0
-
-        while missing and attempts < 2:
-            attempts += 1
-
-            repair = generate_question_batch(
-                subject=subject,
-                difficulty=difficulty,
-                start_number=missing[0],
-                end_number=missing[-1],
-                previous_context=batch,
-            )
-
-            if repair.strip():
-                batch += "\n\n" + repair
-
-            found = set(
-                extract_question_numbers(batch)
-            )
-
-            missing = sorted(
-                expected - found
-            )
-
-        if missing:
-            raise RuntimeError(
-                "Missing question numbers: "
-                + ", ".join(
-                    map(str, missing)
-                )
-            )
-
-        pieces.append(batch)
-        current = batch_end + 1
-
-    final_text = "\n\n".join(pieces)
-
-    final_numbers = set(
-        extract_question_numbers(final_text)
-    )
-
-    expected_final = set(
-        range(
-            start_number,
-            final_number + 1,
-        )
-    )
-
-    missing_final = sorted(
-        expected_final - final_numbers
-    )
-
-    if missing_final:
-        raise RuntimeError(
-            "Final check failed. Missing: "
-            + ", ".join(
-                map(str, missing_final)
-            )
-        )
-
-    return final_text
-
-
-# ============================================================
-# ADVANCED ANSWER VERIFICATION
-# ============================================================
-
-def verify_advanced_answer(
-    question,
-    answer,
-    subject,
-):
-    if subject not in {
-        "math",
-        "physics",
-    }:
-        return answer
-
-    verifier = """
-You are a strict Mathematics and Physics answer verifier.
-
-Check:
-- equations
-- algebra
-- arithmetic
-- units
-- signs
-- final result
-- MCQ option if present
-
-If wrong, correct it.
-If correct, keep it.
-Return only the final educational answer.
-
-Do not reveal private reasoning.
-Do not output raw LaTeX.
-"""
-
-    try:
-        checked = text_call(
-            instructions=verifier,
-            user_input=(
-                "QUESTION:\n"
-                + question
-                + "\n\nANSWER:\n"
-                + answer
-            ),
-            reasoning="high",
-            max_tokens=9000,
-        )
-
-        return checked.strip() or answer
-
-    except Exception as error:
-        print(
-            "VERIFICATION ERROR:",
-            repr(error),
-        )
-        return answer
-
-
-# ============================================================
-# IMAGE / CAMERA
-# ============================================================
-
-def analyze_image(
-    image_data,
-    question,
-):
-    if not hf_client:
-        return (
-            "❌ HF_TOKEN is missing.\n\n"
-            "Check Render → Environment → HF_TOKEN."
-        )
-
-    if not image_data.startswith("data:image/"):
-        return "❌ Invalid image data."
-
-    if len(image_data) > 12_000_000:
-        return (
-            "❌ Image is too large.\n\n"
-            "Please use a smaller or clearer image."
-        )
-
-    prompt = (
-        question.strip()
-        if question.strip()
-        else
-        "Read this image carefully and solve the academic question step by step."
-    )
-
-    try:
-        response = hf_client.responses.create(
-            model=VISION_MODEL,
-            instructions=VISION_PROMPT,
-            input=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "input_text",
-                            "text": prompt,
-                        },
-                        {
-                            "type": "input_image",
-                            "image_url": image_data,
-                        },
-                    ],
-                }
-            ],
-            max_output_tokens=7000,
-        )
-
-        answer = (
-            response.output_text
-            or ""
-        )
-
-        if answer.strip():
-            return answer
-
-    except Exception as error:
-        print(
-            "VISION RESPONSES ERROR:",
-            repr(error),
-        )
-
-    # Fallback
-    try:
-        response = hf_client.chat.completions.create(
-            model=VISION_MODEL,
-            messages=[
-                {
-                    "role": "system",
-                    "content": VISION_PROMPT,
-                },
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": prompt,
-                        },
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": image_data,
-                            },
-                        },
-                    ],
-                },
-            ],
-            temperature=0.05,
-            max_tokens=7000,
-        )
-
-        if response.choices:
-            return (
-                response.choices[0]
-                .message
-                .content
-                or
-                "❌ Vision AI returned no answer."
-            )
-
-    except Exception as error:
-        print(
-            "VISION FALLBACK ERROR:",
-            repr(error),
-        )
-
-        return (
-            "❌ Vision AI error:\n\n"
-            + str(error)
-        )
-
-    return "❌ Vision AI could not analyze this image."
-
-
-# ============================================================
-# HOME
+# ROUTES
 # ============================================================
 
 @app.route("/")
 def home():
+
     return render_template(
         "index.html",
-        logged_in=("username" in session),
-        username=session.get("username"),
+        logged_in=(
+            "username" in session
+        ),
+        username=session.get(
+            "username"
+        ),
     )
 
 
@@ -1591,8 +2071,11 @@ def home():
     methods=["POST"],
 )
 def register():
+
     data = (
-        request.get_json(silent=True)
+        request.get_json(
+            silent=True
+        )
         or {}
     )
 
@@ -1617,6 +2100,7 @@ def register():
     )
 
     if not username or not password:
+
         return {
             "success": False,
             "message":
@@ -1624,6 +2108,7 @@ def register():
         }, 400
 
     if not email and not phone:
+
         return {
             "success": False,
             "message":
@@ -1631,6 +2116,7 @@ def register():
         }, 400
 
     if len(password) < 6:
+
         return {
             "success": False,
             "message":
@@ -1645,6 +2131,7 @@ def register():
             existing_username.lower()
             == username.lower()
         ):
+
             return {
                 "success": False,
                 "message":
@@ -1653,9 +2140,13 @@ def register():
 
         if (
             email
-            and user.get("email", "").lower()
+            and user.get(
+                "email",
+                "",
+            ).lower()
             == email
         ):
+
             return {
                 "success": False,
                 "message":
@@ -1664,9 +2155,13 @@ def register():
 
         if (
             phone
-            and user.get("phone", "")
+            and user.get(
+                "phone",
+                "",
+            )
             == phone
         ):
+
             return {
                 "success": False,
                 "message":
@@ -1677,13 +2172,18 @@ def register():
         "email": email,
         "phone": phone,
         "password":
-            generate_password_hash(password),
+            generate_password_hash(
+                password
+            ),
     }
 
-    save_users(users)
+    save_users(
+        users
+    )
 
     session["username"] = username
     session["chat_history"] = []
+
     clear_question_set()
 
     return {
@@ -1702,8 +2202,11 @@ def register():
     methods=["POST"],
 )
 def login():
+
     data = (
-        request.get_json(silent=True)
+        request.get_json(
+            silent=True
+        )
         or {}
     )
 
@@ -1727,7 +2230,11 @@ def login():
         )
 
         email_match = (
-            bool(user.get("email"))
+            bool(
+                user.get(
+                    "email"
+                )
+            )
             and
             user.get(
                 "email",
@@ -1737,7 +2244,11 @@ def login():
         )
 
         phone_match = (
-            bool(user.get("phone"))
+            bool(
+                user.get(
+                    "phone"
+                )
+            )
             and
             user.get(
                 "phone",
@@ -1759,8 +2270,11 @@ def login():
                 ),
                 password,
             ):
+
                 session["username"] = username
                 session["chat_history"] = []
+
+                # A new login starts a fresh question set.
                 clear_question_set()
 
                 return {
@@ -1784,6 +2298,7 @@ def login():
 
 @app.route("/logout")
 def logout():
+
     session.clear()
 
     return redirect(
@@ -1800,11 +2315,13 @@ def logout():
     methods=["POST"],
 )
 def new_chat():
+
     session["chat_history"] = []
+
     clear_question_set()
 
     return {
-        "success": True
+        "success": True,
     }
 
 
@@ -1819,6 +2336,7 @@ def new_chat():
 def chat():
 
     if "username" not in session:
+
         return Response(
             "Please login first.",
             mimetype="text/plain",
@@ -1826,7 +2344,9 @@ def chat():
         )
 
     data = (
-        request.get_json(silent=True)
+        request.get_json(
+            silent=True
+        )
         or {}
     )
 
@@ -1863,13 +2383,14 @@ def chat():
         )
 
     if not question:
+
         return Response(
             "Please type a question or capture an image.",
             mimetype="text/plain",
         )
 
     # ========================================================
-    # CREATOR / BASIC
+    # EXPLICIT CREATOR / BASIC
     # ========================================================
 
     simple = basic_response(
@@ -1880,7 +2401,9 @@ def chat():
 
         category = (
             "creator"
-            if is_creator_question(question)
+            if is_creator_question(
+                question
+            )
             else "normal"
         )
 
@@ -1896,13 +2419,52 @@ def chat():
         )
 
     # ========================================================
-    # QUESTION SET MODIFICATION
-    # Example: "with options"
+    # ACTIVE QUESTION SET
     # ========================================================
 
-    if is_question_set_modification(question):
+    question_set = get_question_set()
 
-        question_set = get_question_set()
+    # --------------------------------------------------------
+    # "ans of all"
+    # --------------------------------------------------------
+
+    if answer_key_command(
+        question
+    ):
+
+        if question_set:
+
+            answer = modify_question_set(
+                question_set,
+                question,
+            )
+
+            save_history(
+                question,
+                answer,
+                category="question_generation",
+            )
+
+            return Response(
+                answer,
+                mimetype="text/plain",
+            )
+
+        # If there is no question set, DO NOT let normal
+        # memory turn it into creator information.
+        return Response(
+            "There is no active question set. "
+            "First ask me to generate some questions.",
+            mimetype="text/plain",
+        )
+
+    # --------------------------------------------------------
+    # "with options"
+    # --------------------------------------------------------
+
+    if options_command(
+        question
+    ):
 
         if question_set:
 
@@ -1910,12 +2472,6 @@ def chat():
                 question_set,
                 question,
             )
-
-            if not updated:
-                return Response(
-                    "❌ Could not update the question set.",
-                    mimetype="text/plain",
-                )
 
             save_question_set(
                 question_set["request"],
@@ -1935,18 +2491,53 @@ def chat():
                 mimetype="text/plain",
             )
 
-    # ========================================================
-    # QUESTION SET CONTINUATION
-    # Example: "other 14 questions"
-    # ========================================================
+        return Response(
+            "There is no active question set. "
+            "Generate questions first.",
+            mimetype="text/plain",
+        )
+
+    # --------------------------------------------------------
+    # "explain all"
+    # --------------------------------------------------------
+
+    if explanation_command(
+        question
+    ):
+
+        if question_set:
+
+            answer = modify_question_set(
+                question_set,
+                question,
+            )
+
+            save_history(
+                question,
+                answer,
+                category="question_generation",
+            )
+
+            return Response(
+                answer,
+                mimetype="text/plain",
+            )
+
+        return Response(
+            "There is no active question set. "
+            "Generate questions first.",
+            mimetype="text/plain",
+        )
+
+    # --------------------------------------------------------
+    # "other 14 questions"
+    # --------------------------------------------------------
 
     continuation = continuation_count(
         question
     )
 
     if continuation is not None:
-
-        question_set = get_question_set()
 
         if question_set:
 
@@ -1989,6 +2580,11 @@ def chat():
                 mimetype="text/plain",
             )
 
+        return Response(
+            "There is no active question set to continue.",
+            mimetype="text/plain",
+        )
+
     # ========================================================
     # LOCAL CALCULATOR
     # ========================================================
@@ -2011,7 +2607,7 @@ def chat():
         )
 
     # ========================================================
-    # LOCAL x + 1/x
+    # LOCAL POWER SOLVER
     # ========================================================
 
     result = solve_power_recurrence(
@@ -2035,7 +2631,9 @@ def chat():
     # NEW QUESTION SET
     # ========================================================
 
-    if is_question_generation(question):
+    if is_question_generation(
+        question
+    ):
 
         count = requested_question_count(
             question
@@ -2058,7 +2656,6 @@ def chat():
                 start_number=1,
             )
 
-            # Store ONLY as question-set memory.
             save_question_set(
                 question,
                 generated,
@@ -2078,7 +2675,7 @@ def chat():
             )
 
     # ========================================================
-    # NORMAL AI / HARD AI
+    # NORMAL / HARD AI
     # ========================================================
 
     subject = detect_subject(
@@ -2101,18 +2698,18 @@ def chat():
 
         prompt += """
 
-ADVANCED MODE
+ADVANCED REASONING MODE.
 
-Solve very carefully.
+Solve carefully.
 
-Before finalizing:
-- Recheck equations.
-- Recheck algebra.
-- Recheck arithmetic.
-- Recheck units.
-- Recheck signs.
-- Check limiting cases when useful.
-- Verify MCQ options.
+Recheck:
+- equations
+- algebra
+- arithmetic
+- units
+- signs
+- limiting cases
+- MCQ options
 
 Never guess.
 
@@ -2127,9 +2724,9 @@ Show the useful derivation and verification only.
 
         prompt += """
 
-INTERMEDIATE MODE
+INTERMEDIATE MODE.
 
-Show the important steps and verify the result.
+Show important steps and verify the result.
 """
 
         reasoning = "medium"
@@ -2139,7 +2736,7 @@ Show the important steps and verify the result.
 
         prompt += """
 
-BASIC MODE
+BASIC MODE.
 
 Answer clearly and concisely.
 """
@@ -2148,7 +2745,7 @@ Answer clearly and concisely.
         max_tokens = 3000
 
     # ========================================================
-    # ADVANCED MATH / PHYSICS = VERIFY
+    # HARD MATH / PHYSICS VERIFY
     # ========================================================
 
     if (
@@ -2246,6 +2843,7 @@ Answer clearly and concisely.
 def improve():
 
     if "username" not in session:
+
         return Response(
             "Please login first.",
             mimetype="text/plain",
@@ -2253,7 +2851,9 @@ def improve():
         )
 
     data = (
-        request.get_json(silent=True)
+        request.get_json(
+            silent=True
+        )
         or {}
     )
 
@@ -2262,7 +2862,7 @@ def improve():
         "",
     ).strip()
 
-    answer = data.get(
+    old_answer = data.get(
         "answer",
         "",
     ).strip()
@@ -2272,20 +2872,23 @@ def improve():
         "improve",
     ).strip().lower()
 
-    instructions = {
+    actions = {
         "improve":
             "Improve the answer and make it clearer and more complete.",
+
         "check":
-            "Check the answer for mistakes and correct them.",
+            "Check the answer for errors and correct them.",
+
         "explain":
             "Explain the answer in more detail.",
+
         "short":
-            "Make the answer shorter while keeping important steps.",
+            "Make the answer shorter while keeping important information.",
     }
 
-    task = instructions.get(
+    instruction = actions.get(
         action,
-        instructions["improve"],
+        actions["improve"],
     )
 
     subject = detect_subject(
@@ -2299,14 +2902,16 @@ QUESTION:
 {question}
 
 CURRENT ANSWER:
-{answer}
+{old_answer}
 
 TASK:
-{task}
+{instruction}
 
-Check calculations, algebra, units and the final answer.
+Check calculations, algebra, equations,
+units and final result.
+
+Return only the improved answer.
 Do not output raw LaTeX.
-Return the final answer.
 """
 
     try:
@@ -2337,11 +2942,12 @@ Return the final answer.
 
 
 # ============================================================
-# HEALTH CHECK
+# HEALTH
 # ============================================================
 
 @app.route("/health")
 def health():
+
     return {
         "status": "ok",
         "hf_configured": bool(HF_TOKEN),
@@ -2360,15 +2966,55 @@ if __name__ == "__main__":
     print("MY AI")
     print("=" * 70)
 
-    print("HF configured :", bool(HF_TOKEN))
-    print("Hard Maths    : ON")
-    print("Hard Physics  : ON")
-    print("PCMB          : ON")
-    print("Question sets : ON")
-    print("Batch repair  : ON")
-    print("Safe memory   : ON")
-    print("Vision        : ON")
-    print("Camera API    : ON")
+    print(
+        "HF configured :",
+        bool(HF_TOKEN),
+    )
+
+    print(
+        "Normal AI     : ON"
+    )
+
+    print(
+        "Hard Math     : ON"
+    )
+
+    print(
+        "Hard Physics  : ON"
+    )
+
+    print(
+        "Chemistry     : ON"
+    )
+
+    print(
+        "Biology       : ON"
+    )
+
+    print(
+        "Calculator    : ON"
+    )
+
+    print(
+        "Question Sets : ON"
+    )
+
+    print(
+        "Batch Repair  : ON"
+    )
+
+    print(
+        "Safe Memory   : ON"
+    )
+
+    print(
+        "Vision        : ON"
+    )
+
+    print(
+        "Camera API    : ON"
+    )
+
     print("=" * 70)
 
     app.run(
