@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+
     <meta
         name="viewport"
         content="width=device-width, initial-scale=1.0"
@@ -16,7 +17,7 @@
 
         body {
             margin: 0;
-            font-family: Arial, sans-serif;
+            font-family: Arial, Helvetica, sans-serif;
             background: #f3f6fb;
             color: #182033;
         }
@@ -28,8 +29,8 @@
         }
 
         /* =====================================================
-           AUTH
-        ===================================================== */
+           LOGIN / CREATE ACCOUNT
+        ====================================================== */
 
         .auth-screen {
             min-height: 100vh;
@@ -45,16 +46,15 @@
             background: white;
             padding: 30px;
             border-radius: 20px;
-            box-shadow:
-                0 15px 45px rgba(15, 23, 42, 0.12);
+            box-shadow: 0 15px 45px rgba(15, 23, 42, 0.12);
         }
 
         .logo {
             text-align: center;
+            color: #2563eb;
             font-size: 34px;
             font-weight: 800;
-            color: #2563eb;
-            margin-bottom: 8px;
+            margin-bottom: 7px;
         }
 
         .subtitle {
@@ -93,7 +93,7 @@
         }
 
         .field {
-            margin-bottom: 13px;
+            margin-bottom: 14px;
         }
 
         .field label {
@@ -101,6 +101,11 @@
             margin-bottom: 6px;
             font-size: 13px;
             font-weight: 700;
+        }
+
+        .field label span {
+            color: #667085;
+            font-weight: 400;
         }
 
         .field input {
@@ -126,12 +131,13 @@
 
         .show-password {
             position: absolute;
-            right: 10px;
+            right: 9px;
             top: 50%;
             transform: translateY(-50%);
             border: none;
             background: transparent;
             cursor: pointer;
+            font-size: 16px;
         }
 
         .auth-button {
@@ -153,14 +159,14 @@
         .auth-message {
             margin-top: 12px;
             min-height: 20px;
-            font-size: 13px;
-            color: #dc2626;
             text-align: center;
+            color: #dc2626;
+            font-size: 13px;
         }
 
         /* =====================================================
-           APP
-        ===================================================== */
+           MAIN APP
+        ====================================================== */
 
         .app {
             min-height: 100vh;
@@ -174,6 +180,7 @@
             padding: 18px;
             display: flex;
             flex-direction: column;
+            flex-shrink: 0;
         }
 
         .brand {
@@ -191,24 +198,31 @@
             border-radius: 10px;
             font-weight: 700;
             cursor: pointer;
-            margin-bottom: 18px;
         }
 
-        .sidebar-user {
-            border-top: 1px solid #e5e7eb;
+        .new-chat:hover {
+            background: #1d4ed8;
+        }
+
+        .sidebar-bottom {
             margin-top: auto;
+            border-top: 1px solid #e5e7eb;
             padding-top: 14px;
             font-size: 13px;
         }
 
         .logout {
             width: 100%;
+            margin-top: 10px;
+            padding: 9px;
             border: 1px solid #d7dee9;
             background: white;
-            padding: 9px;
             border-radius: 9px;
             cursor: pointer;
-            margin-top: 10px;
+        }
+
+        .logout:hover {
+            background: #f8fafc;
         }
 
         .main {
@@ -235,12 +249,12 @@
         .chat {
             flex: 1;
             overflow-y: auto;
-            padding: 25px 15px 140px;
+            padding: 25px 15px 165px;
         }
 
         .chat-inner {
             max-width: 900px;
-            margin: auto;
+            margin: 0 auto;
         }
 
         .welcome {
@@ -255,12 +269,14 @@
 
         .welcome p {
             color: #667085;
+            line-height: 1.6;
         }
 
         .message {
             display: flex;
             gap: 10px;
             margin-bottom: 22px;
+            align-items: flex-start;
         }
 
         .message.user {
@@ -285,14 +301,15 @@
 
         .user .avatar {
             background: #e5e7eb;
+            color: #374151;
             order: 2;
         }
 
         .bubble {
-            max-width: 85%;
+            max-width: 86%;
             padding: 14px;
-            line-height: 1.65;
             border-radius: 15px;
+            line-height: 1.65;
             white-space: pre-wrap;
             word-break: break-word;
         }
@@ -307,15 +324,82 @@
             color: white;
         }
 
+        .bubble h1,
+        .bubble h2,
+        .bubble h3 {
+            margin: 8px 0;
+        }
+
+        .bubble strong {
+            font-weight: 800;
+        }
+
         /* =====================================================
-           INPUT
-        ===================================================== */
+           ACTION BUTTONS
+        ====================================================== */
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+            margin-top: 10px;
+        }
+
+        .action-btn {
+            padding: 6px 9px;
+            border: 1px solid #d7dee9;
+            background: white;
+            color: #374151;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .action-btn:hover {
+            background: #eef4ff;
+        }
+
+        /* =====================================================
+           IMAGE PREVIEW
+        ====================================================== */
+
+        .image-preview-wrap {
+            display: none;
+            padding: 8px 8px 5px;
+        }
+
+        .image-preview {
+            display: block;
+            max-width: 260px;
+            max-height: 180px;
+            border-radius: 10px;
+            border: 1px solid #d7dee9;
+            object-fit: contain;
+        }
+
+        .preview-actions {
+            margin-top: 7px;
+        }
+
+        .remove-image {
+            border: none;
+            background: #fee2e2;
+            color: #b91c1c;
+            border-radius: 7px;
+            padding: 6px 9px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        /* =====================================================
+           COMPOSER
+        ====================================================== */
 
         .composer {
             position: fixed;
-            bottom: 0;
             left: 250px;
             right: 0;
+            bottom: 0;
             padding: 15px;
             background: linear-gradient(
                 transparent,
@@ -325,68 +409,162 @@
 
         .composer-box {
             max-width: 900px;
-            margin: auto;
+            margin: 0 auto;
             background: white;
             border: 1px solid #d7dee9;
             border-radius: 15px;
             padding: 8px;
+            box-shadow: 0 7px 25px rgba(15, 23, 42, 0.08);
+        }
+
+        .input-row {
             display: flex;
-            gap: 8px;
+            gap: 7px;
+            align-items: flex-end;
+        }
+
+        .icon-btn,
+        .send-btn {
+            width: 44px;
+            height: 44px;
+            flex-shrink: 0;
+            border: none;
+            border-radius: 11px;
+            cursor: pointer;
+        }
+
+        .icon-btn {
+            background: #eef2f7;
+            color: #374151;
+            font-size: 18px;
+        }
+
+        .icon-btn:hover {
+            background: #e2e8f0;
+        }
+
+        .send-btn {
+            background: #2563eb;
+            color: white;
+            font-size: 18px;
+            font-weight: 800;
+        }
+
+        .send-btn:hover {
+            background: #1d4ed8;
+        }
+
+        .send-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
         }
 
         textarea {
             flex: 1;
+            min-height: 44px;
+            max-height: 150px;
+            padding: 11px;
+            resize: none;
             border: none;
             outline: none;
-            resize: none;
-            min-height: 44px;
-            max-height: 140px;
-            padding: 11px;
             font-size: 15px;
+            line-height: 1.5;
         }
 
-        .send {
-            width: 45px;
-            height: 45px;
-            border: none;
-            border-radius: 11px;
-            background: #2563eb;
-            color: white;
-            cursor: pointer;
-            font-size: 18px;
+        /* =====================================================
+           LOADING
+        ====================================================== */
+
+        .loading {
+            display: inline-flex;
+            gap: 5px;
+            align-items: center;
         }
 
-        .actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 7px;
-            margin-top: 9px;
+        .loading span {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #64748b;
+            animation: bounce 1s infinite;
         }
 
-        .action-button {
-            padding: 6px 9px;
-            border: 1px solid #d7dee9;
-            background: white;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 12px;
+        .loading span:nth-child(2) {
+            animation-delay: 0.15s;
         }
+
+        .loading span:nth-child(3) {
+            animation-delay: 0.3s;
+        }
+
+        @keyframes bounce {
+            0%,
+            80%,
+            100% {
+                transform: translateY(0);
+                opacity: 0.35;
+            }
+
+            40% {
+                transform: translateY(-5px);
+                opacity: 1;
+            }
+        }
+
+        /* =====================================================
+           MOBILE
+        ====================================================== */
 
         @media (max-width: 760px) {
+
             .sidebar {
                 display: none;
             }
 
             .composer {
                 left: 0;
+                padding: 10px;
+            }
+
+            .chat {
+                padding: 20px 10px 145px;
             }
 
             .bubble {
                 max-width: 92%;
             }
 
+            .welcome {
+                margin-top: 55px;
+            }
+
             .welcome h1 {
                 font-size: 30px;
+            }
+
+            .icon-btn,
+            .send-btn {
+                width: 40px;
+                height: 40px;
+            }
+
+            textarea {
+                font-size: 14px;
+            }
+        }
+
+        @media (max-width: 470px) {
+
+            .auth-box {
+                padding: 22px;
+            }
+
+            .logo {
+                font-size: 30px;
+            }
+
+            .bubble {
+                font-size: 14px;
             }
         }
     </style>
@@ -395,6 +573,10 @@
 <body>
 
 {% if not logged_in %}
+
+<!-- =========================================================
+     LOGIN / CREATE ACCOUNT
+========================================================== -->
 
 <div class="auth-screen">
 
@@ -412,21 +594,24 @@
 
             <button
                 class="tab active"
-                onclick="showAuth('login')"
                 id="loginTab"
+                type="button"
+                onclick="showAuth('login')"
             >
                 Login
             </button>
 
             <button
                 class="tab"
-                onclick="showAuth('register')"
                 id="registerTab"
+                type="button"
+                onclick="showAuth('register')"
             >
                 Create Account
             </button>
 
         </div>
+
 
         <!-- LOGIN -->
 
@@ -436,6 +621,7 @@
         >
 
             <div class="field">
+
                 <label>
                     Username, Email or Phone
                 </label>
@@ -444,8 +630,11 @@
                     type="text"
                     id="loginValue"
                     placeholder="Enter username, email or phone"
+                    autocomplete="username"
                 >
+
             </div>
+
 
             <div class="field">
 
@@ -459,11 +648,14 @@
                         type="password"
                         id="loginPassword"
                         placeholder="Enter password"
+                        autocomplete="current-password"
                     >
 
                     <button
+                        type="button"
                         class="show-password"
                         onclick="togglePassword('loginPassword')"
+                        title="Show password"
                     >
                         👁
                     </button>
@@ -472,7 +664,9 @@
 
             </div>
 
+
             <button
+                type="button"
                 class="auth-button"
                 onclick="login()"
             >
@@ -481,7 +675,8 @@
 
         </div>
 
-        <!-- REGISTER -->
+
+        <!-- CREATE ACCOUNT -->
 
         <div
             class="auth-form"
@@ -489,6 +684,7 @@
         >
 
             <div class="field">
+
                 <label>
                     Username
                 </label>
@@ -496,33 +692,55 @@
                 <input
                     type="text"
                     id="registerUsername"
-                    placeholder="Choose username"
+                    placeholder="Choose a username"
+                    autocomplete="username"
                 >
+
             </div>
 
+
             <div class="field">
+
                 <label>
-                    Email
+                    Email <span>(or Phone)</span>
                 </label>
 
                 <input
                     type="email"
                     id="registerEmail"
-                    placeholder="your@email.com"
+                    placeholder="Optional if using phone"
+                    autocomplete="email"
                 >
+
             </div>
 
+
             <div class="field">
+
                 <label>
-                    Phone Number
+                    Phone <span>(or Email)</span>
                 </label>
 
                 <input
                     type="tel"
                     id="registerPhone"
-                    placeholder="Optional"
+                    placeholder="Optional if using email"
+                    autocomplete="tel"
                 >
+
             </div>
+
+
+            <p
+                style="
+                    font-size:12px;
+                    color:#667085;
+                    margin:-2px 0 14px;
+                "
+            >
+                Enter either an email address or a phone number.
+            </p>
+
 
             <div class="field">
 
@@ -536,11 +754,14 @@
                         type="password"
                         id="registerPassword"
                         placeholder="At least 6 characters"
+                        autocomplete="new-password"
                     >
 
                     <button
+                        type="button"
                         class="show-password"
                         onclick="togglePassword('registerPassword')"
+                        title="Show password"
                     >
                         👁
                     </button>
@@ -549,7 +770,9 @@
 
             </div>
 
+
             <button
+                type="button"
                 class="auth-button"
                 onclick="register()"
             >
@@ -557,6 +780,7 @@
             </button>
 
         </div>
+
 
         <div
             class="auth-message"
@@ -567,9 +791,17 @@
 
 </div>
 
+
 {% else %}
 
+
+<!-- =========================================================
+     MAIN MY AI APP
+========================================================== -->
+
 <div class="app">
+
+    <!-- SIDEBAR -->
 
     <aside class="sidebar">
 
@@ -577,14 +809,17 @@
             🤖 My AI
         </div>
 
+
         <button
+            type="button"
             class="new-chat"
             onclick="newChat()"
         >
             ＋ New Chat
         </button>
 
-        <div class="sidebar-user">
+
+        <div class="sidebar-bottom">
 
             Logged in as:
 
@@ -592,7 +827,9 @@
                 {{ username }}
             </strong>
 
+
             <button
+                type="button"
                 class="logout"
                 onclick="location.href='/logout'"
             >
@@ -603,6 +840,9 @@
 
     </aside>
 
+
+    <!-- MAIN -->
+
     <main class="main">
 
         <header class="topbar">
@@ -612,6 +852,9 @@
             </div>
 
         </header>
+
+
+        <!-- CHAT -->
 
         <section
             class="chat"
@@ -634,8 +877,16 @@
 
                     <p>
                         Hello {{ username }}! 👋
-                        Ask me Mathematics, Physics,
+                    </p>
+
+                    <p>
+                        Ask Mathematics, Physics,
                         Chemistry, Biology or general questions.
+                    </p>
+
+                    <p>
+                        You can also use
+                        🎤 microphone or 📷 camera.
                     </p>
 
                 </div>
@@ -644,22 +895,107 @@
 
         </section>
 
+
+        <!-- COMPOSER -->
+
         <div class="composer">
 
             <div class="composer-box">
 
-                <textarea
-                    id="messageInput"
-                    placeholder="Ask My AI anything..."
-                    onkeydown="handleKey(event)"
-                ></textarea>
 
-                <button
-                    class="send"
-                    onclick="sendMessage()"
+                <!-- IMAGE PREVIEW -->
+
+                <div
+                    class="image-preview-wrap"
+                    id="imagePreviewWrap"
                 >
-                    ➤
-                </button>
+
+                    <img
+                        id="imagePreview"
+                        class="image-preview"
+                        alt="Selected image preview"
+                    >
+
+                    <div class="preview-actions">
+
+                        <button
+                            type="button"
+                            class="remove-image"
+                            onclick="removeImage()"
+                        >
+                            Remove image
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                <!-- INPUT ROW -->
+
+                <div class="input-row">
+
+
+                    <!-- MICROPHONE -->
+
+                    <button
+                        type="button"
+                        class="icon-btn"
+                        onclick="startDictation()"
+                        title="Voice input"
+                        aria-label="Voice input"
+                    >
+                        🎤
+                    </button>
+
+
+                    <!-- CAMERA -->
+
+                    <button
+                        type="button"
+                        class="icon-btn"
+                        onclick="openCamera()"
+                        title="Camera"
+                        aria-label="Camera"
+                    >
+                        📷
+                    </button>
+
+
+                    <input
+                        type="file"
+                        id="cameraInput"
+                        accept="image/*"
+                        capture="environment"
+                        hidden
+                        onchange="selectImage(event)"
+                    >
+
+
+                    <!-- MESSAGE BOX -->
+
+                    <textarea
+                        id="messageInput"
+                        placeholder="Ask My AI anything..."
+                        rows="1"
+                        onkeydown="handleKey(event)"
+                    ></textarea>
+
+
+                    <!-- SEND -->
+
+                    <button
+                        type="button"
+                        class="send-btn"
+                        id="sendButton"
+                        onclick="sendMessage()"
+                        title="Send"
+                        aria-label="Send"
+                    >
+                        ➤
+                    </button>
+
+                </div>
 
             </div>
 
@@ -674,654 +1010,1384 @@
 
 <script>
 
-    // ========================================================
-    // AUTH TABS
-    // ========================================================
+/* ============================================================
+   AUTH TABS
+============================================================ */
 
-    function showAuth(type) {
+function showAuth(type) {
 
-        const loginForm =
-            document.getElementById(
-                "loginForm"
+    const loginForm =
+        document.getElementById("loginForm");
+
+    const registerForm =
+        document.getElementById("registerForm");
+
+    const loginTab =
+        document.getElementById("loginTab");
+
+    const registerTab =
+        document.getElementById("registerTab");
+
+    const authMessage =
+        document.getElementById("authMessage");
+
+
+    if (type === "login") {
+
+        loginForm.classList.add("active");
+        registerForm.classList.remove("active");
+
+        loginTab.classList.add("active");
+        registerTab.classList.remove("active");
+
+    } else {
+
+        loginForm.classList.remove("active");
+        registerForm.classList.add("active");
+
+        loginTab.classList.remove("active");
+        registerTab.classList.add("active");
+    }
+
+
+    if (authMessage) {
+        authMessage.textContent = "";
+    }
+}
+
+
+/* ============================================================
+   PASSWORD SHOW / HIDE
+============================================================ */
+
+function togglePassword(id) {
+
+    const input =
+        document.getElementById(id);
+
+    if (!input) {
+        return;
+    }
+
+    if (input.type === "password") {
+
+        input.type = "text";
+
+    } else {
+
+        input.type = "password";
+
+    }
+}
+
+
+/* ============================================================
+   CREATE ACCOUNT
+============================================================ */
+
+async function register() {
+
+    const username =
+        document
+            .getElementById("registerUsername")
+            .value
+            .trim();
+
+    const email =
+        document
+            .getElementById("registerEmail")
+            .value
+            .trim();
+
+    const phone =
+        document
+            .getElementById("registerPhone")
+            .value
+            .trim();
+
+    const password =
+        document
+            .getElementById("registerPassword")
+            .value;
+
+    const message =
+        document.getElementById(
+            "authMessage"
+        );
+
+
+    if (!username) {
+
+        message.textContent =
+            "Please enter a username.";
+
+        return;
+    }
+
+
+    if (!email && !phone) {
+
+        message.textContent =
+            "Enter either email or phone number.";
+
+        return;
+    }
+
+
+    if (password.length < 6) {
+
+        message.textContent =
+            "Password must be at least 6 characters.";
+
+        return;
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/register",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+                    body: JSON.stringify({
+                        username,
+                        email,
+                        phone,
+                        password
+                    })
+                }
             );
 
-        const registerForm =
-            document.getElementById(
-                "registerForm"
-            );
 
-        const loginTab =
-            document.getElementById(
-                "loginTab"
-            );
+        const data =
+            await response.json();
 
-        const registerTab =
-            document.getElementById(
-                "registerTab"
-            );
 
-        if (type === "login") {
+        if (data.success) {
 
-            loginForm.classList.add(
-                "active"
-            );
-
-            registerForm.classList.remove(
-                "active"
-            );
-
-            loginTab.classList.add(
-                "active"
-            );
-
-            registerTab.classList.remove(
-                "active"
-            );
+            window.location.reload();
 
         } else {
 
-            loginForm.classList.remove(
-                "active"
-            );
-
-            registerForm.classList.add(
-                "active"
-            );
-
-            loginTab.classList.remove(
-                "active"
-            );
-
-            registerTab.classList.add(
-                "active"
-            );
+            message.textContent =
+                data.message ||
+                "Could not create account.";
         }
 
+
+    } catch (error) {
+
+        console.error(error);
+
+        message.textContent =
+            "Could not connect to server.";
+    }
+}
+
+
+/* ============================================================
+   LOGIN
+============================================================ */
+
+async function login() {
+
+    const loginValue =
+        document
+            .getElementById("loginValue")
+            .value
+            .trim();
+
+    const password =
+        document
+            .getElementById("loginPassword")
+            .value;
+
+    const message =
         document.getElementById(
             "authMessage"
-        ).textContent = "";
+        );
+
+
+    if (!loginValue || !password) {
+
+        message.textContent =
+            "Enter your login details.";
+
+        return;
     }
 
 
-    // ========================================================
-    // PASSWORD
-    // ========================================================
+    try {
 
-    function togglePassword(id) {
-
-        const input =
-            document.getElementById(id);
-
-        input.type =
-            input.type === "password"
-                ? "text"
-                : "password";
-    }
-
-
-    // ========================================================
-    // REGISTER
-    // ========================================================
-
-    async function register() {
-
-        const username =
-            document.getElementById(
-                "registerUsername"
-            ).value.trim();
-
-        const email =
-            document.getElementById(
-                "registerEmail"
-            ).value.trim();
-
-        const phone =
-            document.getElementById(
-                "registerPhone"
-            ).value.trim();
-
-        const password =
-            document.getElementById(
-                "registerPassword"
-            ).value;
-
-        const message =
-            document.getElementById(
-                "authMessage"
+        const response =
+            await fetch(
+                "/login",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+                    body: JSON.stringify({
+                        login: loginValue,
+                        password: password
+                    })
+                }
             );
 
-        try {
 
-            const response =
-                await fetch(
-                    "/register",
-                    {
-                        method: "POST",
-                        headers: {
-                            "Content-Type":
-                                "application/json"
-                        },
-                        body: JSON.stringify({
-                            username,
-                            email,
-                            phone,
-                            password
-                        })
-                    }
-                );
+        const data =
+            await response.json();
 
-            const data =
-                await response.json();
 
-            if (data.success) {
-                location.reload();
-            } else {
-                message.textContent =
-                    data.message;
-            }
+        if (data.success) {
 
-        } catch (error) {
+            window.location.reload();
+
+        } else {
 
             message.textContent =
-                "Could not connect to server.";
-
-            console.error(error);
+                data.message ||
+                "Login failed.";
         }
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        message.textContent =
+            "Could not connect to server.";
     }
+}
 
 
-    // ========================================================
-    // LOGIN
-    // ========================================================
+/* ============================================================
+   CHAT VARIABLES
+============================================================ */
 
-    async function login() {
-
-        const loginValue =
-            document.getElementById(
-                "loginValue"
-            ).value.trim();
-
-        const password =
-            document.getElementById(
-                "loginPassword"
-            ).value;
-
-        const message =
-            document.getElementById(
-                "authMessage"
-            );
-
-        try {
-
-            const response =
-                await fetch(
-                    "/login",
-                    {
-                        method: "POST",
-                        headers: {
-                            "Content-Type":
-                                "application/json"
-                        },
-                        body: JSON.stringify({
-                            login: loginValue,
-                            password
-                        })
-                    }
-                );
-
-            const data =
-                await response.json();
-
-            if (data.success) {
-                location.reload();
-            } else {
-                message.textContent =
-                    data.message;
-            }
-
-        } catch (error) {
-
-            message.textContent =
-                "Could not connect to server.";
-
-            console.error(error);
-        }
-    }
+let busy = false;
+let selectedImage = null;
 
 
-    // ========================================================
-    // CHAT
-    // ========================================================
+/* ============================================================
+   HTML ESCAPING
+============================================================ */
 
-    let busy = false;
+function escapeHtml(text) {
 
-    function escapeHtml(text) {
-
-        return text
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;");
-    }
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+}
 
 
-    function formatAnswer(text) {
+/* ============================================================
+   FORMAT AI ANSWER
+============================================================ */
 
-        let html =
-            escapeHtml(text);
+function formatAnswer(text) {
 
-        html = html.replace(
-            /\*\*(.*?)\*\*/gs,
-            "<strong>$1</strong>"
-        );
-
-        html = html.replace(
-            /^### (.*?)$/gm,
-            "<h3>$1</h3>"
-        );
-
-        html = html.replace(
-            /^## (.*?)$/gm,
-            "<h2>$1</h2>"
-        );
-
-        html = html.replace(
-            /\n/g,
-            "<br>"
-        );
-
-        return html;
-    }
+    let html =
+        escapeHtml(text);
 
 
-    function addMessage(
-        role,
-        text
-    ) {
+    /* Bold */
 
-        const message =
-            document.createElement(
-                "div"
-            );
+    html = html.replace(
+        /\*\*(.*?)\*\*/gs,
+        "<strong>$1</strong>"
+    );
 
-        message.className =
-            "message " + role;
 
-        const avatar =
-            document.createElement(
-                "div"
-            );
+    /* Headings */
 
-        avatar.className =
-            "avatar";
+    html = html.replace(
+        /^### (.*?)$/gm,
+        "<h3>$1</h3>"
+    );
 
-        avatar.textContent =
-            role === "user"
-                ? "U"
-                : "🤖";
 
-        const bubble =
-            document.createElement(
-                "div"
-            );
+    html = html.replace(
+        /^## (.*?)$/gm,
+        "<h3>$1</h3>"
+    );
 
-        bubble.className =
-            "bubble";
 
-        bubble.innerHTML =
-            formatAnswer(text);
+    html = html.replace(
+        /^# (.*?)$/gm,
+        "<h2>$1</h2>"
+    );
 
-        message.appendChild(
-            avatar
-        );
 
-        message.appendChild(
-            bubble
-        );
+    /*
+       Clean some common raw LaTeX
+       that older answers may contain.
+    */
 
+    html = html.replace(
+        /\\\[/g,
+        ""
+    );
+
+    html = html.replace(
+        /\\\]/g,
+        ""
+    );
+
+    html = html.replace(
+        /\\boxed\{(.*?)\}/g,
+        "$1"
+    );
+
+    html = html.replace(
+        /\\frac\{(.*?)\}\{(.*?)\}/g,
+        "($1/$2)"
+    );
+
+
+    /* Line breaks */
+
+    html = html.replace(
+        /\n/g,
+        "<br>"
+    );
+
+
+    return html;
+}
+
+
+/* ============================================================
+   ADD MESSAGE
+============================================================ */
+
+function addMessage(
+    role,
+    text
+) {
+
+    const message =
+        document.createElement("div");
+
+    message.className =
+        "message " + role;
+
+
+    const avatar =
+        document.createElement("div");
+
+    avatar.className =
+        "avatar";
+
+    avatar.textContent =
+        role === "user"
+            ? "U"
+            : "🤖";
+
+
+    const bubble =
+        document.createElement("div");
+
+    bubble.className =
+        "bubble";
+
+
+    bubble.innerHTML =
+        formatAnswer(text);
+
+
+    message.appendChild(avatar);
+    message.appendChild(bubble);
+
+
+    document
+        .getElementById("chatInner")
+        .appendChild(message);
+
+
+    scrollBottom();
+
+
+    return {
+        message,
+        bubble
+    };
+}
+
+
+/* ============================================================
+   CAMERA
+============================================================ */
+
+function openCamera() {
+
+    const cameraInput =
         document.getElementById(
-            "chatInner"
-        ).appendChild(message);
+            "cameraInput"
+        );
 
-        scrollBottom();
+    if (cameraInput) {
+        cameraInput.click();
+    }
+}
 
-        return {
-            message,
-            bubble
-        };
+
+function selectImage(event) {
+
+    const file =
+        event.target.files[0];
+
+
+    if (!file) {
+        return;
     }
 
 
-    async function sendMessage() {
+    if (!file.type.startsWith("image/")) {
 
-        if (busy) return;
+        alert(
+            "Please select an image."
+        );
 
-        const input =
-            document.getElementById(
-                "messageInput"
-            );
+        return;
+    }
 
-        const text =
-            input.value.trim();
 
-        if (!text) return;
+    selectedImage = file;
 
-        busy = true;
 
-        const welcome =
-            document.getElementById(
-                "welcome"
-            );
+    const preview =
+        document.getElementById(
+            "imagePreview"
+        );
 
-        if (welcome) {
-            welcome.remove();
+
+    const previewWrap =
+        document.getElementById(
+            "imagePreviewWrap"
+        );
+
+
+    preview.src =
+        URL.createObjectURL(file);
+
+
+    previewWrap.style.display =
+        "block";
+}
+
+
+function removeImage() {
+
+    selectedImage = null;
+
+
+    const cameraInput =
+        document.getElementById(
+            "cameraInput"
+        );
+
+
+    const previewWrap =
+        document.getElementById(
+            "imagePreviewWrap"
+        );
+
+
+    if (cameraInput) {
+        cameraInput.value = "";
+    }
+
+
+    if (previewWrap) {
+        previewWrap.style.display =
+            "none";
+    }
+}
+
+
+/* ============================================================
+   COMPRESS IMAGE
+============================================================ */
+
+function compressImage(file) {
+
+    return new Promise(
+        (resolve, reject) => {
+
+            const image =
+                new Image();
+
+            const reader =
+                new FileReader();
+
+
+            reader.onload = () => {
+
+                image.onload = () => {
+
+                    const maxSize = 1400;
+
+                    let width =
+                        image.width;
+
+                    let height =
+                        image.height;
+
+
+                    if (width > maxSize) {
+
+                        height =
+                            Math.round(
+                                height *
+                                maxSize /
+                                width
+                            );
+
+                        width =
+                            maxSize;
+                    }
+
+
+                    if (height > maxSize) {
+
+                        width =
+                            Math.round(
+                                width *
+                                maxSize /
+                                height
+                            );
+
+                        height =
+                            maxSize;
+                    }
+
+
+                    const canvas =
+                        document.createElement(
+                            "canvas"
+                        );
+
+
+                    canvas.width =
+                        width;
+
+                    canvas.height =
+                        height;
+
+
+                    const ctx =
+                        canvas.getContext(
+                            "2d"
+                        );
+
+
+                    ctx.drawImage(
+                        image,
+                        0,
+                        0,
+                        width,
+                        height
+                    );
+
+
+                    const dataUrl =
+                        canvas.toDataURL(
+                            "image/jpeg",
+                            0.8
+                        );
+
+
+                    resolve(dataUrl);
+                };
+
+
+                image.onerror =
+                    reject;
+
+
+                image.src =
+                    reader.result;
+            };
+
+
+            reader.onerror =
+                reject;
+
+
+            reader.readAsDataURL(file);
         }
+    );
+}
+
+
+/* ============================================================
+   SEND MESSAGE
+============================================================ */
+
+async function sendMessage() {
+
+    if (busy) {
+        return;
+    }
+
+
+    const input =
+        document.getElementById(
+            "messageInput"
+        );
+
+
+    const sendButton =
+        document.getElementById(
+            "sendButton"
+        );
+
+
+    const text =
+        input.value.trim();
+
+
+    if (!text && !selectedImage) {
+        return;
+    }
+
+
+    busy = true;
+
+
+    if (sendButton) {
+        sendButton.disabled = true;
+    }
+
+
+    const welcome =
+        document.getElementById(
+            "welcome"
+        );
+
+
+    if (welcome) {
+        welcome.remove();
+    }
+
+
+    if (text) {
 
         addMessage(
             "user",
             text
         );
 
-        input.value = "";
+    } else {
 
-        const answer =
-            addMessage(
-                "assistant",
-                "Thinking..."
-            );
-
-        try {
-
-            const response =
-                await fetch(
-                    "/chat",
-                    {
-                        method: "POST",
-                        headers: {
-                            "Content-Type":
-                                "application/json"
-                        },
-                        body: JSON.stringify({
-                            message: text
-                        })
-                    }
-                );
-
-            if (!response.ok) {
-                throw new Error(
-                    "Request failed"
-                );
-            }
-
-            const reader =
-                response.body.getReader();
-
-            const decoder =
-                new TextDecoder();
-
-            let result = "";
-
-            answer.bubble.textContent =
-                "";
-
-            while (true) {
-
-                const {
-                    value,
-                    done
-                } = await reader.read();
-
-                if (done) break;
-
-                result +=
-                    decoder.decode(
-                        value,
-                        {
-                            stream: true
-                        }
-                    );
-
-                answer.bubble.innerHTML =
-                    formatAnswer(result);
-
-                scrollBottom();
-            }
-
-            addActions(
-                answer.message,
-                result
-            );
-
-        } catch (error) {
-
-            answer.bubble.innerHTML =
-                "<strong>❌ Something went wrong.</strong>";
-
-            console.error(error);
-        }
-
-        busy = false;
-        input.focus();
+        addMessage(
+            "user",
+            "📷 Image question"
+        );
     }
 
 
-    // ========================================================
-    // ACTIONS
-    // ========================================================
-
-    function addActions(
-        message,
-        answer
-    ) {
-
-        const actions =
-            document.createElement(
-                "div"
-            );
-
-        actions.className =
-            "actions";
-
-        const items = [
-            ["🔄 Improve Answer", "improve"],
-            ["🔎 Check Again", "check"],
-            ["📚 Explain More", "explain"],
-            ["⚡ Make Shorter", "short"]
-        ];
-
-        items.forEach(
-            ([name, action]) => {
-
-                const button =
-                    document.createElement(
-                        "button"
-                    );
-
-                button.className =
-                    "action-button";
-
-                button.textContent =
-                    name;
-
-                button.onclick = () => {
-
-                    const question =
-                        findLastQuestion();
-
-                    if (!question) return;
-
-                    improve(
-                        question,
-                        answer,
-                        action
-                    );
-                };
-
-                actions.appendChild(
-                    button
-                );
-            }
+    const answer =
+        addMessage(
+            "assistant",
+            ""
         );
 
-        message.querySelector(
-            ".bubble"
-        ).appendChild(actions);
-    }
+
+    answer.bubble.innerHTML = `
+        <div class="loading">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    `;
 
 
-    function findLastQuestion() {
+    try {
 
-        const messages =
-            document.querySelectorAll(
-                ".message.user"
-            );
+        let imageData = "";
 
-        if (!messages.length) {
-            return "";
+
+        if (selectedImage) {
+
+            imageData =
+                await compressImage(
+                    selectedImage
+                );
         }
 
-        return messages[
-            messages.length - 1
-        ].querySelector(
-            ".bubble"
-        ).innerText.trim();
-    }
 
-
-    async function improve(
-        question,
-        answer,
-        action
-    ) {
-
-        if (busy) return;
-
-        busy = true;
-
-        const newAnswer =
-            addMessage(
-                "assistant",
-                "Working..."
+        const response =
+            await fetch(
+                "/chat",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+                    body: JSON.stringify({
+                        message: text,
+                        image: imageData
+                    })
+                }
             );
 
-        try {
 
-            const response =
-                await fetch(
-                    "/improve",
+        if (!response.ok) {
+
+            if (response.status === 401) {
+
+                window.location.reload();
+
+                return;
+            }
+
+            throw new Error(
+                "Request failed"
+            );
+        }
+
+
+        if (!response.body) {
+
+            throw new Error(
+                "No response body"
+            );
+        }
+
+
+        const reader =
+            response.body.getReader();
+
+
+        const decoder =
+            new TextDecoder();
+
+
+        let result = "";
+
+
+        answer.bubble.textContent =
+            "";
+
+
+        while (true) {
+
+            const {
+                value,
+                done
+            } = await reader.read();
+
+
+            if (done) {
+                break;
+            }
+
+
+            result +=
+                decoder.decode(
+                    value,
                     {
-                        method: "POST",
-                        headers: {
-                            "Content-Type":
-                                "application/json"
-                        },
-                        body: JSON.stringify({
-                            question,
-                            answer,
-                            action
-                        })
+                        stream: true
                     }
                 );
 
-            const reader =
-                response.body.getReader();
 
-            const decoder =
-                new TextDecoder();
+            answer.bubble.innerHTML =
+                formatAnswer(result);
 
-            let result = "";
 
-            newAnswer.bubble.textContent =
-                "";
+            scrollBottom();
+        }
 
-            while (true) {
 
-                const {
-                    value,
-                    done
-                } = await reader.read();
+        if (!result.trim()) {
 
-                if (done) break;
+            result =
+                "I couldn't generate an answer.";
 
-                result +=
-                    decoder.decode(
-                        value,
-                        {
-                            stream: true
-                        }
+            answer.bubble.innerHTML =
+                formatAnswer(result);
+        }
+
+
+        addActions(
+            answer.message,
+            result
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Chat error:",
+            error
+        );
+
+
+        answer.bubble.innerHTML =
+            "<strong>❌ Something went wrong.</strong><br><br>" +
+            "Please try again.";
+    }
+
+
+    input.value = "";
+
+
+    autoResize(
+        input
+    );
+
+
+    removeImage();
+
+
+    busy = false;
+
+
+    if (sendButton) {
+        sendButton.disabled = false;
+    }
+
+
+    input.focus();
+
+
+    scrollBottom();
+}
+
+
+/* ============================================================
+   IMPROVE BUTTONS
+============================================================ */
+
+function addActions(
+    message,
+    answer
+) {
+
+    const actions =
+        document.createElement(
+            "div"
+        );
+
+
+    actions.className =
+        "actions";
+
+
+    const items = [
+        ["🔄 Improve Answer", "improve"],
+        ["🔎 Check Again", "check"],
+        ["📚 Explain More", "explain"],
+        ["⚡ Make Shorter", "short"],
+        ["🔊 Read Answer", "read"]
+    ];
+
+
+    items.forEach(
+        ([label, action]) => {
+
+            const button =
+                document.createElement(
+                    "button"
+                );
+
+
+            button.type =
+                "button";
+
+
+            button.className =
+                "action-btn";
+
+
+            button.textContent =
+                label;
+
+
+            button.onclick = () => {
+
+                if (action === "read") {
+
+                    readAnswer(answer);
+
+                } else {
+
+                    improveAnswer(
+                        action,
+                        answer
                     );
+                }
+            };
 
-                newAnswer.bubble.innerHTML =
-                    formatAnswer(result);
 
-                scrollBottom();
-            }
-
-        } catch (error) {
-
-            newAnswer.bubble.innerHTML =
-                "<strong>❌ Could not improve answer.</strong>";
-
-            console.error(error);
+            actions.appendChild(
+                button
+            );
         }
+    );
 
-        busy = false;
+
+    message
+        .querySelector(".bubble")
+        .appendChild(actions);
+}
+
+
+/* ============================================================
+   FIND LAST QUESTION
+============================================================ */
+
+function findLastQuestion() {
+
+    const messages =
+        document.querySelectorAll(
+            ".message.user"
+        );
+
+
+    if (!messages.length) {
+        return "";
     }
 
 
-    // ========================================================
-    // NEW CHAT
-    // ========================================================
+    return messages[
+        messages.length - 1
+    ]
+    .querySelector(".bubble")
+    .innerText
+    .trim();
+}
 
-    function newChat() {
 
-        document.getElementById(
-            "chatInner"
-        ).innerHTML = `
-            <div
-                class="welcome"
-                id="welcome"
-            >
-                <h1>🤖 My AI</h1>
+/* ============================================================
+   IMPROVE ANSWER
+============================================================ */
 
-                <p>
-                    Ask me Mathematics, Physics,
-                    Chemistry, Biology or general questions.
-                </p>
-            </div>
-        `;
+async function improveAnswer(
+    action,
+    oldAnswer
+) {
+
+    if (busy) {
+        return;
     }
 
 
-    // ========================================================
-    // KEYBOARD
-    // ========================================================
+    const question =
+        findLastQuestion();
 
-    function handleKey(event) {
 
-        if (
-            event.key === "Enter"
-            && !event.shiftKey
-        ) {
-            event.preventDefault();
-            sendMessage();
-        }
+    if (!question) {
+        return;
     }
 
 
-    // ========================================================
-    // SCROLL
-    // ========================================================
+    busy = true;
 
-    function scrollBottom() {
 
-        const chat =
-            document.getElementById(
-                "chat"
+    const answer =
+        addMessage(
+            "assistant",
+            "Working..."
+        );
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/improve",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+                    body: JSON.stringify({
+                        question,
+                        answer: oldAnswer,
+                        action
+                    })
+                }
             );
 
-        chat.scrollTop =
-            chat.scrollHeight;
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Improve request failed"
+            );
+        }
+
+
+        const reader =
+            response.body.getReader();
+
+
+        const decoder =
+            new TextDecoder();
+
+
+        let result = "";
+
+
+        answer.bubble.textContent =
+            "";
+
+
+        while (true) {
+
+            const {
+                value,
+                done
+            } = await reader.read();
+
+
+            if (done) {
+                break;
+            }
+
+
+            result +=
+                decoder.decode(
+                    value,
+                    {
+                        stream: true
+                    }
+                );
+
+
+            answer.bubble.innerHTML =
+                formatAnswer(result);
+
+
+            scrollBottom();
+        }
+
+
+        if (!result.trim()) {
+
+            result =
+                "I couldn't improve the answer.";
+
+            answer.bubble.innerHTML =
+                formatAnswer(result);
+        }
+
+
+    } catch (error) {
+
+        console.error(
+            "Improve error:",
+            error
+        );
+
+
+        answer.bubble.innerHTML =
+            "<strong>❌ Could not improve answer.</strong>";
     }
+
+
+    busy = false;
+}
+
+
+/* ============================================================
+   MICROPHONE
+============================================================ */
+
+function startDictation() {
+
+    const SpeechRecognition =
+        window.SpeechRecognition ||
+        window.webkitSpeechRecognition;
+
+
+    if (!SpeechRecognition) {
+
+        alert(
+            "Voice input is not supported in this browser."
+        );
+
+        return;
+    }
+
+
+    const recognition =
+        new SpeechRecognition();
+
+
+    recognition.lang =
+        "en-IN";
+
+
+    recognition.continuous =
+        false;
+
+
+    recognition.interimResults =
+        true;
+
+
+    const input =
+        document.getElementById(
+            "messageInput"
+        );
+
+
+    input.placeholder =
+        "Listening...";
+
+
+    recognition.onresult =
+        function(event) {
+
+            let text = "";
+
+
+            for (
+                let i = event.resultIndex;
+                i < event.results.length;
+                i++
+            ) {
+
+                text +=
+                    event.results[i][0]
+                        .transcript;
+            }
+
+
+            input.value =
+                text;
+
+
+            autoResize(
+                input
+            );
+        };
+
+
+    recognition.onerror =
+        function() {
+
+            input.placeholder =
+                "Ask My AI anything...";
+        };
+
+
+    recognition.onend =
+        function() {
+
+            input.placeholder =
+                "Ask My AI anything...";
+        };
+
+
+    recognition.start();
+}
+
+
+/* ============================================================
+   TEXT TO SPEECH
+============================================================ */
+
+function readAnswer(text) {
+
+    if (
+        !("speechSynthesis" in window)
+    ) {
+
+        alert(
+            "Text-to-speech is not supported."
+        );
+
+        return;
+    }
+
+
+    window.speechSynthesis.cancel();
+
+
+    const cleanText =
+        text
+            .replace(
+                /[*#]/g,
+                ""
+            )
+            .replace(
+                /\n+/g,
+                ". "
+            );
+
+
+    const speech =
+        new SpeechSynthesisUtterance(
+            cleanText
+        );
+
+
+    speech.rate =
+        0.95;
+
+
+    speech.pitch =
+        1;
+
+
+    window.speechSynthesis.speak(
+        speech
+    );
+}
+
+
+/* ============================================================
+   KEYBOARD
+============================================================ */
+
+function handleKey(event) {
+
+    if (
+        event.key === "Enter" &&
+        !event.shiftKey
+    ) {
+
+        event.preventDefault();
+
+        sendMessage();
+    }
+}
+
+
+/* ============================================================
+   TEXTAREA RESIZE
+============================================================ */
+
+function autoResize(textarea) {
+
+    if (!textarea) {
+        return;
+    }
+
+
+    textarea.style.height =
+        "auto";
+
+
+    textarea.style.height =
+        Math.min(
+            textarea.scrollHeight,
+            150
+        ) + "px";
+}
+
+
+/* ============================================================
+   NEW CHAT
+============================================================ */
+
+function newChat() {
+
+    document.getElementById(
+        "chatInner"
+    ).innerHTML = `
+        <div
+            class="welcome"
+            id="welcome"
+        >
+            <h1>🤖 My AI</h1>
+
+            <p>
+                Ask Mathematics, Physics,
+                Chemistry, Biology or general questions.
+            </p>
+
+            <p>
+                You can also use 🎤 microphone
+                or 📷 camera.
+            </p>
+        </div>
+    `;
+
+
+    const input =
+        document.getElementById(
+            "messageInput"
+        );
+
+
+    input.value =
+        "";
+
+
+    removeImage();
+
+
+    autoResize(
+        input
+    );
+
+
+    input.focus();
+}
+
+
+/* ============================================================
+   SCROLL
+============================================================ */
+
+function scrollBottom() {
+
+    const chat =
+        document.getElementById(
+            "chat"
+        );
+
+
+    if (!chat) {
+        return;
+    }
+
+
+    setTimeout(
+        () => {
+            chat.scrollTop =
+                chat.scrollHeight;
+        },
+        20
+    );
+}
+
+
+/* ============================================================
+   STARTUP
+============================================================ */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function() {
+
+        const input =
+            document.getElementById(
+                "messageInput"
+            );
+
+
+        if (input) {
+            input.focus();
+        }
+    }
+);
 
 </script>
 
