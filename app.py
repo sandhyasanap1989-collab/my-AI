@@ -5,23 +5,15 @@ from flask import (
     Response,
     stream_with_context
 )
-
 import os
 import re
 import math
-
 from openai import OpenAI
-
-
-# ============================================================
-# APP
-# ============================================================
 
 app = Flask(__name__)
 
-
 # ============================================================
-# HUGGING FACE
+# HUGGING FACE SETTINGS
 # ============================================================
 
 HF_TOKEN = os.getenv("HF_TOKEN")
@@ -38,46 +30,45 @@ if HF_TOKEN:
 
 
 # ============================================================
-# PROMPTS
+# AI PROMPTS
 # ============================================================
 
 SYSTEM_PROMPT = r"""
-You are My AI, a helpful, accurate and concise study assistant.
+You are My AI, a helpful study assistant.
 
-Answer style:
+Answer accurately and clearly.
 
 For simple questions:
-Give a short direct answer.
+Give a direct answer.
 
 For numerical questions:
 
 ### Solution
 
 **1. Step**
-Formula and calculation.
+Show the formula and calculation.
 
 **2. Step**
-Formula and calculation.
+Continue the calculation.
 
 ### Final Answer
 
 **Answer ✅**
 
-For multiple-choice questions:
+For MCQs:
 - Solve the question.
-- Compare with the options.
+- Compare the options.
 - Clearly state the correct option.
 
 For multi-part questions:
-- Answer every requested part.
+- Answer every part.
 - Use numbered steps.
-- Do not repeat answers unnecessarily.
-- Do not write one huge paragraph.
+- Do not stop halfway through.
+- Do not omit requested calculations.
+- Check the final result.
 
-Important:
-- Do not invent missing information.
-- Use simple student-friendly language.
-- Check calculations carefully.
+Use simple student-friendly language.
+Do not invent missing information.
 """
 
 
@@ -88,11 +79,10 @@ Important:
 - In this project, copied text "svg" means √.
 - Never treat "svg" as x.
 - Preserve the original numbers.
-- Carefully identify fractions, parentheses, exponents and square roots.
-- Do not invent numbers.
-- Show clear short steps.
-- Simplify surds exactly when possible.
-- For MCQs, compare with the options.
+- Carefully identify fractions, brackets, exponents and square roots.
+- Show all requested steps.
+- Complete every requested part.
+- Check the result where useful.
 
 End with:
 
@@ -100,6 +90,107 @@ End with:
 
 **answer ✅**
 """
+
+
+# ============================================================
+# BASIC CHAT RESPONSES
+# ============================================================
+
+def basic_response(message):
+    q = message.strip().lower()
+
+    greetings = {
+        "hi",
+        "hello",
+        "hey",
+        "hii",
+        "hiii",
+        "helo",
+        "hi!",
+        "hello!",
+        "hey!"
+    }
+
+    if q in greetings:
+        return (
+            "Hello! 👋 I'm My AI.\n\n"
+            "You can ask me mathematics, physics, chemistry, "
+            "science, or general questions."
+        )
+
+    if q in {
+        "good morning",
+        "good afternoon",
+        "good evening"
+    }:
+        return f"{q.title()}! 👋 How can I help you today?"
+
+    if q in {
+        "how are you",
+        "how are you?",
+        "how r u",
+        "how r u?"
+    }:
+        return (
+            "I'm doing great! 🤖\n\n"
+            "Ask me a question and let's solve it together."
+        )
+
+    if q in {
+        "who are you",
+        "who are you?",
+        "what are you",
+        "what are you?"
+    }:
+        return (
+            "I'm My AI 🤖, a study assistant for "
+            "mathematics, physics, chemistry, science and general questions."
+        )
+
+    if q in {
+        "what can you do",
+        "what can you do?",
+        "help",
+        "help me"
+    }:
+        return (
+            "I can help with:\n\n"
+            "• Mathematics 🧮\n"
+            "• Physics ⚡\n"
+            "• Chemistry 🧪\n"
+            "• Science 🔬\n"
+            "• General questions 📚\n"
+            "• Step-by-step numerical problems ✏️"
+        )
+
+    if q in {
+        "thanks",
+        "thank you",
+        "thankyou",
+        "thx",
+        "ty"
+    }:
+        return "You're welcome! 😊"
+
+    if q in {
+        "ok",
+        "okay",
+        "okk",
+        "cool",
+        "nice",
+        "great"
+    }:
+        return "👍 Great! Ask me your next question."
+
+    if q in {
+        "bye",
+        "goodbye",
+        "see you",
+        "see ya"
+    }:
+        return "Goodbye! 👋 Come back whenever you need help."
+
+    return None
 
 
 # ============================================================
@@ -190,24 +281,14 @@ def extract_resistors(text):
     ]
 
 
-def is_casual(message):
-    return message.strip().lower() in {
-        "hi",
-        "hello",
-        "hey",
-        "hii",
-        "hiii",
-        "hi!",
-        "hello!",
-        "hey!",
-        "good morning",
-        "good afternoon",
-        "good evening",
-        "thanks",
-        "thank you",
-        "ok",
-        "okay"
-    }
+def extract_mcq_options(text):
+    options = re.findall(
+        r"(?:^|\n)\s*[A-D]\s*[\)\.:\-]\s*(.+)",
+        text,
+        re.IGNORECASE
+    )
+
+    return [x.strip() for x in options]
 
 
 def looks_like_math(question):
@@ -227,20 +308,16 @@ def looks_like_math(question):
         "polynomial",
         "root",
         "fraction",
-        "algebra"
+        "algebra",
+        "trigonometry",
+        "sin",
+        "cos",
+        "tan",
+        "geometry",
+        "angle"
     ]
 
     return any(term in q for term in math_terms)
-
-
-def extract_mcq_options(text):
-    options = re.findall(
-        r"(?:^|\n)\s*[A-D]\s*[\)\.:\-]\s*(.+)",
-        text,
-        re.IGNORECASE
-    )
-
-    return [x.strip() for x in options]
 
 
 # ============================================================
@@ -265,13 +342,8 @@ def solve_known_surds(question):
     if not (has_a and has_b):
         return None
 
-    a = math.sqrt(
-        5 + 2 * math.sqrt(6)
-    )
-
-    b = math.sqrt(
-        5 - 2 * math.sqrt(6)
-    )
+    a = math.sqrt(5 + 2 * math.sqrt(6))
+    b = math.sqrt(5 - 2 * math.sqrt(6))
 
     if (
         "√(5+2√6)+√(5-2√6)" in compact
@@ -315,7 +387,7 @@ N = √(3/2)
 
 
 # ============================================================
-# MIXED CIRCUIT SOLVER
+# CIRCUIT SOLVER
 # ============================================================
 
 def solve_mixed_circuit(question):
@@ -368,9 +440,7 @@ def solve_mixed_circuit(question):
         return None
 
     rp = (r1 * r2) / (r1 + r2)
-
     total_resistance = sum(series_resistors) + rp
-
     total_current = voltage / total_resistance
 
     voltage_drops = [
@@ -378,18 +448,22 @@ def solve_mixed_circuit(question):
         for r in series_resistors
     ]
 
-    parallel_voltage = (
-        voltage - sum(voltage_drops)
-    )
+    parallel_voltage = voltage - sum(voltage_drops)
 
     i1 = parallel_voltage / r1
     i2 = parallel_voltage / r2
 
-    if not close(
-        sum(voltage_drops) + parallel_voltage,
-        voltage
-    ):
-        return None
+    powers = {
+        r: total_current ** 2 * r
+        for r in series_resistors
+    }
+
+    p1 = parallel_voltage ** 2 / r1
+    p2 = parallel_voltage ** 2 / r2
+
+    total_power = voltage * total_current
+
+    component_power = sum(powers.values()) + p1 + p2
 
     lines = ["### Solution"]
 
@@ -425,12 +499,14 @@ I = {fmt(voltage)} / {fmt(total_resistance)}
 **I = {fmt(total_current)} A**"""
     )
 
-    for index, (resistor, drop) in enumerate(
-        zip(series_resistors, voltage_drops),
-        start=4
+    step = 4
+
+    for resistor, drop in zip(
+        series_resistors,
+        voltage_drops
     ):
         lines.append(
-            f"""**{index}. Voltage across {fmt(resistor)} Ω**
+            f"""**{step}. Voltage across {fmt(resistor)} Ω**
 
 V = IR
 
@@ -438,39 +514,71 @@ V = {fmt(total_current)} × {fmt(resistor)}
 
 **V = {fmt(drop)} V**"""
         )
-
-    next_step = 4 + len(series_resistors)
+        step += 1
 
     lines.append(
-        f"""**{next_step}. Parallel-section voltage**
+        f"""**{step}. Voltage across parallel combination**
 
-**Vₚ = {fmt(parallel_voltage)} V**
-
-Both parallel branches have the same voltage."""
+**Vₚ = {fmt(parallel_voltage)} V**"""
     )
 
+    step += 1
+
     lines.append(
-        f"""**{next_step + 1}. Current through {fmt(r1)} Ω**
+        f"""**{step}. Current through {fmt(r1)} Ω**
 
 I₁ = Vₚ / R₁
 
 **I₁ = {fmt(i1)} A**"""
     )
 
+    step += 1
+
     lines.append(
-        f"""**{next_step + 2}. Current through {fmt(r2)} Ω**
+        f"""**{step}. Current through {fmt(r2)} Ω**
 
 I₂ = Vₚ / R₂
 
 **I₂ = {fmt(i2)} A**"""
     )
 
+    step += 1
+
+    lines.append(f"**{step}. Power dissipated**\n")
+
+    for resistor, power in powers.items():
+        lines.append(
+            f"Power in {fmt(resistor)} Ω = I²R = **{fmt(power)} W**"
+        )
+
+    lines.append(
+        f"Power in {fmt(r1)} Ω = V²/R = **{fmt(p1)} W**"
+    )
+
+    lines.append(
+        f"Power in {fmt(r2)} Ω = V²/R = **{fmt(p2)} W**"
+    )
+
+    step += 1
+
+    lines.append(
+        f"""**{step}. Total power**
+
+P = VI
+
+P = {fmt(voltage)} × {fmt(total_current)}
+
+**P = {fmt(total_power)} W**"""
+    )
+
     lines.append(
         f"""### Verification
 
-**Voltage:** {fmt(sum(voltage_drops) + parallel_voltage)} V = {fmt(voltage)} V ✅
+Component power = {fmt(component_power)} W
 
-**Current:** {fmt(i1 + i2)} A = {fmt(total_current)} A ✅"""
+Total battery power = {fmt(total_power)} W
+
+**Power verification ✅**"""
     )
 
     lines.append(
@@ -479,7 +587,8 @@ I₂ = Vₚ / R₂
 - **Parallel resistance = {fmt(rp)} Ω**
 - **Total resistance = {fmt(total_resistance)} Ω**
 - **Total current = {fmt(total_current)} A**
-- **Parallel voltage = {fmt(parallel_voltage)} V**"""
+- **Parallel voltage = {fmt(parallel_voltage)} V**
+- **Total power = {fmt(total_power)} W ✅**"""
     )
 
     return "\n\n".join(lines)
@@ -525,12 +634,6 @@ def solve_heat_question(question):
         re.IGNORECASE
     )
 
-    loss_match = re.search(
-        r"(\d+(?:\.\d+)?)\s*%\s*(?:heat\s*)?loss",
-        problem,
-        re.IGNORECASE
-    )
-
     if not masses or not specific_heats:
         return None
 
@@ -551,21 +654,12 @@ def solve_heat_question(question):
         mass = masses[i] / 1000
         specific_heat = specific_heats[i]
 
-        initial = float(
-            temperature_pairs[i][0]
-        )
-
-        final = float(
-            temperature_pairs[i][1]
-        )
+        initial = float(temperature_pairs[i][0])
+        final = float(temperature_pairs[i][1])
 
         delta = abs(final - initial)
 
-        heat = (
-            mass
-            * specific_heat
-            * delta
-        )
+        heat = mass * specific_heat * delta
 
         total_heat += heat
 
@@ -584,38 +678,9 @@ def solve_heat_question(question):
         else None
     )
 
-    loss_percent = (
-        float(loss_match.group(1))
-        if loss_match
-        else 0
-    )
-
-    loss_fraction = loss_percent / 100
-
-    supplied_heat = (
-        total_heat / (1 - loss_fraction)
-        if loss_fraction < 1
-        else total_heat
-    )
-
-    time_without_loss = (
-        total_heat / heater_power
-        if heater_power
-        else None
-    )
-
-    time_with_loss = (
-        supplied_heat / heater_power
-        if heater_power
-        else None
-    )
-
     lines = ["### Solution"]
 
-    for i, block in enumerate(
-        blocks,
-        start=1
-    ):
+    for i, block in enumerate(blocks, start=1):
         lines.append(
             f"""**{i}. Heat required**
 
@@ -627,110 +692,25 @@ Q = {fmt(block["mass"])} × {fmt(block["c"])} × {fmt(block["delta"])}
         )
 
     lines.append(
-        f"""**Total useful heat**
+        f"""### Final Answer
 
-**Q = {fmt(total_heat)} J**"""
+**Total heat = {fmt(total_heat)} J**"""
     )
 
     if heater_power:
+        time_taken = total_heat / heater_power
+
         lines.append(
-            f"""**Time without heat loss**
+            f"""**Time**
 
 t = Q / P
 
-**t = {fmt(time_without_loss)} s**"""
+t = {fmt(total_heat)} / {fmt(heater_power)}
+
+**t = {fmt(time_taken)} s ✅**"""
         )
-
-    if loss_percent > 0:
-        lines.append(
-            f"""**Heat required with {fmt(loss_percent)}% loss**
-
-**Q = {fmt(supplied_heat)} J**"""
-        )
-
-        if heater_power:
-            lines.append(
-                f"""**Time with heat loss**
-
-**t = {fmt(time_with_loss)} s**"""
-            )
-
-    final = [
-        "### Final Answer",
-        f"**Total useful heat = {fmt(total_heat)} J**"
-    ]
-
-    if heater_power:
-        final.append(
-            f"**Time without loss = {fmt(time_without_loss)} s**"
-        )
-
-    if loss_percent > 0:
-        final.append(
-            f"**Heat with loss = {fmt(supplied_heat)} J**"
-        )
-
-        if heater_power:
-            final.append(
-                f"**Time with loss = {fmt(time_with_loss)} s ✅**"
-            )
-
-    lines.append("\n\n".join(final))
 
     return "\n\n".join(lines)
-
-
-# ============================================================
-# BULB SOLVER
-# ============================================================
-
-def solve_bulb_question(question):
-
-    q = question.lower()
-    problem = get_problem_text(question)
-
-    if "bulb" not in q:
-        return None
-
-    powers = [
-        float(x)
-        for x in re.findall(
-            r"(\d+(?:\.\d+)?)\s*(?:W|watt|watts)\b",
-            problem,
-            re.IGNORECASE
-        )
-    ]
-
-    voltage = extract_voltage(problem)
-
-    if voltage is None:
-        return None
-
-    if not powers:
-        return None
-
-    if (
-        "minimum resistance" in q
-        or "least resistance" in q
-        or "lowest resistance" in q
-    ):
-
-        highest_power = max(powers)
-
-        return f"""### Solution
-
-R = V² / P
-
-At the same voltage, resistance is inversely proportional to power.
-
-Highest rated power = **{fmt(highest_power)} W**
-
-### Final Answer
-
-**{fmt(highest_power)} W ✅**
-"""
-
-    return None
 
 
 # ============================================================
@@ -810,11 +790,7 @@ Rₜ = {' + '.join(fmt(x) for x in resistors)}
 
         r1, r2 = resistors
 
-        equivalent = (
-            r1 * r2
-        ) / (
-            r1 + r2
-        )
+        equivalent = (r1 * r2) / (r1 + r2)
 
         return f"""### Solution
 
@@ -877,17 +853,11 @@ P = I²R
 
 Current increases by 100%.
 
-Therefore:
-
 I' = 2I
 
 P' = (2I)²R
 
 P' = 4P
-
-Increase:
-
-4P − P = 3P
 
 Percentage increase = 300%
 
@@ -900,7 +870,7 @@ Percentage increase = 300%
 
 
 # ============================================================
-# HUGGING FACE STREAM
+# HUGGING FACE AI
 # ============================================================
 
 def stream_huggingface(question, system_prompt=None):
@@ -908,22 +878,17 @@ def stream_huggingface(question, system_prompt=None):
     if not HF_TOKEN or hf_client is None:
         yield (
             "❌ HF_TOKEN is missing.\n\n"
-            "Please add HF_TOKEN in Render → Environment."
+            "Check Render → Environment."
         )
         return
 
-    prompt = system_prompt or SYSTEM_PROMPT
-
-    model = HF_MODEL
-
     try:
-
         stream = hf_client.chat.completions.create(
-            model=model,
+            model=HF_MODEL,
             messages=[
                 {
                     "role": "system",
-                    "content": prompt
+                    "content": system_prompt or SYSTEM_PROMPT
                 },
                 {
                     "role": "user",
@@ -932,7 +897,7 @@ def stream_huggingface(question, system_prompt=None):
             ],
             stream=True,
             temperature=0.2,
-            max_tokens=500
+            max_tokens=1200
         )
 
         for chunk in stream:
@@ -954,8 +919,8 @@ def stream_huggingface(question, system_prompt=None):
 
         yield (
             "❌ I couldn't connect to the online AI.\n\n"
-            "Please check the Hugging Face token and "
-            "Inference permission in Render."
+            "Please check the Hugging Face connection "
+            "and Render environment variable."
         )
 
 
@@ -969,7 +934,7 @@ def stream_math_ai(question):
 
     if options:
         options_text = (
-            "\n\nThe question includes these options:\n"
+            "\n\nOptions:\n"
             + "\n".join(
                 f"{chr(65+i)}) {value}"
                 for i, value in enumerate(options[:4])
@@ -977,28 +942,21 @@ def stream_math_ai(question):
         )
 
     prompt = f"""
-Solve the following mathematics question carefully.
+Solve this mathematics question completely.
 
-Original question:
-
+Question:
 {normalized}
 
 {options_text}
 
 Instructions:
-
-1. Reconstruct the mathematical expression faithfully.
+1. Understand the original expression carefully.
 2. Treat svg as √.
-3. Show a short solution.
-4. Simplify exactly where possible.
-5. For MCQs, select the correct option.
-6. Check the final result where useful.
-
-End with:
-
-### Final Answer
-
-**answer ✅**
+3. Show all requested steps.
+4. Do not skip any requested part.
+5. For MCQs, choose the correct option.
+6. Check the answer where useful.
+7. End with a Final Answer.
 """
 
     yield from stream_huggingface(
@@ -1008,7 +966,7 @@ End with:
 
 
 # ============================================================
-# IMPROVE ANSWER
+# IMPROVE
 # ============================================================
 
 def improve_answer(question, old_answer, action):
@@ -1018,13 +976,13 @@ def improve_answer(question, old_answer, action):
             "Improve the answer and make it clearer and more accurate.",
 
         "check":
-            "Check the previous answer for mathematical, physics and factual mistakes. Correct any mistakes.",
+            "Check the previous answer for mathematical, physics, chemistry and factual mistakes. Correct them.",
 
         "explain":
-            "Give a slightly more detailed explanation while remaining concise.",
+            "Explain the answer in slightly more detail while staying clear.",
 
         "short":
-            "Make the answer shorter while keeping the essential steps and final answer."
+            "Make the answer shorter but keep all important steps and the final answer."
     }
 
     instruction = instructions.get(
@@ -1032,12 +990,10 @@ def improve_answer(question, old_answer, action):
         instructions["improve"]
     )
 
-    normalized = normalize_math_text(question)
-
     prompt = f"""
 Original question:
 
-{normalized}
+{question}
 
 Previous answer:
 
@@ -1047,19 +1003,14 @@ Task:
 
 {instruction}
 
-Rules:
-
-- Treat svg as √.
-- Never replace svg with x.
-- Verify calculations carefully.
-- Do not invent missing numbers.
-- Use Markdown.
-- End with a clear Final Answer.
+Do not remove necessary calculations.
+Verify numerical answers carefully.
+Use simple student-friendly language.
 """
 
     system = (
         MATH_SYSTEM_PROMPT
-        if looks_like_math(normalized)
+        if looks_like_math(question)
         else SYSTEM_PROMPT
     )
 
@@ -1104,10 +1055,30 @@ def chat():
             mimetype="text/plain"
         )
 
+    # ========================================================
+    # BASIC MESSAGES
+    # ========================================================
+
+    simple = basic_response(question)
+
+    if simple:
+        return Response(
+            simple,
+            mimetype="text/plain"
+        )
+
+    # ========================================================
+    # NORMALIZE
+    # ========================================================
+
     question = normalize_math_text(question)
 
-    # Fast exact solvers
+    # ========================================================
+    # FAST SOLVERS
+    # ========================================================
+
     result = solve_known_surds(question)
+
     if result:
         return Response(
             result,
@@ -1115,6 +1086,7 @@ def chat():
         )
 
     result = solve_mixed_circuit(question)
+
     if result:
         return Response(
             result,
@@ -1122,6 +1094,7 @@ def chat():
         )
 
     result = solve_heat_question(question)
+
     if result:
         return Response(
             result,
@@ -1129,13 +1102,7 @@ def chat():
         )
 
     result = solve_percentage_power(question)
-    if result:
-        return Response(
-            result,
-            mimetype="text/plain"
-        )
 
-    result = solve_bulb_question(question)
     if result:
         return Response(
             result,
@@ -1143,13 +1110,17 @@ def chat():
         )
 
     result = solve_basic_electricity(question)
+
     if result:
         return Response(
             result,
             mimetype="text/plain"
         )
 
-    # Math AI
+    # ========================================================
+    # MATH AI
+    # ========================================================
+
     if looks_like_math(question):
         return Response(
             stream_with_context(
@@ -1162,7 +1133,10 @@ def chat():
             }
         )
 
-    # General AI
+    # ========================================================
+    # GENERAL AI
+    # ========================================================
+
     return Response(
         stream_with_context(
             stream_huggingface(question)
@@ -1176,7 +1150,7 @@ def chat():
 
 
 # ============================================================
-# IMPROVE
+# IMPROVE ROUTE
 # ============================================================
 
 @app.route("/improve", methods=["POST"])
@@ -1228,7 +1202,7 @@ def improve():
 
 
 # ============================================================
-# LOCAL SERVER
+# START LOCAL SERVER
 # ============================================================
 
 if __name__ == "__main__":
@@ -1236,12 +1210,16 @@ if __name__ == "__main__":
     print("=" * 60)
     print("MY AI")
     print("=" * 60)
-    print("Hugging Face AI       :", bool(HF_TOKEN))
-    print("Math solver           : ON")
-    print("Physics solver        : ON")
-    print("Circuit solver        : ON")
-    print("Heat solver           : ON")
-    print("Improve Answer        : ON")
+    print(
+        "Hugging Face configured:",
+        bool(HF_TOKEN)
+    )
+    print("Basic responses        : ON")
+    print("Math solver            : ON")
+    print("Physics solver         : ON")
+    print("Chemistry AI           : ON")
+    print("Longer answers         : ON")
+    print("Improve Answer         : ON")
     print("=" * 60)
 
     app.run(
