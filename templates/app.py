@@ -1430,7 +1430,7 @@ def stream_text_ai(
                 full_answer,
             )
 
-    except Exception as error:
+        except Exception as error:
 
         print(
             "Hugging Face error:",
@@ -1438,7 +1438,8 @@ def stream_text_ai(
         )
 
         yield (
-            "❌ Online AI could not answer right now."
+            "❌ Hugging Face error:\n\n"
+            + str(error)
         )
 
 
