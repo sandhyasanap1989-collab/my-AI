@@ -813,6 +813,195 @@
 
         }
 
+    
+        /* =====================================================
+           EXTRA MOBILE FRIENDLY IMPROVEMENTS
+        ====================================================== */
+
+        @media (max-width: 760px) {
+
+            .auth-screen {
+                min-height: 100dvh;
+                padding: 12px;
+            }
+
+            .auth-box {
+                width: 100%;
+                max-width: 100%;
+                padding: 20px;
+                border-radius: 16px;
+            }
+
+            .subtitle {
+                margin-bottom: 18px;
+                font-size: 13px;
+            }
+
+            .tabs {
+                gap: 6px;
+            }
+
+            .tab {
+                min-height: 42px;
+                padding: 10px 8px;
+            }
+
+            .field input {
+                min-height: 44px;
+                font-size: 16px;
+            }
+
+            .auth-button {
+                min-height: 44px;
+            }
+
+            .topbar {
+                height: 52px;
+                padding: 0 12px;
+            }
+
+            .top-title {
+                font-size: 16px;
+            }
+
+            .chat {
+                padding:
+                    16px 8px 150px;
+            }
+
+            .message {
+                gap: 7px;
+                margin-bottom: 18px;
+            }
+
+            .avatar {
+                width: 32px;
+                height: 32px;
+                font-size: 13px;
+            }
+
+            .bubble {
+                max-width: calc(100vw - 62px);
+                padding: 11px;
+                line-height: 1.55;
+                font-size: 14px;
+                overflow-wrap: anywhere;
+            }
+
+            .actions {
+                gap: 6px;
+            }
+
+            .action-btn {
+                min-height: 34px;
+                padding: 7px 9px;
+                font-size: 11px;
+            }
+
+            .composer {
+                padding:
+                    8px 7px
+                    max(
+                        env(safe-area-inset-bottom),
+                        8px
+                    );
+            }
+
+            .composer-box {
+                border-radius: 13px;
+                padding: 6px;
+            }
+
+            .input-row {
+                gap: 5px;
+            }
+
+            .voice-btn,
+            .icon-btn,
+            .send-btn {
+                width: 36px;
+                height: 36px;
+            }
+
+            .voice-btn {
+                transform: scale(0.92);
+            }
+
+            textarea {
+                min-width: 0;
+                min-height: 38px;
+                max-height: 120px;
+                font-size: 16px;
+                padding: 8px;
+            }
+
+            .camera-tools {
+                gap: 4px;
+            }
+
+            .image-preview {
+                max-width: 220px;
+                max-height: 160px;
+            }
+
+            .camera-modal {
+                padding: 8px;
+                align-items: flex-end;
+            }
+
+            .camera-box {
+                width: 100%;
+                max-height: 92dvh;
+                border-radius: 16px 16px 10px 10px;
+                padding: 10px;
+            }
+
+            #cameraVideo {
+                max-height: 58dvh;
+            }
+
+            .camera-controls {
+                gap: 7px;
+            }
+
+            .camera-action {
+                min-height: 44px;
+                padding: 10px;
+            }
+        }
+
+        @media (max-width: 420px) {
+
+            .auth-box {
+                padding: 17px;
+            }
+
+            .logo {
+                font-size: 27px;
+            }
+
+            .tab {
+                font-size: 12px;
+            }
+
+            .bubble {
+                max-width: calc(100vw - 53px);
+                font-size: 13px;
+            }
+
+            .action-btn {
+                font-size: 10px;
+                padding: 6px 7px;
+            }
+
+            .camera-tools .icon-btn,
+            .voice-btn,
+            .send-btn {
+                width: 34px;
+                height: 34px;
+            }
+        }
+
     </style>
 </head>
 
@@ -2984,6 +3173,11 @@ function addActions(
         [
             "🔊 Read Answer",
             "read"
+        ],
+
+        [
+            "⏹ Stop Reading",
+            "stop"
         ]
     ];
 
@@ -3020,6 +3214,13 @@ function addActions(
                         readAnswer(
                             answer
                         );
+
+                    } else if (
+                        action ===
+                        "stop"
+                    ) {
+
+                        stopReading();
 
                     } else {
 
@@ -3389,6 +3590,21 @@ function readAnswer(
 
 
 /* ============================================================
+   STOP TEXT TO SPEECH
+============================================================ */
+
+function stopReading() {
+
+    if (
+        "speechSynthesis"
+        in window
+    ) {
+        window.speechSynthesis.cancel();
+    }
+}
+
+
+/* ============================================================
    KEYBOARD
 ============================================================ */
 
@@ -3439,6 +3655,8 @@ function autoResize(
 ============================================================ */
 
 function newChat() {
+
+    stopReading();
 
     document.getElementById(
         "chatInner"
@@ -3517,6 +3735,20 @@ function scrollBottom() {
         20
     );
 }
+
+
+/* ============================================================
+   STARTUP
+============================================================ */
+
+document.addEventListener(
+    "visibilitychange",
+    function() {
+        if (document.hidden) {
+            stopReading();
+        }
+    }
+);
 
 
 /* ============================================================
