@@ -52,7 +52,7 @@ CREATOR_NAME = "Soham Chandrahas Sanap"
 CREATOR_RESPONSE = f"""
 My creator is **{CREATOR_NAME}**.
 
-He built My AI as a study assistant for Mathematics,
+He built Halper as a study assistant for Mathematics,
 Physics, Chemistry and Biology.
 """.strip()
 
@@ -636,7 +636,7 @@ def detect_difficulty(question):
 # ============================================================
 
 GENERAL_PROMPT = """
-You are My AI, a careful study assistant.
+You are Halper, a careful study assistant.
 
 Answer the user's actual question.
 
@@ -779,7 +779,7 @@ def text_ai(
 # ============================================================
 
 VISION_PROMPT = """
-You are My AI's image-question solver.
+You are Halper's image-question solver.
 
 Read the COMPLETE image.
 
@@ -1463,7 +1463,7 @@ def build_normal_context(question):
             + item["question"]
         )
         parts.append(
-            "MY AI: "
+            "Halper: "
             + item["answer"]
         )
 
@@ -1804,7 +1804,7 @@ def chat():
     }:
 
         answer = (
-            "Hello! 👋 I'm My AI.\n\n"
+            "Hello! 👋 I'm Halper.\n\n"
             "Ask Mathematics, Physics, Chemistry, "
             "Biology or general questions."
         )
@@ -2287,7 +2287,7 @@ def health():
 if __name__ == "__main__":
 
     print("=" * 60)
-    print("MY AI")
+    print("Halper")
     print("=" * 60)
     print("HF configured       :", bool(HF_TOKEN))
     print("Creator routing     : ON")
