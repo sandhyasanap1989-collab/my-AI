@@ -32,6 +32,53 @@
 
 
         /* =====================================================
+           HALPER LOGO
+        ====================================================== */
+
+        .halper-logo {
+            display: block;
+            width: 150px;
+            height: 150px;
+            object-fit: contain;
+            margin: 0 auto 10px;
+            background: white;
+            border-radius: 18px;
+        }
+
+        .sidebar-logo {
+            width: 100%;
+            max-width: 180px;
+            height: 105px;
+            object-fit: contain;
+            object-position: center;
+            display: block;
+            margin: 0 auto 18px;
+            border-radius: 12px;
+            background: white;
+        }
+
+        .welcome-logo {
+            display: block;
+            width: 180px;
+            height: 180px;
+            object-fit: contain;
+            margin: 0 auto 15px;
+            background: white;
+            border-radius: 18px;
+        }
+
+        .assistant-logo {
+            width: 36px;
+            height: 36px;
+            flex-shrink: 0;
+            object-fit: contain;
+            border-radius: 8px;
+            background: white;
+            border: 1px solid #dfe5ef;
+        }
+
+
+        /* =====================================================
            LOGIN / CREATE ACCOUNT
         ====================================================== */
 
@@ -55,9 +102,6 @@
 
         .logo {
             text-align: center;
-            color: #2563eb;
-            font-size: 34px;
-            font-weight: 800;
             margin-bottom: 7px;
         }
 
@@ -188,9 +232,6 @@
         }
 
         .brand {
-            color: #2563eb;
-            font-size: 23px;
-            font-weight: 800;
             margin-bottom: 20px;
         }
 
@@ -268,7 +309,7 @@
 
         .welcome {
             text-align: center;
-            margin-top: 100px;
+            margin-top: 70px;
         }
 
         .welcome h1 {
@@ -309,8 +350,10 @@
         }
 
         .assistant .avatar {
-            background: #2563eb;
-            color: white;
+            background: white;
+            color: #111827;
+            border-radius: 8px;
+            overflow: hidden;
         }
 
         .user .avatar {
@@ -495,7 +538,7 @@
 
 
         /* =====================================================
-           CAMERA / GALLERY BUTTONS
+           CAMERA / GALLERY
         ====================================================== */
 
         .camera-tools {
@@ -749,8 +792,7 @@
             }
 
             .chat {
-                padding:
-                    20px 10px 150px;
+                padding: 20px 10px 150px;
             }
 
             .bubble {
@@ -758,11 +800,16 @@
             }
 
             .welcome {
-                margin-top: 55px;
+                margin-top: 45px;
             }
 
             .welcome h1 {
                 font-size: 30px;
+            }
+
+            .welcome-logo {
+                width: 145px;
+                height: 145px;
             }
 
             .icon-btn,
@@ -803,8 +850,9 @@
                 padding: 22px;
             }
 
-            .logo {
-                font-size: 30px;
+            .halper-logo {
+                width: 125px;
+                height: 125px;
             }
 
             .bubble {
@@ -813,9 +861,9 @@
 
         }
 
-    
+
         /* =====================================================
-           EXTRA MOBILE FRIENDLY IMPROVEMENTS
+           EXTRA MOBILE FRIENDLY
         ====================================================== */
 
         @media (max-width: 760px) {
@@ -865,8 +913,7 @@
             }
 
             .chat {
-                padding:
-                    16px 8px 150px;
+                padding: 16px 8px 150px;
             }
 
             .message {
@@ -878,6 +925,11 @@
                 width: 32px;
                 height: 32px;
                 font-size: 13px;
+            }
+
+            .assistant-logo {
+                width: 32px;
+                height: 32px;
             }
 
             .bubble {
@@ -976,8 +1028,14 @@
                 padding: 17px;
             }
 
-            .logo {
-                font-size: 27px;
+            .halper-logo {
+                width: 110px;
+                height: 110px;
+            }
+
+            .welcome-logo {
+                width: 125px;
+                height: 125px;
             }
 
             .tab {
@@ -1020,8 +1078,13 @@
 
     <div class="auth-box">
 
+        <!-- NEW HALPER LOGO -->
         <div class="logo">
-            🤖 Halper
+            <img
+                src="{{ url_for('static', filename='halper-logo.png') }}"
+                class="halper-logo"
+                alt="Halper Logo"
+            >
         </div>
 
         <div class="subtitle">
@@ -1052,9 +1115,7 @@
         </div>
 
 
-        <!-- =================================================
-             LOGIN
-        ================================================== -->
+        <!-- LOGIN -->
 
         <div
             class="auth-form active"
@@ -1116,9 +1177,7 @@
         </div>
 
 
-        <!-- =================================================
-             CREATE ACCOUNT
-        ================================================== -->
+        <!-- CREATE ACCOUNT -->
 
         <div
             class="auth-form"
@@ -1243,14 +1302,18 @@
 <div class="app">
 
 
-    <!-- =====================================================
-         SIDEBAR
-    ====================================================== -->
+    <!-- SIDEBAR -->
 
     <aside class="sidebar">
 
         <div class="brand">
-            🤖 Halper
+
+            <img
+                src="{{ url_for('static', filename='halper-logo.png') }}"
+                class="sidebar-logo"
+                alt="Halper"
+            >
+
         </div>
 
 
@@ -1285,9 +1348,7 @@
     </aside>
 
 
-    <!-- =====================================================
-         MAIN
-    ====================================================== -->
+    <!-- MAIN -->
 
     <main class="main">
 
@@ -1301,9 +1362,7 @@
         </header>
 
 
-        <!-- =================================================
-             CHAT
-        ================================================== -->
+        <!-- CHAT -->
 
         <section
             class="chat"
@@ -1321,15 +1380,17 @@
                     id="welcome"
                 >
 
-                    <h1>
-                        🤖 Halper
-                    </h1>
+                    <!-- NEW HALPER LOGO -->
 
+                    <img
+                        src="{{ url_for('static', filename='halper-logo.png') }}"
+                        class="welcome-logo"
+                        alt="Halper Logo"
+                    >
 
                     <p>
                         Hello {{ username }}! 👋
                     </p>
-
 
                     <p>
                         Ask Mathematics, Physics,
@@ -1349,9 +1410,7 @@
         </section>
 
 
-        <!-- =================================================
-             COMPOSER
-        ================================================== -->
+        <!-- COMPOSER -->
 
         <div class="composer">
 
@@ -1562,66 +1621,36 @@
 function showAuth(type) {
 
     const loginForm =
-        document.getElementById(
-            "loginForm"
-        );
+        document.getElementById("loginForm");
 
     const registerForm =
-        document.getElementById(
-            "registerForm"
-        );
+        document.getElementById("registerForm");
 
     const loginTab =
-        document.getElementById(
-            "loginTab"
-        );
+        document.getElementById("loginTab");
 
     const registerTab =
-        document.getElementById(
-            "registerTab"
-        );
+        document.getElementById("registerTab");
 
     const message =
-        document.getElementById(
-            "authMessage"
-        );
+        document.getElementById("authMessage");
 
 
     if (type === "login") {
 
-        loginForm.classList.add(
-            "active"
-        );
+        loginForm.classList.add("active");
+        registerForm.classList.remove("active");
 
-        registerForm.classList.remove(
-            "active"
-        );
-
-        loginTab.classList.add(
-            "active"
-        );
-
-        registerTab.classList.remove(
-            "active"
-        );
+        loginTab.classList.add("active");
+        registerTab.classList.remove("active");
 
     } else {
 
-        loginForm.classList.remove(
-            "active"
-        );
+        loginForm.classList.remove("active");
+        registerForm.classList.add("active");
 
-        registerForm.classList.add(
-            "active"
-        );
-
-        loginTab.classList.remove(
-            "active"
-        );
-
-        registerTab.classList.add(
-            "active"
-        );
+        loginTab.classList.remove("active");
+        registerTab.classList.add("active");
     }
 
 
@@ -1638,14 +1667,11 @@ function showAuth(type) {
 function togglePassword(id) {
 
     const input =
-        document.getElementById(
-            id
-        );
+        document.getElementById(id);
 
     if (!input) {
         return;
     }
-
 
     input.type =
         input.type === "password"
@@ -1662,39 +1688,29 @@ async function register() {
 
     const username =
         document
-            .getElementById(
-                "registerUsername"
-            )
+            .getElementById("registerUsername")
             .value
             .trim();
 
     const email =
         document
-            .getElementById(
-                "registerEmail"
-            )
+            .getElementById("registerEmail")
             .value
             .trim();
 
     const phone =
         document
-            .getElementById(
-                "registerPhone"
-            )
+            .getElementById("registerPhone")
             .value
             .trim();
 
     const password =
         document
-            .getElementById(
-                "registerPassword"
-            )
+            .getElementById("registerPassword")
             .value;
 
     const message =
-        document.getElementById(
-            "authMessage"
-        );
+        document.getElementById("authMessage");
 
 
     if (!username) {
@@ -1783,23 +1799,17 @@ async function login() {
 
     const loginValue =
         document
-            .getElementById(
-                "loginValue"
-            )
+            .getElementById("loginValue")
             .value
             .trim();
 
     const password =
         document
-            .getElementById(
-                "loginPassword"
-            )
+            .getElementById("loginPassword")
             .value;
 
     const message =
-        document.getElementById(
-            "authMessage"
-        );
+        document.getElementById("authMessage");
 
 
     if (!loginValue || !password) {
@@ -1878,18 +1888,9 @@ let cameraStream = null;
 function escapeHtml(text) {
 
     return String(text)
-        .replace(
-            /&/g,
-            "&amp;"
-        )
-        .replace(
-            /</g,
-            "&lt;"
-        )
-        .replace(
-            />/g,
-            "&gt;"
-        );
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
 }
 
 
@@ -1899,57 +1900,17 @@ function escapeHtml(text) {
 
 function cleanMathFormatting(text) {
 
-    let clean =
-        String(text);
+    let clean = String(text);
 
+    clean = clean.replace(/\\\[/g, "");
+    clean = clean.replace(/\\\]/g, "");
+    clean = clean.replace(/\\\(/g, "");
+    clean = clean.replace(/\\\)/g, "");
+    clean = clean.replace(/\$\$/g, "");
+    clean = clean.replace(/\$/g, "");
 
-    /* Math delimiters */
-
-    clean = clean.replace(
-        /\\\[/g,
-        ""
-    );
-
-    clean = clean.replace(
-        /\\\]/g,
-        ""
-    );
-
-    clean = clean.replace(
-        /\\\(/g,
-        ""
-    );
-
-    clean = clean.replace(
-        /\\\)/g,
-        ""
-    );
-
-    clean = clean.replace(
-        /\$\$/g,
-        ""
-    );
-
-    clean = clean.replace(
-        /\$/g,
-        ""
-    );
-
-
-    /* Environments */
-
-    clean = clean.replace(
-        /\\begin\{[^}]*\}/g,
-        ""
-    );
-
-    clean = clean.replace(
-        /\\end\{[^}]*\}/g,
-        ""
-    );
-
-
-    /* Text commands */
+    clean = clean.replace(/\\begin\{[^}]*\}/g, "");
+    clean = clean.replace(/\\end\{[^}]*\}/g, "");
 
     clean = clean.replace(
         /\\text\{([^{}]*)\}/g,
@@ -1976,9 +1937,6 @@ function cleanMathFormatting(text) {
         "$1"
     );
 
-
-    /* Fractions */
-
     clean = clean.replace(
         /\\frac\{([^{}]*)\}\{([^{}]*)\}/g,
         "($1/$2)"
@@ -1990,70 +1948,41 @@ function cleanMathFormatting(text) {
     );
 
 
-    /* Math symbols */
-
     const symbols = {
 
         "\\times": "×",
-
         "\\cdot": "·",
-
         "\\div": "÷",
-
         "\\pm": "±",
-
         "\\mp": "∓",
-
         "\\leq": "≤",
-
         "\\le": "≤",
-
         "\\geq": "≥",
-
         "\\ge": "≥",
-
         "\\neq": "≠",
-
         "\\ne": "≠",
-
         "\\approx": "≈",
-
         "\\rightarrow": "→",
-
         "\\to": "→",
-
         "\\leftarrow": "←",
-
         "\\Rightarrow": "⇒",
-
         "\\Leftarrow": "⇐",
-
         "\\sqrt": "√",
-
         "\\infty": "∞"
     };
 
 
-    Object.keys(
-        symbols
-    ).forEach(
+    Object.keys(symbols).forEach(
         command => {
 
             clean =
                 clean
-                    .split(
-                        command
-                    )
-                    .join(
-                        symbols[
-                            command
-                        ]
-                    );
+                    .split(command)
+                    .join(symbols[command]);
+
         }
     );
 
-
-    /* Spacing */
 
     clean = clean.replace(
         /\\[,;:!]/g,
@@ -2076,15 +2005,11 @@ function cleanMathFormatting(text) {
     );
 
 
-    /* Remaining backslash commands */
-
     clean = clean.replace(
         /\\([a-zA-Z]+)/g,
         "$1"
     );
 
-
-    /* Left/right */
 
     clean = clean.replace(
         /\\left/g,
@@ -2096,8 +2021,6 @@ function cleanMathFormatting(text) {
         ""
     );
 
-
-    /* Superscripts */
 
     clean = clean.replace(
         /\^0\b/g,
@@ -2149,8 +2072,6 @@ function cleanMathFormatting(text) {
         "⁹"
     );
 
-
-    /* Subscripts */
 
     clean = clean.replace(
         /_0\b/g,
@@ -2220,26 +2141,17 @@ function cleanMathFormatting(text) {
 function formatAnswer(text) {
 
     let clean =
-        cleanMathFormatting(
-            text
-        );
-
+        cleanMathFormatting(text);
 
     let html =
-        escapeHtml(
-            clean
-        );
+        escapeHtml(clean);
 
-
-    /* Bold */
 
     html = html.replace(
         /\*\*(.*?)\*\*/gs,
         "<strong>$1</strong>"
     );
 
-
-    /* Headings */
 
     html = html.replace(
         /^### (.*?)$/gm,
@@ -2257,15 +2169,11 @@ function formatAnswer(text) {
     );
 
 
-    /* Bullets */
-
     html = html.replace(
         /^- (.*?)$/gm,
         "• $1"
     );
 
-
-    /* Newlines */
 
     html = html.replace(
         /\n/g,
@@ -2281,65 +2189,68 @@ function formatAnswer(text) {
    ADD MESSAGE
 ============================================================ */
 
-function addMessage(
-    role,
-    text
-) {
+function addMessage(role, text) {
 
     const message =
-        document.createElement(
-            "div"
-        );
+        document.createElement("div");
 
     message.className =
         "message " + role;
 
 
     const avatar =
-        document.createElement(
-            "div"
-        );
+        document.createElement("div");
 
     avatar.className =
         "avatar";
 
-    avatar.textContent =
-        role === "user"
-            ? "U"
-            : "🤖";
+
+    /*
+       NEW:
+       Use Halper image instead of 🤖
+    */
+
+    if (role === "user") {
+
+        avatar.textContent = "U";
+
+    } else {
+
+        const logo =
+            document.createElement("img");
+
+        logo.src =
+            "{{ url_for('static', filename='halper-logo.png') }}";
+
+        logo.className =
+            "assistant-logo";
+
+        logo.alt =
+            "Halper";
+
+        avatar.appendChild(logo);
+    }
 
 
     const bubble =
-        document.createElement(
-            "div"
-        );
+        document.createElement("div");
 
     bubble.className =
         "bubble";
 
 
     bubble.innerHTML =
-        formatAnswer(
-            text
-        );
+        formatAnswer(text);
 
 
-    message.appendChild(
-        avatar
-    );
+    message.appendChild(avatar);
 
-    message.appendChild(
-        bubble
-    );
+    message.appendChild(bubble);
 
 
     document
-        .getElementById(
-            "chatInner"
-        )
-        .appendChild(
-            message
-        );
+        .getElementById("chatInner")
+        .appendChild(message);
 
 
     scrollBottom();
@@ -2359,27 +2270,18 @@ function addMessage(
 async function openCameraModal() {
 
     const modal =
-        document.getElementById(
-            "cameraModal"
-        );
+        document.getElementById("cameraModal");
 
     const video =
-        document.getElementById(
-            "cameraVideo"
-        );
+        document.getElementById("cameraVideo");
 
     const errorBox =
-        document.getElementById(
-            "cameraError"
-        );
+        document.getElementById("cameraError");
 
 
-    errorBox.textContent =
-        "";
+    errorBox.textContent = "";
 
-
-    modal.style.display =
-        "flex";
+    modal.style.display = "flex";
 
 
     try {
@@ -2441,14 +2343,10 @@ async function openCameraModal() {
 function capturePhoto() {
 
     const video =
-        document.getElementById(
-            "cameraVideo"
-        );
+        document.getElementById("cameraVideo");
 
     const canvas =
-        document.getElementById(
-            "cameraCanvas"
-        );
+        document.getElementById("cameraCanvas");
 
 
     if (
@@ -2465,8 +2363,7 @@ function capturePhoto() {
     }
 
 
-    const maxSize =
-        1920;
+    const maxSize = 1920;
 
 
     let width =
@@ -2476,10 +2373,7 @@ function capturePhoto() {
         video.videoHeight;
 
 
-    if (
-        width >
-        maxSize
-    ) {
+    if (width > maxSize) {
 
         height =
             Math.round(
@@ -2488,15 +2382,11 @@ function capturePhoto() {
                 width
             );
 
-        width =
-            maxSize;
+        width = maxSize;
     }
 
 
-    if (
-        height >
-        maxSize
-    ) {
+    if (height > maxSize) {
 
         width =
             Math.round(
@@ -2505,22 +2395,17 @@ function capturePhoto() {
                 height
             );
 
-        height =
-            maxSize;
+        height = maxSize;
     }
 
 
-    canvas.width =
-        width;
+    canvas.width = width;
 
-    canvas.height =
-        height;
+    canvas.height = height;
 
 
     const ctx =
-        canvas.getContext(
-            "2d"
-        );
+        canvas.getContext("2d");
 
 
     ctx.drawImage(
@@ -2574,14 +2459,10 @@ function capturePhoto() {
 function closeCameraModal() {
 
     const modal =
-        document.getElementById(
-            "cameraModal"
-        );
+        document.getElementById("cameraModal");
 
     const video =
-        document.getElementById(
-            "cameraVideo"
-        );
+        document.getElementById("cameraVideo");
 
 
     if (cameraStream) {
@@ -2593,17 +2474,13 @@ function closeCameraModal() {
                     track.stop()
             );
 
-        cameraStream =
-            null;
+        cameraStream = null;
     }
 
 
-    video.srcObject =
-        null;
+    video.srcObject = null;
 
-
-    modal.style.display =
-        "none";
+    modal.style.display = "none";
 }
 
 
@@ -2623,9 +2500,7 @@ function selectImage(event) {
 
 
     if (
-        !file.type.startsWith(
-            "image/"
-        )
+        !file.type.startsWith("image/")
     ) {
 
         alert(
@@ -2636,13 +2511,9 @@ function selectImage(event) {
     }
 
 
-    selectedImage =
-        file;
+    selectedImage = file;
 
-
-    showImagePreview(
-        file
-    );
+    showImagePreview(file);
 }
 
 
@@ -2650,9 +2521,7 @@ function selectImage(event) {
    IMAGE PREVIEW
 ============================================================ */
 
-function showImagePreview(
-    file
-) {
+function showImagePreview(file) {
 
     const preview =
         document.getElementById(
@@ -2665,18 +2534,13 @@ function showImagePreview(
         );
 
 
-    if (
-        !preview ||
-        !wrap
-    ) {
+    if (!preview || !wrap) {
         return;
     }
 
 
     preview.src =
-        URL.createObjectURL(
-            file
-        );
+        URL.createObjectURL(file);
 
 
     wrap.style.display =
@@ -2690,8 +2554,7 @@ function showImagePreview(
 
 function removeImage() {
 
-    selectedImage =
-        null;
+    selectedImage = null;
 
 
     const fileInput =
@@ -2701,8 +2564,7 @@ function removeImage() {
 
 
     if (fileInput) {
-        fileInput.value =
-            "";
+        fileInput.value = "";
     }
 
 
@@ -2719,6 +2581,7 @@ function removeImage() {
 
 
     if (preview) {
+
         preview.removeAttribute(
             "src"
         );
@@ -2726,6 +2589,7 @@ function removeImage() {
 
 
     if (wrap) {
+
         wrap.style.display =
             "none";
     }
@@ -2736,9 +2600,7 @@ function removeImage() {
    COMPRESS IMAGE
 ============================================================ */
 
-function compressImage(
-    file
-) {
+function compressImage(file) {
 
     return new Promise(
         (
@@ -2854,9 +2716,7 @@ function compressImage(
                 reject;
 
 
-            reader.readAsDataURL(
-                file
-            );
+            reader.readAsDataURL(file);
         }
     );
 }
@@ -2896,14 +2756,11 @@ async function sendMessage() {
     }
 
 
-    busy =
-        true;
+    busy = true;
 
 
     if (sendButton) {
-
-        sendButton.disabled =
-            true;
+        sendButton.disabled = true;
     }
 
 
@@ -2952,8 +2809,7 @@ async function sendMessage() {
 
     try {
 
-        let imageData =
-            "";
+        let imageData = "";
 
 
         if (selectedImage) {
@@ -3013,17 +2869,13 @@ async function sendMessage() {
         const reader =
             response.body.getReader();
 
-
         const decoder =
             new TextDecoder();
 
-
-        let result =
-            "";
+        let result = "";
 
 
-        answer.bubble.textContent =
-            "";
+        answer.bubble.textContent = "";
 
 
         while (true) {
@@ -3060,9 +2912,7 @@ async function sendMessage() {
         }
 
 
-        if (
-            !result.trim()
-        ) {
+        if (!result.trim()) {
 
             result =
                 "I couldn't generate an answer.";
@@ -3099,31 +2949,21 @@ async function sendMessage() {
     }
 
 
-    input.value =
-        "";
+    input.value = "";
 
-
-    autoResize(
-        input
-    );
-
+    autoResize(input);
 
     removeImage();
 
-
-    busy =
-        false;
+    busy = false;
 
 
     if (sendButton) {
-
-        sendButton.disabled =
-            false;
+        sendButton.disabled = false;
     }
 
 
     input.focus();
-
 
     scrollBottom();
 }
@@ -3133,10 +2973,7 @@ async function sendMessage() {
    ACTION BUTTONS
 ============================================================ */
 
-function addActions(
-    message,
-    answer
-) {
+function addActions(message, answer) {
 
     const actions =
         document.createElement(
@@ -3194,10 +3031,8 @@ function addActions(
             button.type =
                 "button";
 
-
             button.className =
                 "action-btn";
-
 
             button.textContent =
                 label;
@@ -3261,9 +3096,7 @@ function findLastQuestion() {
         );
 
 
-    if (
-        !messages.length
-    ) {
+    if (!messages.length) {
         return "";
     }
 
@@ -3302,8 +3135,7 @@ async function improveAnswer(
     }
 
 
-    busy =
-        true;
+    busy = true;
 
 
     const answer =
@@ -3353,13 +3185,10 @@ async function improveAnswer(
         const reader =
             response.body.getReader();
 
-
         const decoder =
             new TextDecoder();
 
-
-        let result =
-            "";
+        let result = "";
 
 
         answer.bubble.textContent =
@@ -3418,8 +3247,7 @@ async function improveAnswer(
     }
 
 
-    busy =
-        false;
+    busy = false;
 }
 
 
@@ -3451,10 +3279,8 @@ function startDictation() {
     recognition.lang =
         "en-IN";
 
-
     recognition.continuous =
         false;
-
 
     recognition.interimResults =
         true;
@@ -3473,8 +3299,7 @@ function startDictation() {
     recognition.onresult =
         function(event) {
 
-            let text =
-                "";
+            let text = "";
 
 
             for (
@@ -3482,7 +3307,7 @@ function startDictation() {
                     event.resultIndex;
 
                 i <
-                    event.results.length;
+                event.results.length;
 
                 i++
             ) {
@@ -3512,6 +3337,7 @@ function startDictation() {
                 error
             );
 
+
             input.placeholder =
                 "Ask Halper anything...";
         };
@@ -3533,9 +3359,7 @@ function startDictation() {
    TEXT TO SPEECH
 ============================================================ */
 
-function readAnswer(
-    text
-) {
+function readAnswer(text) {
 
     if (
         !(
@@ -3578,7 +3402,6 @@ function readAnswer(
     speech.rate =
         0.95;
 
-
     speech.pitch =
         1;
 
@@ -3599,6 +3422,7 @@ function stopReading() {
         "speechSynthesis"
         in window
     ) {
+
         window.speechSynthesis.cancel();
     }
 }
@@ -3608,13 +3432,10 @@ function stopReading() {
    KEYBOARD
 ============================================================ */
 
-function handleKey(
-    event
-) {
+function handleKey(event) {
 
     if (
-        event.key ===
-            "Enter" &&
+        event.key === "Enter" &&
         !event.shiftKey
     ) {
 
@@ -3629,9 +3450,7 @@ function handleKey(
    TEXTAREA RESIZE
 ============================================================ */
 
-function autoResize(
-    textarea
-) {
+function autoResize(textarea) {
 
     if (!textarea) {
         return;
@@ -3658,6 +3477,7 @@ function newChat() {
 
     stopReading();
 
+
     document.getElementById(
         "chatInner"
     ).innerHTML = `
@@ -3667,9 +3487,11 @@ function newChat() {
             id="welcome"
         >
 
-            <h1>
-                🤖 Halper
-            </h1>
+            <img
+                src="{{ url_for('static', filename='halper-logo.png') }}"
+                class="welcome-logo"
+                alt="Halper Logo"
+            >
 
             <p>
                 Ask Mathematics, Physics,
@@ -3693,12 +3515,9 @@ function newChat() {
 
     if (input) {
 
-        input.value =
-            "";
+        input.value = "";
 
-        autoResize(
-            input
-        );
+        autoResize(input);
 
         input.focus();
     }
@@ -3744,16 +3563,14 @@ function scrollBottom() {
 document.addEventListener(
     "visibilitychange",
     function() {
+
         if (document.hidden) {
             stopReading();
         }
+
     }
 );
 
-
-/* ============================================================
-   STARTUP
-============================================================ */
 
 document.addEventListener(
     "DOMContentLoaded",
