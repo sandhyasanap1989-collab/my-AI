@@ -7,6 +7,7 @@ from datetime import datetime
 from functools import wraps
 
 import requests
+
 from flask import (
     Flask,
     render_template,
@@ -16,22 +17,28 @@ from flask import (
     redirect,
     url_for
 )
-from werkzeug.security import generate_password_hash, check_password_hash
+
+from werkzeug.security import (
+    generate_password_hash,
+    check_password_hash
+)
 
 
 # ============================================================
-# HALPER 2.0
-# Flask + Local Ollama
+# HALPER
+# Educational AI Tutor
 # ============================================================
 
 app = Flask(__name__)
 
 app.secret_key = os.environ.get(
     "SECRET_KEY",
-    "halper-2-secret-change-this"
+    "halper-secret-change-this"
 )
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(
+    os.path.abspath(__file__)
+)
 
 DATA_DIR = os.environ.get(
     "DATA_DIR",
@@ -44,29 +51,31 @@ os.makedirs(DATA_DIR, exist_ok=True)
 # ============================================================
 # CREATOR INFORMATION
 # ============================================================
-# CHANGE THESE VALUES
-# Do NOT put passwords, API keys or private information here.
+# Change ONLY the values below.
+# Do not put passwords or API keys here.
 # ============================================================
 
 CREATOR_INFO = {
     "name": "YOUR NAME",
+
     "role": "Creator and developer of Halper",
-    "project": "Halper 2.0",
+
+    "project": "Halper",
 
     "about": (
-        "Halper is an educational AI project created "
-        "to help students learn, practice and understand "
-        "different subjects."
+        "Halper is an educational AI tutor "
+        "created to help students learn, "
+        "understand concepts, and solve questions."
     ),
 
     "extra": (
-        "Halper 2.0 uses local AI through Ollama."
+        "Halper is designed for educational use."
     )
 }
 
 
 # ============================================================
-# OLLAMA
+# OLLAMA CONFIGURATION
 # ============================================================
 
 OLLAMA_URL = os.environ.get(
@@ -107,7 +116,9 @@ DATABASE_FILE = os.path.join(
 # ============================================================
 
 def load_json(filename, default):
+
     try:
+
         if not os.path.exists(filename):
             return default
 
@@ -116,22 +127,31 @@ def load_json(filename, default):
             "r",
             encoding="utf-8"
         ) as file:
+
             return json.load(file)
 
     except Exception as error:
-        print("JSON LOAD ERROR:", repr(error))
+
+        print(
+            "JSON LOAD ERROR:",
+            repr(error)
+        )
+
         return default
 
 
 def save_json(filename, data):
+
     temporary_file = filename + ".tmp"
 
     try:
+
         with open(
             temporary_file,
             "w",
             encoding="utf-8"
         ) as file:
+
             json.dump(
                 data,
                 file,
@@ -147,19 +167,37 @@ def save_json(filename, data):
         return True
 
     except Exception as error:
-        print("JSON SAVE ERROR:", repr(error))
+
+        print(
+            "JSON SAVE ERROR:",
+            repr(error)
+        )
 
         try:
-            if os.path.exists(temporary_file):
-                os.remove(temporary_file)
+
+            if os.path.exists(
+                temporary_file
+            ):
+                os.remove(
+                    temporary_file
+                )
+
         except Exception:
             pass
 
         return False
 
 
+# ============================================================
+# CREATE USERS FILE
+# ============================================================
+
 if not os.path.exists(USERS_FILE):
-    save_json(USERS_FILE, {})
+
+    save_json(
+        USERS_FILE,
+        {}
+    )
 
 
 # ============================================================
@@ -167,6 +205,7 @@ if not os.path.exists(USERS_FILE):
 # ============================================================
 
 def get_db():
+
     connection = sqlite3.connect(
         DATABASE_FILE,
         timeout=30
@@ -243,6 +282,7 @@ def initialize_database():
         )
 
     finally:
+
         connection.close()
 
 
@@ -254,11 +294,12 @@ initialize_database()
 # ============================================================
 
 def now_iso():
+
     return datetime.utcnow().isoformat()
 
 
 # ============================================================
-# CREATOR QUESTIONS
+# CREATOR QUESTION DETECTION
 # ============================================================
 
 def is_creator_question(text):
@@ -267,12 +308,11 @@ def is_creator_question(text):
         text or ""
     ).lower().strip()
 
-    phrases = [
+    creator_phrases = [
 
         "who created you",
         "who is your creator",
         "who created halper",
-
         "who made you",
         "who made halper",
 
@@ -293,11 +333,9 @@ def is_creator_question(text):
 
         "who is your developer",
         "who is halper developer",
-        "who is halper's developer",
 
         "who is your maker",
         "who is halper maker",
-        "who is halper's maker",
 
         "tell me about your creator",
         "tell me about halper creator",
@@ -307,14 +345,12 @@ def is_creator_question(text):
 
         "who is your father",
         "who is halper father",
-        "who is halper's father",
 
         "who is your dad",
-        "who is halper dad",
-        "who is halper's dad"
+        "who is halper dad"
     ]
 
-    for phrase in phrases:
+    for phrase in creator_phrases:
 
         if phrase in text:
             return True
@@ -349,8 +385,7 @@ def is_creator_question(text):
 
     return (
         has_creator_word
-        and
-        has_halper_reference
+        and has_halper_reference
     )
 
 
@@ -368,7 +403,7 @@ def creator_response():
 
     project = CREATOR_INFO.get(
         "project",
-        "Halper 2.0"
+        "Halper"
     )
 
     about = CREATOR_INFO.get(
@@ -388,6 +423,7 @@ def creator_response():
     )
 
     if extra:
+
         response += (
             f"\n\n{extra}"
         )
@@ -400,7 +436,10 @@ def creator_response():
 # ============================================================
 
 def current_username():
-    return session.get("username")
+
+    return session.get(
+        "username"
+    )
 
 
 def login_required(function):
@@ -441,8 +480,7 @@ def create_chat(username):
 
         connection.execute(
             """
-            INSERT INTO chats
-            (
+            INSERT INTO chats (
                 id,
                 username,
                 title,
@@ -469,7 +507,10 @@ def create_chat(username):
     return chat_id
 
 
-def chat_exists(chat_id, username):
+def chat_exists(
+    chat_id,
+    username
+):
 
     connection = get_db()
 
@@ -513,6 +554,7 @@ def get_latest_chat(username):
         ).fetchone()
 
         if row:
+
             return row["id"]
 
         return None
@@ -574,8 +616,7 @@ def save_message(
 
         connection.execute(
             """
-            INSERT INTO messages
-            (
+            INSERT INTO messages (
                 chat_id,
                 role,
                 content,
@@ -669,7 +710,9 @@ def get_chat(
                 title,
                 created_at,
                 updated_at
+
             FROM chats
+
             WHERE id = ?
             AND username = ?
             """,
@@ -680,6 +723,7 @@ def get_chat(
         ).fetchone()
 
         if not chat:
+
             return None
 
         messages = connection.execute(
@@ -688,24 +732,39 @@ def get_chat(
                 role,
                 content,
                 timestamp
+
             FROM messages
+
             WHERE chat_id = ?
+
             ORDER BY id ASC
             """,
             (chat_id,)
         ).fetchall()
 
         return {
+
             "id": chat["id"],
+
             "title": chat["title"],
-            "created_at": chat["created_at"],
-            "updated_at": chat["updated_at"],
+
+            "created_at":
+                chat["created_at"],
+
+            "updated_at":
+                chat["updated_at"],
 
             "messages": [
+
                 {
-                    "role": row["role"],
-                    "content": row["content"],
-                    "timestamp": row["timestamp"]
+                    "role":
+                        row["role"],
+
+                    "content":
+                        row["content"],
+
+                    "timestamp":
+                        row["timestamp"]
                 }
 
                 for row in messages
@@ -718,7 +777,7 @@ def get_chat(
 
 
 # ============================================================
-# OLLAMA CHECK
+# OLLAMA CONNECTION
 # ============================================================
 
 def check_ollama():
@@ -749,22 +808,33 @@ def check_ollama():
 
         for model in models:
 
-            if isinstance(model, dict):
+            if isinstance(
+                model,
+                dict
+            ):
 
                 name = model.get(
                     "name"
                 )
 
                 if name:
-                    model_names.append(name)
+
+                    model_names.append(
+                        name
+                    )
 
         return (
             True,
             {
-                "models": model_names,
-                "selected_model": OLLAMA_MODEL,
+                "models":
+                    model_names,
+
+                "selected_model":
+                    OLLAMA_MODEL,
+
                 "model_available":
-                    OLLAMA_MODEL in model_names
+                    OLLAMA_MODEL
+                    in model_names
             }
         )
 
@@ -796,36 +866,44 @@ def call_ollama(
     if conversation is None:
         conversation = []
 
-    system_prompt = """
-You are Halper 2.0, a helpful educational AI tutor.
-
-Your job is to help students understand topics clearly.
-
-Rules:
-
-1. Give accurate answers.
-2. Explain difficult topics simply.
-3. For mathematics, show useful steps.
-4. For physics, include formulas and units when useful.
-5. For chemistry, check equations carefully.
-6. For biology, use correct scientific terminology.
-7. Do not invent facts.
-8. If the user asks for a short answer, keep it short.
-9. If the user asks for a detailed explanation, explain properly.
-10. Be friendly and respectful.
-
-If the user asks who created, developed, built,
-made, designed, or programmed Halper, the application
-may provide creator information separately.
-"""
-
     messages = [
+
         {
             "role": "system",
-            "content": system_prompt
+
+            "content": (
+                "You are Halper, a helpful "
+                "educational AI tutor. "
+
+                "Give accurate, clear and "
+                "friendly answers. "
+
+                "For mathematics, show useful "
+                "steps. "
+
+                "For physics, show formulas "
+                "and units. "
+
+                "For chemistry, check equations "
+                "carefully. "
+
+                "For biology, use correct "
+                "scientific terminology. "
+
+                "For school questions, explain "
+                "in simple language. "
+
+                "Do not invent facts. "
+
+                "If you are unsure, say so. "
+
+                "Do not claim to have access "
+                "to information you do not have. "
+            )
         }
     ]
 
+    # Add recent conversation
     for item in conversation[-12:]:
 
         role = item.get(
@@ -857,15 +935,23 @@ may provide creator information separately.
     })
 
     payload = {
-        "model": OLLAMA_MODEL,
 
-        "messages": messages,
+        "model":
+            OLLAMA_MODEL,
 
-        "stream": False,
+        "messages":
+            messages,
+
+        "stream":
+            False,
 
         "options": {
-            "temperature": 0.3,
-            "num_predict": 1500
+
+            "temperature":
+                0.3,
+
+            "num_predict":
+                1500
         }
     }
 
@@ -933,7 +1019,7 @@ may provide creator information separately.
         return (
             False,
             "Cannot connect to Ollama. "
-            "Start Ollama and try again."
+            "Make sure Ollama is running."
         )
 
     except requests.exceptions.Timeout:
@@ -971,11 +1057,17 @@ def login():
     ) or {}
 
     login_value = str(
-        data.get("login", "")
+        data.get(
+            "login",
+            ""
+        )
     ).strip()
 
     password = str(
-        data.get("password", "")
+        data.get(
+            "password",
+            ""
+        )
     )
 
     if not login_value or not password:
@@ -1003,21 +1095,27 @@ def login():
             continue
 
         email = str(
-            user.get("email", "")
+            user.get(
+                "email",
+                ""
+            )
         ).lower()
 
         phone = str(
-            user.get("phone", "")
+            user.get(
+                "phone",
+                ""
+            )
         )
 
         if (
             username.lower()
             == login_value.lower()
-            or
-            email
+
+            or email
             == login_value.lower()
-            or
-            phone
+
+            or phone
             == login_value
         ):
 
@@ -1056,7 +1154,9 @@ def login():
                 "Incorrect password."
         }), 401
 
-    session["username"] = username_found
+    session["username"] = (
+        username_found
+    )
 
     latest = get_latest_chat(
         username_found
@@ -1096,19 +1196,31 @@ def register():
     ) or {}
 
     username = str(
-        data.get("username", "")
+        data.get(
+            "username",
+            ""
+        )
     ).strip()
 
     email = str(
-        data.get("email", "")
+        data.get(
+            "email",
+            ""
+        )
     ).strip()
 
     phone = str(
-        data.get("phone", "")
+        data.get(
+            "phone",
+            ""
+        )
     ).strip()
 
     password = str(
-        data.get("password", "")
+        data.get(
+            "password",
+            ""
+        )
     )
 
     if len(username) < 3:
@@ -1184,7 +1296,10 @@ def register():
             }), 409
 
         existing_email = str(
-            user.get("email", "")
+            user.get(
+                "email",
+                ""
+            )
         ).lower()
 
         if (
@@ -1200,7 +1315,10 @@ def register():
             }), 409
 
         existing_phone = str(
-            user.get("phone", "")
+            user.get(
+                "phone",
+                ""
+            )
         )
 
         if (
@@ -1216,8 +1334,12 @@ def register():
             }), 409
 
     users[username] = {
-        "email": email,
-        "phone": phone,
+
+        "email":
+            email,
+
+        "phone":
+            phone,
 
         "password":
             generate_password_hash(
@@ -1289,8 +1411,10 @@ def new_chat():
 
     return jsonify({
         "success": True,
-        "chat_id": chat_id,
-        "title": "New Chat"
+        "chat_id":
+            chat_id,
+        "title":
+            "New Chat"
     })
 
 
@@ -1318,8 +1442,11 @@ def history():
                 title,
                 created_at,
                 updated_at
+
             FROM chats
+
             WHERE username = ?
+
             ORDER BY updated_at DESC
             """,
             (username,)
@@ -1330,11 +1457,13 @@ def history():
         for row in rows:
 
             chats.append({
-                "id": row["id"],
+
+                "id":
+                    row["id"],
+
                 "title":
                     row["title"]
-                    or
-                    "New Chat",
+                    or "New Chat",
 
                 "created_at":
                     row["created_at"],
@@ -1345,7 +1474,8 @@ def history():
 
         return jsonify({
             "success": True,
-            "chats": chats
+            "chats":
+                chats
         })
 
     except Exception as error:
@@ -1368,7 +1498,6 @@ def history():
 
 # ============================================================
 # OPEN CHAT
-# IMPORTANT: <chat_id>
 # ============================================================
 
 @app.route(
@@ -1397,7 +1526,8 @@ def open_chat(chat_id):
 
     return jsonify({
         "success": True,
-        "chat": chat
+        "chat":
+            chat
     })
 
 
@@ -1417,7 +1547,10 @@ def chat():
     ) or {}
 
     user_message = str(
-        data.get("message", "")
+        data.get(
+            "message",
+            ""
+        )
     ).strip()
 
     if not user_message:
@@ -1440,9 +1573,9 @@ def chat():
                 "Could not create chat."
         }), 500
 
-    # --------------------------------------------------------
+    # ========================================================
     # CREATOR QUESTION
-    # --------------------------------------------------------
+    # ========================================================
 
     if is_creator_question(
         user_message
@@ -1469,9 +1602,9 @@ def chat():
 
         if (
             current_chat
-            and
-            current_chat.get("title")
-            == "New Chat"
+            and current_chat.get(
+                "title"
+            ) == "New Chat"
         ):
 
             set_chat_title(
@@ -1480,17 +1613,29 @@ def chat():
             )
 
         return jsonify({
-            "success": True,
-            "answer": answer,
-            "response": answer,
-            "reply": answer,
-            "message": answer,
-            "chat_id": chat_id
+
+            "success":
+                True,
+
+            "answer":
+                answer,
+
+            "response":
+                answer,
+
+            "reply":
+                answer,
+
+            "message":
+                answer,
+
+            "chat_id":
+                chat_id
         })
 
-    # --------------------------------------------------------
-    # GET OLD CONVERSATION
-    # --------------------------------------------------------
+    # ========================================================
+    # PREVIOUS CONVERSATION
+    # ========================================================
 
     old_chat = get_chat(
         chat_id,
@@ -1506,9 +1651,9 @@ def chat():
             []
         )
 
-    # --------------------------------------------------------
+    # ========================================================
     # SAVE USER MESSAGE
-    # --------------------------------------------------------
+    # ========================================================
 
     if not save_message(
         chat_id,
@@ -1522,20 +1667,21 @@ def chat():
                 "Could not save your message."
         }), 500
 
-    # --------------------------------------------------------
-    # TITLE
-    # --------------------------------------------------------
+    # ========================================================
+    # CHAT TITLE
+    # ========================================================
 
     if (
         old_chat
-        and
-        old_chat.get("title")
-        == "New Chat"
+        and old_chat.get(
+            "title"
+        ) == "New Chat"
     ):
 
         title = user_message[:50]
 
         if len(user_message) > 50:
+
             title += "..."
 
         set_chat_title(
@@ -1543,9 +1689,9 @@ def chat():
             title
         )
 
-    # --------------------------------------------------------
+    # ========================================================
     # OLLAMA
-    # --------------------------------------------------------
+    # ========================================================
 
     success, answer = call_ollama(
         user_message,
@@ -1560,17 +1706,23 @@ def chat():
         )
 
         return jsonify({
-            "success": False,
+
+            "success":
+                False,
+
             "answer":
                 "⚠️ " + answer,
-            "error": answer,
+
+            "error":
+                answer,
+
             "chat_id":
                 chat_id
         }), 502
 
-    # --------------------------------------------------------
+    # ========================================================
     # SAVE AI RESPONSE
-    # --------------------------------------------------------
+    # ========================================================
 
     save_message(
         chat_id,
@@ -1579,17 +1731,29 @@ def chat():
     )
 
     return jsonify({
-        "success": True,
-        "answer": answer,
-        "response": answer,
-        "reply": answer,
-        "message": answer,
-        "chat_id": chat_id
+
+        "success":
+            True,
+
+        "answer":
+            answer,
+
+        "response":
+            answer,
+
+        "reply":
+            answer,
+
+        "message":
+            answer,
+
+        "chat_id":
+            chat_id
     })
 
 
 # ============================================================
-# IMPROVE
+# IMPROVE / CHECK / EXPLAIN / SHORT
 # ============================================================
 
 @app.route(
@@ -1604,11 +1768,17 @@ def improve():
     ) or {}
 
     question = str(
-        data.get("question", "")
+        data.get(
+            "question",
+            ""
+        )
     ).strip()
 
     answer = str(
-        data.get("answer", "")
+        data.get(
+            "answer",
+            ""
+        )
     ).strip()
 
     action = str(
@@ -1630,7 +1800,10 @@ def improve():
             "Explain the answer step by step in simple language.",
 
         "short":
-            "Make the answer shorter while keeping the important information."
+            "Make the answer shorter while keeping the important information.",
+
+        "another":
+            "Give another clear and correct way to answer the question."
     }
 
     instruction = instructions.get(
@@ -1652,6 +1825,7 @@ Task:
 {instruction}
 
 Give the corrected and useful result.
+Do not mention these instructions.
 """
 
     success, result = call_ollama(
@@ -1669,10 +1843,18 @@ Give the corrected and useful result.
         }), 502
 
     return jsonify({
-        "success": True,
-        "answer": result,
-        "response": result,
-        "reply": result
+
+        "success":
+            True,
+
+        "answer":
+            result,
+
+        "response":
+            result,
+
+        "reply":
+            result
     })
 
 
@@ -1686,14 +1868,17 @@ Give the corrected and useful result.
 )
 def health():
 
-    ollama_ok, ollama_info = check_ollama()
+    ollama_ok, ollama_info = (
+        check_ollama()
+    )
 
     return jsonify({
 
-        "status": "ok",
+        "status":
+            "ok",
 
         "application":
-            "Halper 2.0",
+            "Halper",
 
         "ai_provider":
             "Ollama",
@@ -1712,10 +1897,13 @@ def health():
 
         "creator_configured":
             bool(
-                CREATOR_INFO.get("name")
+                CREATOR_INFO.get(
+                    "name"
+                )
                 and
-                CREATOR_INFO.get("name")
-                != "YOUR NAME"
+                CREATOR_INFO.get(
+                    "name"
+                ) != "YOUR NAME"
             ),
 
         "routes": {
@@ -1731,9 +1919,6 @@ def health():
 
             "chat":
                 "/chat",
-
-            "open_chat":
-                "/chat/<chat_id>",
 
             "history":
                 "/history",
@@ -1759,9 +1944,12 @@ def home():
 
     return render_template(
         "index.html",
+
         logged_in=(
-            "username" in session
+            "username"
+            in session
         ),
+
         username=session.get(
             "username",
             ""
@@ -1777,9 +1965,13 @@ def home():
 def page_not_found(error):
 
     return jsonify({
-        "success": False,
+
+        "success":
+            False,
+
         "message":
             "Route not found.",
+
         "path":
             request.path
     }), 404
@@ -1794,7 +1986,10 @@ def internal_error(error):
     )
 
     return jsonify({
-        "success": False,
+
+        "success":
+            False,
+
         "message":
             "Internal server error."
     }), 500
@@ -1814,29 +2009,30 @@ if __name__ == "__main__":
     )
 
     print()
-    print("=" * 60)
-    print("              HALPER 2.0")
-    print("=" * 60)
-    print("AI Provider :", "Ollama")
-    print("Model       :", OLLAMA_MODEL)
-    print("Ollama URL  :", OLLAMA_URL)
-    print("Creator     :", CREATOR_INFO["name"])
-    print("Port        :", port)
-    print("=" * 60)
-    print()
-
-    ollama_ok, ollama_info = check_ollama()
-
-    if ollama_ok:
-        print("✅ Ollama connection OK")
-        print("Ollama info:", ollama_info)
-    else:
-        print("❌ Ollama connection problem:")
-        print(ollama_info)
-
-    print()
-    print("🌐 Open:")
-    print(f"http://127.0.0.1:{port}")
+    print("=" * 55)
+    print(" HALPER")
+    print("=" * 55)
+    print(
+        "AI Provider :",
+        "Ollama"
+    )
+    print(
+        "Model       :",
+        OLLAMA_MODEL
+    )
+    print(
+        "Ollama URL  :",
+        OLLAMA_URL
+    )
+    print(
+        "Creator     :",
+        CREATOR_INFO["name"]
+    )
+    print(
+        "Port        :",
+        port
+    )
+    print("=" * 55)
     print()
 
     app.run(
