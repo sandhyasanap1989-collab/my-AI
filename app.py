@@ -17,18 +17,18 @@ from flask import (
     jsonify,
     session,
     redirect,
-    url_for,
+    url_for
 )
 
 from werkzeug.security import (
     generate_password_hash,
-    check_password_hash,
+    check_password_hash
 )
 
 
 # ============================================================
 # HALPER
-# Local basic answers + Ollama
+# Local answers + Ollama
 # ============================================================
 
 app = Flask(__name__)
@@ -51,27 +51,22 @@ os.makedirs(DATA_DIR, exist_ok=True)
 # ============================================================
 # CREATOR INFORMATION
 # ============================================================
-# Change ONLY these public values.
-#
-# Do NOT put passwords, API keys, phone numbers,
-# home address, or other private information here.
-# ============================================================
 
 CREATOR_INFO = {
-    "name": "Soham Chandrahas Sanap",
-
+    "name": "YOUR NAME",
     "role": "Creator and developer of Halper",
+    "project": "Halper",
 
     "about": (
-        "Halper is an educational AI project created "
-        "to help students learn and solve questions."
+        "Halper is an educational AI tutor designed "
+        "to help students learn mathematics, physics, "
+        "chemistry, biology and other subjects."
     ),
 
     "extra": (
-        "Halper can help with mathematics, physics, "
-        "chemistry, biology, computer basics, and general "
-        "educational questions."
-    ),
+        "Halper combines local educational answers "
+        "with optional AI assistance."
+    )
 }
 
 
@@ -92,13 +87,13 @@ OLLAMA_MODEL = os.environ.get(
 OLLAMA_TIMEOUT = int(
     os.environ.get(
         "OLLAMA_TIMEOUT",
-        "180"
+        "120"
     )
 )
 
 
 # ============================================================
-# DATA FILES
+# FILES
 # ============================================================
 
 USERS_FILE = os.path.join(
@@ -117,7 +112,9 @@ DATABASE_FILE = os.path.join(
 # ============================================================
 
 def load_json(filename, default):
+
     try:
+
         if not os.path.exists(filename):
             return default
 
@@ -126,9 +123,11 @@ def load_json(filename, default):
             "r",
             encoding="utf-8"
         ) as file:
+
             return json.load(file)
 
     except Exception as error:
+
         print(
             "JSON LOAD ERROR:",
             repr(error)
@@ -138,14 +137,17 @@ def load_json(filename, default):
 
 
 def save_json(filename, data):
+
     temporary_file = filename + ".tmp"
 
     try:
+
         with open(
             temporary_file,
             "w",
             encoding="utf-8"
         ) as file:
+
             json.dump(
                 data,
                 file,
@@ -161,14 +163,21 @@ def save_json(filename, data):
         return True
 
     except Exception as error:
+
         print(
             "JSON SAVE ERROR:",
             repr(error)
         )
 
         try:
-            if os.path.exists(temporary_file):
-                os.remove(temporary_file)
+
+            if os.path.exists(
+                temporary_file
+            ):
+                os.remove(
+                    temporary_file
+                )
+
         except Exception:
             pass
 
@@ -176,10 +185,11 @@ def save_json(filename, data):
 
 
 # ============================================================
-# USERS FILE
+# USERS
 # ============================================================
 
 if not os.path.exists(USERS_FILE):
+
     save_json(
         USERS_FILE,
         {}
@@ -191,6 +201,7 @@ if not os.path.exists(USERS_FILE):
 # ============================================================
 
 def get_db():
+
     connection = sqlite3.connect(
         DATABASE_FILE,
         timeout=30
@@ -231,7 +242,6 @@ def initialize_database():
                 role TEXT NOT NULL,
                 content TEXT NOT NULL,
                 timestamp TEXT NOT NULL,
-
                 FOREIGN KEY(chat_id)
                 REFERENCES chats(id)
                 ON DELETE CASCADE
@@ -279,144 +289,8 @@ initialize_database()
 # ============================================================
 
 def now_iso():
+
     return datetime.utcnow().isoformat()
-
-
-# ============================================================
-# CREATOR QUESTION DETECTION
-# ============================================================
-
-def is_creator_question(text):
-
-    text = str(
-        text or ""
-    ).lower().strip()
-
-    creator_phrases = [
-
-        "who created you",
-        "who is your creator",
-        "who created halper",
-
-        "who made you",
-        "who made halper",
-
-        "who developed you",
-        "who developed halper",
-
-        "who built you",
-        "who built halper",
-
-        "who programmed you",
-        "who programmed halper",
-
-        "who designed you",
-        "who designed halper",
-
-        "who is behind halper",
-        "who is behind you",
-
-        "who is your developer",
-        "who is halper's developer",
-        "who is halper developer",
-
-        "who is your maker",
-        "who is halper's maker",
-        "who is halper maker",
-
-        "tell me about your creator",
-        "tell me about halper creator",
-
-        "tell me about your developer",
-        "tell me about halper developer",
-
-        "who is your father",
-        "who is halper's father",
-        "who is halper father",
-
-        "who is your dad",
-        "who is halper's dad",
-        "who is halper dad",
-    ]
-
-    for phrase in creator_phrases:
-
-        if phrase in text:
-            return True
-
-    creator_words = (
-        "creator",
-        "developer",
-        "maker",
-        "father",
-        "dad",
-        "created",
-        "developed",
-        "built",
-        "made",
-    )
-
-    halper_words = (
-        "you",
-        "halper",
-        "your",
-    )
-
-    has_creator_word = any(
-        word in text
-        for word in creator_words
-    )
-
-    has_halper_reference = any(
-        word in text
-        for word in halper_words
-    )
-
-    return (
-        has_creator_word
-        and has_halper_reference
-    )
-
-
-def creator_response():
-
-    name = CREATOR_INFO.get(
-        "name",
-        "the creator"
-    )
-
-    role = CREATOR_INFO.get(
-        "role",
-        "the developer"
-    )
-
-    project = CREATOR_INFO.get(
-        "project",
-        "Halper"
-    )
-
-    about = CREATOR_INFO.get(
-        "about",
-        ""
-    )
-
-    extra = CREATOR_INFO.get(
-        "extra",
-        ""
-    )
-
-    response = (
-        f"I was created and developed by {name}. "
-        f"They are the {role} of {project}.\n\n"
-        f"{about}"
-    )
-
-    if extra:
-        response += (
-            f"\n\n{extra}"
-        )
-
-    return response
 
 
 # ============================================================
@@ -424,7 +298,10 @@ def creator_response():
 # ============================================================
 
 def current_username():
-    return session.get("username")
+
+    return session.get(
+        "username"
+    )
 
 
 def login_required(function):
@@ -432,7 +309,9 @@ def login_required(function):
     @wraps(function)
     def wrapper(*args, **kwargs):
 
-        if not session.get("username"):
+        if not session.get(
+            "username"
+        ):
 
             return jsonify({
                 "success": False,
@@ -448,7 +327,7 @@ def login_required(function):
 
 
 # ============================================================
-# CHAT FUNCTIONS
+# CHAT DATABASE FUNCTIONS
 # ============================================================
 
 def create_chat(username):
@@ -537,6 +416,7 @@ def get_latest_chat(username):
         ).fetchone()
 
         if row:
+
             return row["id"]
 
         return None
@@ -563,6 +443,7 @@ def get_current_chat():
             saved_chat,
             username
         ):
+
             return saved_chat
 
     latest = get_latest_chat(
@@ -704,6 +585,7 @@ def get_chat(
         ).fetchone()
 
         if not chat:
+
             return None
 
         messages = connection.execute(
@@ -742,174 +624,263 @@ def get_chat(
 
 
 # ============================================================
-# LOCAL MATHEMATICS
+# CREATOR QUESTION
 # ============================================================
 
-# Only safe mathematical operators are allowed.
-SAFE_OPERATORS = {
+def is_creator_question(text):
+
+    text = str(
+        text or ""
+    ).lower().strip()
+
+    creator_phrases = [
+
+        "who created you",
+        "who is your creator",
+        "who created halper",
+        "who made you",
+        "who made halper",
+
+        "who developed you",
+        "who developed halper",
+
+        "who built you",
+        "who built halper",
+
+        "who programmed you",
+        "who programmed halper",
+
+        "who designed you",
+        "who designed halper",
+
+        "who is behind halper",
+        "who is behind you",
+
+        "who is your developer",
+        "who is halper's developer",
+        "who is halper developer",
+
+        "who is your maker",
+        "who is halper's maker",
+        "who is halper maker",
+
+        "tell me about your creator",
+        "tell me about halper creator",
+
+        "tell me about your developer",
+        "tell me about halper developer",
+
+        "who is your father",
+        "who is halper's father",
+        "who is halper father",
+
+        "who is your dad",
+        "who is halper's dad",
+        "who is halper dad"
+    ]
+
+    for phrase in creator_phrases:
+
+        if phrase in text:
+
+            return True
+
+    creator_words = (
+        "creator",
+        "developer",
+        "maker",
+        "father",
+        "dad",
+        "created",
+        "developed",
+        "built",
+        "made"
+    )
+
+    halper_words = (
+        "you",
+        "halper",
+        "your"
+    )
+
+    has_creator_word = any(
+        word in text
+        for word in creator_words
+    )
+
+    has_halper_reference = any(
+        word in text
+        for word in halper_words
+    )
+
+    return (
+        has_creator_word
+        and
+        has_halper_reference
+    )
+
+
+def creator_response():
+
+    name = CREATOR_INFO.get(
+        "name",
+        "the creator"
+    )
+
+    role = CREATOR_INFO.get(
+        "role",
+        "the developer"
+    )
+
+    project = CREATOR_INFO.get(
+        "project",
+        "Halper"
+    )
+
+    about = CREATOR_INFO.get(
+        "about",
+        ""
+    )
+
+    extra = CREATOR_INFO.get(
+        "extra",
+        ""
+    )
+
+    response = (
+        f"I was created and developed by {name}. "
+        f"They are the {role} of {project}.\n\n"
+        f"{about}"
+    )
+
+    if extra:
+
+        response += (
+            f"\n\n{extra}"
+        )
+
+    return response
+
+
+# ============================================================
+# SAFE LOCAL MATH CALCULATOR
+# ============================================================
+
+_ALLOWED_OPERATORS = {
+
     ast.Add: operator.add,
     ast.Sub: operator.sub,
     ast.Mult: operator.mul,
     ast.Div: operator.truediv,
     ast.Pow: operator.pow,
     ast.Mod: operator.mod,
-    ast.FloorDiv: operator.floordiv,
+
     ast.USub: operator.neg,
-    ast.UAdd: operator.pos,
+    ast.UAdd: operator.pos
 }
 
 
-def safe_math_eval(expression):
-
-    expression = expression.strip()
-
-    if len(expression) > 100:
-        raise ValueError(
-            "Expression is too long."
-        )
-
-    tree = ast.parse(
-        expression,
-        mode="eval"
-    )
-
-    def calculate(node):
-
-        if isinstance(
-            node,
-            ast.Expression
-        ):
-            return calculate(
-                node.body
-            )
-
-        if isinstance(
-            node,
-            ast.Constant
-        ):
-
-            if isinstance(
-                node.value,
-                (int, float)
-            ):
-                return node.value
-
-            raise ValueError(
-                "Invalid number."
-            )
-
-        if isinstance(
-            node,
-            ast.BinOp
-        ):
-
-            left = calculate(
-                node.left
-            )
-
-            right = calculate(
-                node.right
-            )
-
-            operation = SAFE_OPERATORS.get(
-                type(node.op)
-            )
-
-            if operation is None:
-                raise ValueError(
-                    "Operator not allowed."
-                )
-
-            return operation(
-                left,
-                right
-            )
-
-        if isinstance(
-            node,
-            ast.UnaryOp
-        ):
-
-            value = calculate(
-                node.operand
-            )
-
-            operation = SAFE_OPERATORS.get(
-                type(node.op)
-            )
-
-            if operation is None:
-                raise ValueError(
-                    "Operator not allowed."
-                )
-
-            return operation(
-                value
-            )
-
-        raise ValueError(
-            "Invalid expression."
-        )
-
-    result = calculate(tree)
+def safe_math_eval(node):
 
     if isinstance(
-        result,
-        float
+        node,
+        ast.Expression
     ):
 
-        if result.is_integer():
-            return str(
-                int(result)
-            )
-
-        return str(
-            round(result, 10)
+        return safe_math_eval(
+            node.body
         )
 
-    return str(result)
+    if isinstance(
+        node,
+        ast.Constant
+    ):
+
+        if isinstance(
+            node.value,
+            (int, float)
+        ):
+
+            return node.value
+
+        raise ValueError(
+            "Invalid number"
+        )
+
+    if isinstance(
+        node,
+        ast.BinOp
+    ):
+
+        operator_type = type(
+            node.op
+        )
+
+        if operator_type not in _ALLOWED_OPERATORS:
+
+            raise ValueError(
+                "Operator not allowed"
+            )
+
+        left = safe_math_eval(
+            node.left
+        )
+
+        right = safe_math_eval(
+            node.right
+        )
+
+        if operator_type is ast.Pow:
+
+            if abs(right) > 10:
+
+                raise ValueError(
+                    "Power too large"
+                )
+
+        return _ALLOWED_OPERATORS[
+            operator_type
+        ](
+            left,
+            right
+        )
+
+    if isinstance(
+        node,
+        ast.UnaryOp
+    ):
+
+        operator_type = type(
+            node.op
+        )
+
+        if operator_type not in _ALLOWED_OPERATORS:
+
+            raise ValueError(
+                "Operator not allowed"
+            )
+
+        return _ALLOWED_OPERATORS[
+            operator_type
+        ](
+            safe_math_eval(
+                node.operand
+            )
+        )
+
+    raise ValueError(
+        "Invalid expression"
+    )
 
 
-def local_math_answer(text):
+def calculate_math(text):
 
-    original = str(
+    expression = str(
         text or ""
     ).strip()
 
-    if not original:
-        return None
-
-    expression = original.lower()
-
-    # Remove common calculation wording.
-    replacements = [
-        "what is",
-        "calculate",
-        "solve",
-        "find",
-        "answer",
-        "equals",
-        "=",
-        "?",
-    ]
-
-    for word in replacements:
-
-        expression = expression.replace(
-            word,
-            ""
-        )
-
-    expression = expression.strip()
-
-    # Convert common multiplication symbols.
     expression = expression.replace(
         "×",
-        "*"
-    )
-
-    expression = expression.replace(
-        "x",
         "*"
     )
 
@@ -918,419 +889,562 @@ def local_math_answer(text):
         "/"
     )
 
-    # Remove commas from large numbers.
+    expression = expression.replace(
+        "^",
+        "**"
+    )
+
     expression = expression.replace(
         ",",
         ""
     )
 
-    # Only allow a pure arithmetic expression.
-    if not re.fullmatch(
-        r"[0-9\s+\-*/%.()]+",
-        expression
-    ):
+    patterns = [
+
+        r"^\s*(?:what\s+is\s+)?"
+        r"([0-9+\-*/().%\s*]+)"
+        r"\s*\??\s*$",
+
+        r"^\s*calculate\s+"
+        r"([0-9+\-*/().%\s*]+)"
+        r"\s*\??\s*$",
+
+        r"^\s*solve\s+"
+        r"([0-9+\-*/().%\s*]+)"
+        r"\s*\??\s*$"
+    ]
+
+    matched_expression = None
+
+    for pattern in patterns:
+
+        match = re.fullmatch(
+            pattern,
+            expression,
+            re.IGNORECASE
+        )
+
+        if match:
+
+            matched_expression = (
+                match.group(1)
+            )
+
+            break
+
+    if not matched_expression:
+
         return None
 
-    if not re.search(
-        r"[+\-*/%]",
-        expression
-    ):
+    if len(
+        matched_expression
+    ) > 100:
+
         return None
 
     try:
 
-        result = safe_math_eval(
-            expression
+        tree = ast.parse(
+            matched_expression,
+            mode="eval"
         )
+
+        result = safe_math_eval(
+            tree
+        )
+
+        if isinstance(
+            result,
+            float
+        ):
+
+            if result.is_integer():
+
+                result = int(result)
+
+            else:
+
+                result = round(
+                    result,
+                    10
+                )
 
         return (
             f"The answer is **{result}**."
         )
 
     except Exception:
+
         return None
 
 
 # ============================================================
-# BASIC QUESTION ANSWERS
+# BASIC ANSWERS
 # ============================================================
 
-BASIC_RESPONSES = {
+def local_answer(text):
 
-    "hi": (
-        "Hi! 👋 I'm Halper. "
-        "How can I help you learn today?"
-    ),
-
-    "hello": (
-        "Hello! 👋 I'm Halper. "
-        "Ask me a question about Maths, Physics, "
-        "Chemistry, Biology, computers, or another subject."
-    ),
-
-    "hey": (
-        "Hey! 👋 What would you like to learn today?"
-    ),
-
-    "good morning": (
-        "Good morning! ☀️ "
-        "What would you like to study today?"
-    ),
-
-    "good afternoon": (
-        "Good afternoon! "
-        "What can I help you learn?"
-    ),
-
-    "good evening": (
-        "Good evening! "
-        "What would you like to study?"
-    ),
-
-    "how are you": (
-        "I'm doing well! 😊 "
-        "I'm ready to help you learn."
-    ),
-
-    "thanks": (
-        "You're welcome! 😊"
-    ),
-
-    "thank you": (
-        "You're welcome! 😊"
-    ),
-
-    "bye": (
-        "Goodbye! 👋 Keep learning!"
-    ),
-}
-
-
-def basic_question_answer(text):
-
-    cleaned = str(
+    original = str(
         text or ""
-    ).strip().lower()
-
-    cleaned = re.sub(
-        r"[!?.,]+$",
-        "",
-        cleaned
     ).strip()
 
-    if cleaned in BASIC_RESPONSES:
+    lower = original.lower()
 
-        return BASIC_RESPONSES[
-            cleaned
-        ]
+    # --------------------------------------------------------
+    # GREETINGS
+    # --------------------------------------------------------
 
-    # Computer basics.
-    if cleaned in (
-        "what is a computer",
-        "what is computer",
-        "define computer",
-    ):
+    greetings = {
+        "hi",
+        "hello",
+        "hey",
+        "hii",
+        "hiii",
+        "good morning",
+        "good afternoon",
+        "good evening"
+    }
+
+    if lower in greetings:
 
         return (
-            "**Computer:** A computer is an electronic "
-            "device that accepts data, processes it, "
-            "stores information, and produces output."
+            "Hello! 👋\n\n"
+            "I'm Halper, your educational AI tutor. "
+            "You can ask me questions about mathematics, "
+            "physics, chemistry, biology, computers, "
+            "or other subjects."
         )
 
-    if cleaned in (
-        "what is cpu",
-        "what is a cpu",
-        "define cpu",
-    ):
+    # --------------------------------------------------------
+    # HOW ARE YOU
+    # --------------------------------------------------------
+
+    if lower in {
+        "how are you",
+        "how are you?",
+        "how r u"
+    }:
 
         return (
-            "**CPU:** CPU stands for Central Processing Unit. "
-            "It executes instructions and performs calculations "
-            "needed by a computer."
+            "I'm doing great! 😊 "
+            "What would you like to learn today?"
         )
 
-    if cleaned in (
-        "what is ram",
-        "what is a ram",
-        "define ram",
-    ):
+    # --------------------------------------------------------
+    # THANKS
+    # --------------------------------------------------------
+
+    if lower in {
+        "thanks",
+        "thank you",
+        "thx",
+        "thank u"
+    }:
 
         return (
-            "**RAM:** RAM stands for Random Access Memory. "
-            "It temporarily stores data and instructions "
-            "that the computer is actively using."
+            "You're welcome! 😊 "
+            "Ask me another question whenever you want."
         )
 
-    if cleaned in (
-        "what is rom",
-        "what is a rom",
-        "define rom",
-    ):
+    # --------------------------------------------------------
+    # WHO ARE YOU
+    # --------------------------------------------------------
+
+    if lower in {
+        "who are you",
+        "what are you",
+        "what is halper",
+        "what is halper?"
+    }:
 
         return (
-            "**ROM:** ROM stands for Read-Only Memory. "
-            "It stores data that generally remains available "
-            "when the device is turned off."
+            "I'm Halper, an educational AI tutor. "
+            "I can help with mathematics, physics, "
+            "chemistry, biology, computer basics, "
+            "and many other learning topics."
         )
 
-    if cleaned in (
-        "what is an operating system",
-        "what is operating system",
-        "define operating system",
+    # --------------------------------------------------------
+    # CREATOR
+    # --------------------------------------------------------
+
+    if is_creator_question(
+        original
+    ):
+
+        return creator_response()
+
+    # --------------------------------------------------------
+    # LOCAL MATH
+    # --------------------------------------------------------
+
+    math_result = calculate_math(
+        original
+    )
+
+    if math_result:
+
+        return math_result
+
+    # --------------------------------------------------------
+    # MATHEMATICS
+    # --------------------------------------------------------
+
+    if (
+        "pythagoras theorem" in lower
+        or "pythagorean theorem" in lower
     ):
 
         return (
-            "An **operating system (OS)** is software that "
-            "manages computer hardware and provides services "
-            "for applications. Examples include Windows, "
-            "Linux, Android, and macOS."
+            "The Pythagorean theorem applies to a "
+            "right-angled triangle:\n\n"
+            "a² + b² = c²\n\n"
+            "where c is the hypotenuse."
         )
 
-    if cleaned in (
-        "what is software",
-        "define software",
+    if (
+        "quadratic formula" in lower
     ):
 
         return (
-            "**Software** is a collection of programs and "
-            "instructions that tell a computer what to do."
+            "For ax² + bx + c = 0, the quadratic "
+            "formula is:\n\n"
+            "x = (-b ± √(b² - 4ac)) / 2a"
         )
 
-    if cleaned in (
-        "what is hardware",
-        "define hardware",
+    if (
+        "newton's second law" in lower
+        or "newtons second law" in lower
     ):
 
         return (
-            "**Hardware** refers to the physical parts of a "
-            "computer, such as the CPU, RAM, keyboard, mouse, "
-            "storage drive, and monitor."
+            "Newton's second law states that the net "
+            "force on an object equals its mass multiplied "
+            "by its acceleration.\n\n"
+            "F = ma\n\n"
+            "F = force in newtons (N)\n"
+            "m = mass in kilograms (kg)\n"
+            "a = acceleration in m/s²"
         )
 
-    # Physics basics.
-    if cleaned in (
-        "what is force",
-        "define force",
+    if (
+        "newton's first law" in lower
+        or "newtons first law" in lower
     ):
 
         return (
-            "**Force** is a push or pull that can change the "
-            "motion of an object. Its SI unit is the newton (N)."
+            "Newton's first law is the law of inertia. "
+            "An object remains at rest or continues in "
+            "uniform straight-line motion unless acted "
+            "upon by a net external force."
         )
 
-    if cleaned in (
-        "what is speed",
-        "define speed",
+    if (
+        "newton's third law" in lower
+        or "newtons third law" in lower
     ):
 
         return (
-            "**Speed** is the distance travelled per unit time.\n\n"
-            "Formula:\n"
-            "Speed = Distance / Time\n\n"
-            "SI unit: m/s"
+            "Newton's third law states that when one object "
+            "exerts a force on another object, the second "
+            "object exerts an equal and opposite force "
+            "on the first."
         )
 
-    if cleaned in (
-        "what is velocity",
-        "define velocity",
+    # --------------------------------------------------------
+    # PHYSICS
+    # --------------------------------------------------------
+
+    if (
+        "speed" in lower
+        and "velocity" in lower
     ):
 
         return (
-            "**Velocity** is displacement per unit time and "
-            "has both magnitude and direction.\n\n"
-            "SI unit: m/s"
+            "Speed is the distance travelled per unit time "
+            "and is a scalar quantity.\n\n"
+            "Velocity is displacement per unit time and "
+            "is a vector quantity.\n\n"
+            "Speed = Distance / Time\n"
+            "Velocity = Displacement / Time"
         )
 
-    if cleaned in (
-        "what is acceleration",
-        "define acceleration",
+    if (
+        "kinetic energy" in lower
     ):
 
         return (
-            "**Acceleration** is the rate of change of velocity "
-            "with respect to time.\n\n"
-            "a = Change in velocity / Time\n\n"
-            "SI unit: m/s²"
+            "Kinetic energy is the energy possessed by an "
+            "object because of its motion.\n\n"
+            "KE = ½mv²\n\n"
+            "m = mass\n"
+            "v = velocity"
         )
 
-    if cleaned in (
-        "what is newtons first law",
-        "what is newton's first law",
+    if (
+        "potential energy" in lower
     ):
 
         return (
-            "**Newton's First Law:** An object remains at rest "
-            "or continues moving with constant velocity unless "
-            "acted upon by a net external force."
+            "Gravitational potential energy near Earth's "
+            "surface is:\n\n"
+            "PE = mgh\n\n"
+            "m = mass\n"
+            "g = acceleration due to gravity\n"
+            "h = height"
         )
 
-    if cleaned in (
-        "what is newtons second law",
-        "what is newton's second law",
+    if (
+        "work done" in lower
+        and "force" in lower
     ):
 
         return (
-            "**Newton's Second Law:** The net force on an object "
-            "equals its mass multiplied by its acceleration.\n\n"
-            "F = ma"
+            "When a constant force acts in the direction "
+            "of displacement:\n\n"
+            "W = F × s\n\n"
+            "More generally:\n"
+            "W = Fs cos θ"
         )
 
-    if cleaned in (
-        "what is newtons third law",
-        "what is newton's third law",
+    if (
+        "ohm's law" in lower
+        or "ohms law" in lower
     ):
 
         return (
-            "**Newton's Third Law:** When one object exerts a "
-            "force on another object, the second object exerts "
-            "an equal and opposite force on the first."
+            "Ohm's law states:\n\n"
+            "V = IR\n\n"
+            "V = voltage\n"
+            "I = current\n"
+            "R = resistance"
         )
 
-    # Chemistry basics.
-    if cleaned in (
-        "what is an atom",
-        "what is atom",
-        "define atom",
+    if (
+        "gravity" in lower
+        and (
+            "earth" in lower
+            or "acceleration" in lower
+        )
     ):
 
         return (
-            "An **atom** is the basic unit of an element that "
-            "retains the chemical properties of that element."
+            "Near Earth's surface, the acceleration due "
+            "to gravity is approximately 9.8 m/s² downward."
         )
 
-    if cleaned in (
-        "what is a molecule",
-        "what is molecule",
-        "define molecule",
+    # --------------------------------------------------------
+    # CHEMISTRY
+    # --------------------------------------------------------
+
+    if (
+        "photosynthesis" in lower
     ):
 
         return (
-            "A **molecule** is a group of two or more atoms "
-            "chemically bonded together."
-        )
-
-    if cleaned in (
-        "what is an element",
-        "what is element",
-        "define element",
-    ):
-
-        return (
-            "A **chemical element** is a pure substance made "
-            "of atoms with the same number of protons."
-        )
-
-    if cleaned in (
-        "what is a compound",
-        "what is compound",
-        "define compound",
-    ):
-
-        return (
-            "A **compound** is a substance formed when atoms "
-            "of two or more different elements chemically "
-            "combine in fixed proportions."
-        )
-
-    if cleaned in (
-        "what is ph",
-        "what is p h",
-    ):
-
-        return (
-            "**pH** is a scale used to describe how acidic or "
-            "basic an aqueous solution is. Lower values are "
-            "generally more acidic, while higher values are "
-            "generally more basic."
-        )
-
-    # Biology basics.
-    if cleaned in (
-        "what is a cell",
-        "what is cell",
-        "define cell",
-    ):
-
-        return (
-            "A **cell** is the basic structural and functional "
-            "unit of living organisms."
-        )
-
-    if cleaned in (
-        "what is photosynthesis",
-        "define photosynthesis",
-    ):
-
-        return (
-            "**Photosynthesis** is the process by which green "
+            "Photosynthesis is the process by which green "
             "plants use light energy to make glucose from "
-            "carbon dioxide and water, releasing oxygen."
+            "carbon dioxide and water.\n\n"
+            "Simplified equation:\n"
+            "6CO₂ + 6H₂O → C₆H₁₂O₆ + 6O₂\n\n"
+            "Chlorophyll captures the light energy needed "
+            "for the process."
         )
 
-    if cleaned in (
-        "what is respiration",
-        "define respiration",
+    if (
+        "atom" in lower
+        and (
+            "what is" in lower
+            or "define" in lower
+        )
     ):
 
         return (
-            "**Cellular respiration** is a set of chemical "
-            "reactions through which cells release usable "
+            "An atom is the basic unit of an element that "
+            "retains the chemical properties of that element. "
+            "It contains a nucleus with protons and neutrons, "
+            "surrounded by electrons."
+        )
+
+    if (
+        "mole" in lower
+        and (
+            "chemistry" in lower
+            or "what is" in lower
+            or "define" in lower
+        )
+    ):
+
+        return (
+            "A mole is the SI unit used to measure amount "
+            "of substance. One mole contains approximately "
+            "6.022 × 10²³ elementary entities."
+        )
+
+    if (
+        "ph" in lower
+        and "scale" in lower
+    ):
+
+        return (
+            "The pH scale indicates how acidic or basic "
+            "an aqueous solution is. At about 25°C, pH 7 "
+            "is neutral, values below 7 are acidic, and "
+            "values above 7 are basic."
+        )
+
+    if (
+        "periodic table" in lower
+    ):
+
+        return (
+            "The periodic table organizes chemical elements "
+            "according to their atomic number and recurring "
+            "chemical properties."
+        )
+
+    # --------------------------------------------------------
+    # BIOLOGY
+    # --------------------------------------------------------
+
+    if (
+        "cell" in lower
+        and (
+            "what is" in lower
+            or "define" in lower
+        )
+    ):
+
+        return (
+            "A cell is the basic structural and functional "
+            "unit of life. Living organisms may consist of "
+            "one cell or many cells."
+        )
+
+    if (
+        "mitochondria" in lower
+    ):
+
+        return (
+            "Mitochondria are organelles involved in cellular "
+            "energy production. They are often called the "
+            "powerhouses of the cell because they produce "
+            "much of the cell's ATP."
+        )
+
+    if (
+        "dna" in lower
+    ):
+
+        return (
+            "DNA, or deoxyribonucleic acid, stores genetic "
+            "information used in the development and functioning "
+            "of living organisms."
+        )
+
+    if (
+        "respiration" in lower
+        and "cellular" in lower
+    ):
+
+        return (
+            "Cellular respiration is the set of metabolic "
+            "processes through which cells release usable "
             "energy from nutrients such as glucose."
         )
 
-    if cleaned in (
-        "what is dna",
-        "define dna",
+    if (
+        "human heart" in lower
     ):
 
         return (
-            "**DNA** stands for deoxyribonucleic acid. "
-            "It stores genetic information in living organisms "
-            "and many viruses."
+            "The human heart is a muscular organ that pumps "
+            "blood through the circulatory system. It has "
+            "four chambers: two atria and two ventricles."
         )
 
-    if cleaned in (
-        "what is a gene",
-        "what is gene",
-        "define gene",
+    # --------------------------------------------------------
+    # COMPUTER BASICS
+    # --------------------------------------------------------
+
+    if (
+        "what is cpu" in lower
+        or "what is a cpu" in lower
     ):
 
         return (
-            "A **gene** is a segment of genetic material that "
-            "contains information used to produce a functional "
-            "product, such as a protein or functional RNA."
+            "CPU stands for Central Processing Unit. "
+            "It executes instructions and performs the "
+            "main processing tasks of a computer."
         )
+
+    if (
+        "what is ram" in lower
+        or "what is a ram" in lower
+    ):
+
+        return (
+            "RAM stands for Random Access Memory. "
+            "It temporarily stores data and programs "
+            "that the computer is actively using."
+        )
+
+    if (
+        "what is rom" in lower
+        or "what is a rom" in lower
+    ):
+
+        return (
+            "ROM stands for Read-Only Memory. It is "
+            "non-volatile memory used to store information "
+            "that generally needs to remain available "
+            "when power is removed."
+        )
+
+    if (
+        "what is operating system" in lower
+        or "what is an operating system" in lower
+    ):
+
+        return (
+            "An operating system is system software that "
+            "manages computer hardware and provides services "
+            "for applications. Examples include Windows, "
+            "Linux and macOS."
+        )
+
+    if (
+        "what is gpu" in lower
+        or "what is a gpu" in lower
+    ):
+
+        return (
+            "GPU stands for Graphics Processing Unit. "
+            "It is designed to perform graphics and many "
+            "parallel computation tasks efficiently."
+        )
+
+    if (
+        "what is python" in lower
+        or "what is python programming" in lower
+    ):
+
+        return (
+            "Python is a high-level programming language "
+            "known for its readable syntax. It is widely "
+            "used for education, web development, automation, "
+            "data science and artificial intelligence."
+        )
+
+    # --------------------------------------------------------
+    # NO LOCAL ANSWER
+    # --------------------------------------------------------
 
     return None
 
 
 # ============================================================
-# LOCAL ANSWER ENGINE
-# ============================================================
-
-def get_local_answer(text):
-
-    # Creator questions always handled locally.
-    if is_creator_question(text):
-        return creator_response()
-
-    # Mathematics.
-    math_answer = local_math_answer(text)
-
-    if math_answer:
-        return math_answer
-
-    # Basic educational questions.
-    basic_answer = basic_question_answer(text)
-
-    if basic_answer:
-        return basic_answer
-
-    return None
-
-
-# ============================================================
-# OLLAMA CONNECTION CHECK
+# OLLAMA CHECK
 # ============================================================
 
 def check_ollama():
@@ -1339,7 +1453,7 @@ def check_ollama():
 
         response = requests.get(
             f"{OLLAMA_URL}/api/tags",
-            timeout=10
+            timeout=5
         )
 
         if response.status_code != 200:
@@ -1371,6 +1485,7 @@ def check_ollama():
                 )
 
                 if name:
+
                     model_names.append(
                         name
                     )
@@ -1381,7 +1496,7 @@ def check_ollama():
                 "models": model_names,
                 "selected_model": OLLAMA_MODEL,
                 "model_available":
-                    OLLAMA_MODEL in model_names,
+                    OLLAMA_MODEL in model_names
             }
         )
 
@@ -1389,8 +1504,7 @@ def check_ollama():
 
         return (
             False,
-            "Cannot connect to Ollama. "
-            "Make sure Ollama is running."
+            "Ollama is not available."
         )
 
     except Exception as error:
@@ -1411,42 +1525,29 @@ def call_ollama(
 ):
 
     if conversation is None:
+
         conversation = []
 
     messages = [
 
         {
             "role": "system",
-
             "content": (
-                "You are Halper, a helpful educational AI tutor. "
-
+                "You are Halper, an educational AI tutor. "
                 "Give accurate, clear and friendly answers. "
-
-                "For mathematics, show useful steps and "
-                "check calculations carefully. "
-
+                "For mathematics, show useful steps. "
                 "For physics, show formulas and units. "
-
                 "For chemistry, check equations carefully. "
-
                 "For biology, use correct scientific terms. "
-
-                "For computer questions, explain concepts "
-                "clearly for students. "
-
                 "Do not invent facts. "
-
-                "If you are unsure about something, say so. "
-
-                "If asked about your creator, developer, "
-                "maker, father, or who made you, the application "
-                "handles that separately."
+                "Do not claim to be human. "
+                "If asked about your creator, use the "
+                "creator information supplied by the application."
             )
         }
+
     ]
 
-    # Add recent conversation.
     for item in conversation[-12:]:
 
         role = item.get(
@@ -1462,9 +1563,11 @@ def call_ollama(
             "user",
             "assistant"
         ):
+
             continue
 
         if not content:
+
             continue
 
         messages.append(
@@ -1490,7 +1593,7 @@ def call_ollama(
         "stream": False,
 
         "options": {
-            "temperature": 0.2,
+            "temperature": 0.3,
             "num_predict": 1500
         }
     }
@@ -1507,8 +1610,7 @@ def call_ollama(
 
             print(
                 "OLLAMA HTTP ERROR:",
-                response.status_code,
-                response.text
+                response.status_code
             )
 
             return (
@@ -1533,13 +1635,11 @@ def call_ollama(
                 "Ollama returned no message."
             )
 
-        answer = message.get(
-            "content",
-            ""
-        )
-
         answer = str(
-            answer
+            message.get(
+                "content",
+                ""
+            )
         ).strip()
 
         if not answer:
@@ -1558,8 +1658,7 @@ def call_ollama(
 
         return (
             False,
-            "Cannot connect to Ollama. "
-            "Make sure Ollama is running."
+            "Ollama is not available."
         )
 
     except requests.exceptions.Timeout:
@@ -1580,6 +1679,65 @@ def call_ollama(
             False,
             str(error)
         )
+
+
+# ============================================================
+# FINAL ANSWER ENGINE
+# ============================================================
+
+def get_answer(
+    user_message,
+    conversation=None
+):
+
+    # --------------------------------------------------------
+    # FIRST: LOCAL ANSWERS
+    # --------------------------------------------------------
+
+    local = local_answer(
+        user_message
+    )
+
+    if local:
+
+        return (
+            local,
+            "local"
+        )
+
+    # --------------------------------------------------------
+    # SECOND: OLLAMA
+    # --------------------------------------------------------
+
+    ollama_success, ollama_answer = call_ollama(
+        user_message,
+        conversation
+    )
+
+    if ollama_success:
+
+        return (
+            ollama_answer,
+            "ollama"
+        )
+
+    # --------------------------------------------------------
+    # THIRD: SAFE FALLBACK
+    # --------------------------------------------------------
+
+    return (
+        "I can still help with basic questions, "
+        "math calculations, and PCMB topics even when "
+        "the AI service is unavailable.\n\n"
+        "Try asking something like:\n"
+        "• What is Newton's second law?\n"
+        "• Explain photosynthesis\n"
+        "• What is kinetic energy?\n"
+        "• What is DNA?\n"
+        "• What is CPU?\n"
+        "• 21122 + 3947829",
+        "fallback"
+    )
 
 
 # ============================================================
@@ -1632,6 +1790,7 @@ def login():
             user,
             dict
         ):
+
             continue
 
         email = str(
@@ -1651,14 +1810,17 @@ def login():
         if (
             username.lower()
             == login_value.lower()
-            or email
+            or
+            email
             == login_value.lower()
-            or phone
+            or
+            phone
             == login_value
         ):
 
             username_found = username
             user_found = user
+
             break
 
     if not user_found:
@@ -1815,6 +1977,7 @@ def register():
             user,
             dict
         ):
+
             continue
 
         if (
@@ -1837,7 +2000,8 @@ def register():
 
         if (
             email
-            and existing_email
+            and
+            existing_email
             == email.lower()
         ):
 
@@ -1856,7 +2020,8 @@ def register():
 
         if (
             phone
-            and existing_phone
+            and
+            existing_phone
             == phone
         ):
 
@@ -1902,7 +2067,8 @@ def register():
         "success": True,
         "message":
             "Account created successfully.",
-        "username": username
+        "username":
+            username
     })
 
 
@@ -1982,12 +2148,17 @@ def history():
         for row in rows:
 
             chats.append({
+
                 "id": row["id"],
+
                 "title":
                     row["title"]
-                    or "New Chat",
+                    or
+                    "New Chat",
+
                 "created_at":
                     row["created_at"],
+
                 "updated_at":
                     row["updated_at"]
             })
@@ -2018,6 +2189,10 @@ def history():
 # ============================================================
 # OPEN CHAT
 # ============================================================
+
+# IMPORTANT:
+# This fixes the earlier route problem.
+# It MUST contain <chat_id>.
 
 @app.route(
     "/chat/<chat_id>",
@@ -2092,55 +2267,7 @@ def chat():
         }), 500
 
     # --------------------------------------------------------
-    # LOCAL ANSWER FIRST
-    # --------------------------------------------------------
-
-    local_answer = get_local_answer(
-        user_message
-    )
-
-    if local_answer:
-
-        save_message(
-            chat_id,
-            "user",
-            user_message
-        )
-
-        save_message(
-            chat_id,
-            "assistant",
-            local_answer
-        )
-
-        current_chat = get_chat(
-            chat_id,
-            username
-        )
-
-        if (
-            current_chat
-            and current_chat.get("title")
-            == "New Chat"
-        ):
-
-            set_chat_title(
-                chat_id,
-                user_message[:50]
-            )
-
-        return jsonify({
-            "success": True,
-            "answer": local_answer,
-            "response": local_answer,
-            "reply": local_answer,
-            "message": local_answer,
-            "chat_id": chat_id,
-            "source": "local"
-        })
-
-    # --------------------------------------------------------
-    # GET PREVIOUS CONVERSATION
+    # OLD CONVERSATION
     # --------------------------------------------------------
 
     old_chat = get_chat(
@@ -2174,18 +2301,22 @@ def chat():
         }), 500
 
     # --------------------------------------------------------
-    # CHAT TITLE
+    # TITLE
     # --------------------------------------------------------
 
     if (
         old_chat
-        and old_chat.get("title")
+        and
+        old_chat.get(
+            "title"
+        )
         == "New Chat"
     ):
 
         title = user_message[:50]
 
         if len(user_message) > 50:
+
             title += "..."
 
         set_chat_title(
@@ -2194,36 +2325,16 @@ def chat():
         )
 
     # --------------------------------------------------------
-    # OLLAMA
+    # ANSWER
     # --------------------------------------------------------
 
-    success, answer = call_ollama(
+    answer, source = get_answer(
         user_message,
         conversation
     )
 
-    if not success:
-
-        print(
-            "AI ERROR:",
-            answer
-        )
-
-        return jsonify({
-            "success": False,
-
-            "answer":
-                "⚠️ " + answer,
-
-            "error": answer,
-
-            "chat_id": chat_id,
-
-            "source": "ollama"
-        }), 502
-
     # --------------------------------------------------------
-    # SAVE AI RESPONSE
+    # SAVE ANSWER
     # --------------------------------------------------------
 
     save_message(
@@ -2232,14 +2343,25 @@ def chat():
         answer
     )
 
+    # --------------------------------------------------------
+    # RESPONSE
+    # --------------------------------------------------------
+
     return jsonify({
+
         "success": True,
+
         "answer": answer,
+
         "response": answer,
+
         "reply": answer,
+
         "message": answer,
+
         "chat_id": chat_id,
-        "source": "ollama"
+
+        "source": source
     })
 
 
@@ -2285,13 +2407,13 @@ def improve():
             "Improve the answer while keeping it correct.",
 
         "check":
-            "Check the answer carefully and correct any errors.",
+            "Check the answer carefully and correct errors.",
 
         "explain":
             "Explain the answer step by step in simple language.",
 
         "short":
-            "Make the answer shorter while keeping the important information."
+            "Make the answer shorter while keeping important information."
     }
 
     instruction = instructions.get(
@@ -2312,8 +2434,9 @@ Task:
 Give the corrected and useful result.
 """
 
-    # First try local answer for simple questions.
-    local_result = get_local_answer(
+    # Try local answer first.
+
+    local_result = local_answer(
         question
     )
 
@@ -2327,25 +2450,30 @@ Give the corrected and useful result.
             "source": "local"
         })
 
+    # Try Ollama.
+
     success, result = call_ollama(
         prompt
     )
 
-    if not success:
+    if success:
 
         return jsonify({
-            "success": False,
-            "answer":
-                "⚠️ " + result,
-            "error": result
-        }), 502
+            "success": True,
+            "answer": result,
+            "response": result,
+            "reply": result,
+            "source": "ollama"
+        })
+
+    # Safe fallback.
 
     return jsonify({
         "success": True,
-        "answer": result,
-        "response": result,
-        "reply": result,
-        "source": "ollama"
+        "answer": answer,
+        "response": answer,
+        "reply": answer,
+        "source": "fallback"
     })
 
 
@@ -2381,19 +2509,19 @@ def health():
         "ollama_info":
             ollama_info,
 
-        "local_answers":
-            True,
-
-        "local_math":
-            True,
-
         "creator_configured":
             bool(
-                CREATOR_INFO.get("name")
+                CREATOR_INFO.get(
+                    "name"
+                )
                 and
-                CREATOR_INFO.get("name")
-                != "YOUR NAME"
+                CREATOR_INFO.get(
+                    "name"
+                ) != "YOUR NAME"
             ),
+
+        "local_answers":
+            True,
 
         "routes": {
 
@@ -2405,13 +2533,19 @@ def health():
 
             "chat": "/chat",
 
+            "open_chat":
+                "/chat/<chat_id>",
+
             "history": "/history",
 
-            "new_chat": "/new-chat",
+            "new_chat":
+                "/new-chat",
 
-            "improve": "/improve",
+            "improve":
+                "/improve",
 
-            "health": "/health"
+            "health":
+                "/health"
         }
     })
 
@@ -2425,11 +2559,10 @@ def home():
 
     return render_template(
         "index.html",
-
         logged_in=(
-            "username" in session
+            "username"
+            in session
         ),
-
         username=session.get(
             "username",
             ""
@@ -2445,11 +2578,15 @@ def home():
 def page_not_found(error):
 
     return jsonify({
+
         "success": False,
+
         "message":
             "Route not found.",
+
         "path":
             request.path
+
     }), 404
 
 
@@ -2462,9 +2599,12 @@ def internal_error(error):
     )
 
     return jsonify({
+
         "success": False,
+
         "message":
             "Internal server error."
+
     }), 500
 
 
@@ -2487,7 +2627,7 @@ if __name__ == "__main__":
     print("=" * 55)
     print(
         "AI Provider :",
-        "Ollama"
+        "Ollama + Local Answers"
     )
     print(
         "Model       :",
@@ -2502,16 +2642,16 @@ if __name__ == "__main__":
         CREATOR_INFO["name"]
     )
     print(
+        "Port        :",
+        port
+    )
+    print(
         "Local Math  :",
         "Enabled"
     )
     print(
         "Basic PCMB  :",
         "Enabled"
-    )
-    print(
-        "Port        :",
-        port
     )
     print("=" * 55)
     print()
