@@ -1,3595 +1,2126 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <title>Halper</title>
-
-    <style>
-
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            font-family: Arial, Helvetica, sans-serif;
-            background: #f3f6fb;
-            color: #182033;
-        }
-
-        button,
-        input,
-        textarea {
-            font-family: inherit;
-        }
-
-
-        /* =====================================================
-           HALPER LOGO
-        ====================================================== */
-
-        .halper-logo {
-            display: block;
-            width: 150px;
-            height: 150px;
-            object-fit: contain;
-            margin: 0 auto 10px;
-            background: white;
-            border-radius: 18px;
-        }
-
-        .sidebar-logo {
-            width: 100%;
-            max-width: 180px;
-            height: 105px;
-            object-fit: contain;
-            object-position: center;
-            display: block;
-            margin: 0 auto 18px;
-            border-radius: 12px;
-            background: white;
-        }
-
-        .welcome-logo {
-            display: block;
-            width: 180px;
-            height: 180px;
-            object-fit: contain;
-            margin: 0 auto 15px;
-            background: white;
-            border-radius: 18px;
-        }
-
-        .assistant-logo {
-            width: 36px;
-            height: 36px;
-            flex-shrink: 0;
-            object-fit: contain;
-            border-radius: 8px;
-            background: white;
-            border: 1px solid #dfe5ef;
-        }
-
-
-        /* =====================================================
-           LOGIN / CREATE ACCOUNT
-        ====================================================== */
-
-        .auth-screen {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .auth-box {
-            width: 100%;
-            max-width: 430px;
-            background: white;
-            padding: 30px;
-            border-radius: 20px;
-            box-shadow:
-                0 15px 45px rgba(0, 0, 0, 0.10);
-        }
-
-        .logo {
-            text-align: center;
-            margin-bottom: 7px;
-        }
-
-        .subtitle {
-            text-align: center;
-            color: #667085;
-            margin-bottom: 25px;
-        }
-
-        .tabs {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 20px;
-        }
-
-        .tab {
-            flex: 1;
-            border: none;
-            padding: 11px;
-            border-radius: 10px;
-            background: #eef2f7;
-            cursor: pointer;
-            font-weight: 700;
-        }
-
-        .tab.active {
-            background: #2563eb;
-            color: white;
-        }
-
-        .auth-form {
-            display: none;
-        }
-
-        .auth-form.active {
-            display: block;
-        }
-
-        .field {
-            margin-bottom: 14px;
-        }
-
-        .field label {
-            display: block;
-            margin-bottom: 6px;
-            font-size: 13px;
-            font-weight: 700;
-        }
-
-        .field label span {
-            color: #667085;
-            font-weight: 400;
-        }
-
-        .field input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #d4dbe7;
-            border-radius: 10px;
-            outline: none;
-            font-size: 14px;
-        }
-
-        .field input:focus {
-            border-color: #2563eb;
-        }
-
-        .password-wrap {
-            position: relative;
-        }
-
-        .password-wrap input {
-            padding-right: 45px;
-        }
-
-        .show-password {
-            position: absolute;
-            right: 9px;
-            top: 50%;
-            transform: translateY(-50%);
-            border: none;
-            background: transparent;
-            cursor: pointer;
-            font-size: 16px;
-        }
-
-        .auth-button {
-            width: 100%;
-            border: none;
-            background: #2563eb;
-            color: white;
-            padding: 13px;
-            border-radius: 10px;
-            font-weight: 800;
-            cursor: pointer;
-        }
-
-        .auth-button:hover {
-            background: #1d4ed8;
-        }
-
-        .auth-message {
-            margin-top: 12px;
-            min-height: 20px;
-            text-align: center;
-            color: #dc2626;
-            font-size: 13px;
-        }
-
-
-        /* =====================================================
-           MAIN APP
-        ====================================================== */
-
-        .app {
-            min-height: 100vh;
-            display: flex;
-        }
-
-        .sidebar {
-            width: 250px;
-            background: white;
-            border-right: 1px solid #dfe5ef;
-            padding: 18px;
-            display: flex;
-            flex-direction: column;
-            flex-shrink: 0;
-        }
-
-        .brand {
-            margin-bottom: 20px;
-        }
-
-        .new-chat {
-            border: none;
-            background: #2563eb;
-            color: white;
-            padding: 12px;
-            border-radius: 10px;
-            font-weight: 700;
-            cursor: pointer;
-        }
-
-        .new-chat:hover {
-            background: #1d4ed8;
-        }
-
-        .sidebar-bottom {
-            margin-top: auto;
-            border-top: 1px solid #e5e7eb;
-            padding-top: 14px;
-            font-size: 13px;
-        }
-
-        .logout {
-            width: 100%;
-            margin-top: 10px;
-            padding: 9px;
-            border: 1px solid #d7dee9;
-            background: white;
-            border-radius: 9px;
-            cursor: pointer;
-        }
-
-        .logout:hover {
-            background: #f8fafc;
-        }
-
-        .main {
-            flex: 1;
-            min-width: 0;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .topbar {
-            height: 60px;
-            background: white;
-            border-bottom: 1px solid #dfe5ef;
-            display: flex;
-            align-items: center;
-            padding: 0 18px;
-        }
-
-        .top-title {
-            font-size: 18px;
-            font-weight: 800;
-        }
-
-
-        /* =====================================================
-           CHAT
-        ====================================================== */
-
-        .chat {
-            flex: 1;
-            overflow-y: auto;
-            padding: 25px 15px 175px;
-        }
-
-        .chat-inner {
-            max-width: 900px;
-            margin: 0 auto;
-        }
-
-        .welcome {
-            text-align: center;
-            margin-top: 70px;
-        }
-
-        .welcome h1 {
-            font-size: 38px;
-            margin-bottom: 10px;
-        }
-
-        .welcome p {
-            color: #667085;
-            line-height: 1.6;
-        }
-
-
-        /* =====================================================
-           MESSAGES
-        ====================================================== */
-
-        .message {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 22px;
-            align-items: flex-start;
-        }
-
-        .message.user {
-            justify-content: flex-end;
-        }
-
-        .avatar {
-            width: 36px;
-            height: 36px;
-            flex-shrink: 0;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-        }
-
-        .assistant .avatar {
-            background: white;
-            color: #111827;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .user .avatar {
-            background: #e5e7eb;
-            color: #374151;
-            order: 2;
-        }
-
-        .bubble {
-            max-width: 86%;
-            padding: 14px;
-            border-radius: 15px;
-            line-height: 1.65;
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-
-        .assistant .bubble {
-            background: white;
-            border: 1px solid #e2e8f0;
-        }
-
-        .user .bubble {
-            background: #2563eb;
-            color: white;
-        }
-
-        .bubble h2,
-        .bubble h3 {
-            margin: 8px 0;
-        }
-
-        .bubble strong {
-            font-weight: 800;
-        }
-
-
-        /* =====================================================
-           ACTION BUTTONS
-        ====================================================== */
-
-        .actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 7px;
-            margin-top: 10px;
-        }
-
-        .action-btn {
-            padding: 6px 9px;
-            border: 1px solid #d7dee9;
-            background: white;
-            color: #374151;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-
-        .action-btn:hover {
-            background: #eef4ff;
-        }
-
-
-        /* =====================================================
-           IMAGE PREVIEW
-        ====================================================== */
-
-        .image-preview-wrap {
-            display: none;
-            padding: 8px 8px 5px;
-        }
-
-        .image-preview {
-            display: block;
-            width: auto;
-            max-width: 280px;
-            max-height: 200px;
-            border-radius: 10px;
-            border: 1px solid #d7dee9;
-            object-fit: contain;
-            background: #f8fafc;
-        }
-
-        .remove-image {
-            margin-top: 7px;
-            border: none;
-            background: #fee2e2;
-            color: #b91c1c;
-            border-radius: 7px;
-            padding: 6px 9px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-
-
-        /* =====================================================
-           COMPOSER
-        ====================================================== */
-
-        .composer {
-            position: fixed;
-            left: 250px;
-            right: 0;
-            bottom: 0;
-            padding: 15px;
-            background: linear-gradient(
-                transparent,
-                #f3f6fb 30%
-            );
-            z-index: 100;
-        }
-
-        .composer-box {
-            max-width: 900px;
-            margin: 0 auto;
-            background: white;
-            border: 1px solid #d7dee9;
-            border-radius: 15px;
-            padding: 8px;
-            box-shadow:
-                0 7px 25px rgba(15, 23, 42, 0.08);
-        }
-
-        .input-row {
-            display: flex;
-            gap: 7px;
-            align-items: flex-end;
-        }
-
-
-        /* =====================================================
-           MICROPHONE
-        ====================================================== */
-
-        .voice-btn {
-            width: 40px;
-            height: 40px;
-            flex-shrink: 0;
-            border: none;
-            border-radius: 50%;
-            background: #eef2f7;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .voice-btn:hover {
-            background: #e2e8f0;
-        }
-
-        .mic-body {
-            position: relative;
-            width: 10px;
-            height: 15px;
-            background: #111827;
-            border-radius: 6px;
-        }
-
-        .mic-body::before {
-            content: "";
-            position: absolute;
-            left: -4px;
-            bottom: -6px;
-            width: 16px;
-            height: 13px;
-            border: 1.6px solid #111827;
-            border-top: none;
-            border-radius: 0 0 10px 10px;
-        }
-
-        .mic-body::after {
-            content: "";
-            position: absolute;
-            left: 4px;
-            bottom: -12px;
-            width: 2px;
-            height: 7px;
-            background: #111827;
-            border-radius: 2px;
-        }
-
-
-        /* =====================================================
-           CAMERA / GALLERY
-        ====================================================== */
-
-        .camera-tools {
-            display: flex;
-            gap: 6px;
-        }
-
-        .icon-btn {
-            width: 40px;
-            height: 40px;
-            flex-shrink: 0;
-            border: none;
-            border-radius: 50%;
-            background: #eef2f7;
-            cursor: pointer;
-            font-size: 16px;
-        }
-
-        .icon-btn:hover {
-            background: #e2e8f0;
-        }
-
-
-        /* =====================================================
-           TEXTAREA
-        ====================================================== */
-
-        textarea {
-            flex: 1;
-            min-height: 42px;
-            max-height: 150px;
-            padding: 10px;
-            resize: none;
-            border: none;
-            outline: none;
-            font-size: 15px;
-            line-height: 1.5;
-        }
-
-
-        /* =====================================================
-           SEND
-        ====================================================== */
-
-        .send-btn {
-            width: 42px;
-            height: 42px;
-            flex-shrink: 0;
-            border: none;
-            border-radius: 50%;
-            background: #2563eb;
-            color: white;
-            font-size: 17px;
-            font-weight: 800;
-            cursor: pointer;
-        }
-
-        .send-btn:hover {
-            background: #1d4ed8;
-        }
-
-        .send-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-
-        /* =====================================================
-           LOADING
-        ====================================================== */
-
-        .loading {
-            display: inline-flex;
-            gap: 5px;
-            align-items: center;
-        }
-
-        .loading span {
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            background: #64748b;
-            animation: bounce 1s infinite;
-        }
-
-        .loading span:nth-child(2) {
-            animation-delay: .15s;
-        }
-
-        .loading span:nth-child(3) {
-            animation-delay: .30s;
-        }
-
-        @keyframes bounce {
-
-            0%,
-            80%,
-            100% {
-                transform: translateY(0);
-                opacity: .35;
-            }
-
-            40% {
-                transform: translateY(-5px);
-                opacity: 1;
-            }
-        }
-
-
-        /* =====================================================
-           CAMERA MODAL
-        ====================================================== */
-
-        .camera-modal {
-            position: fixed;
-            inset: 0;
-            z-index: 9999;
-            background: rgba(0, 0, 0, 0.72);
-
-            display: flex;
-            align-items: center;
-            justify-content: center;
-
-            padding: 15px;
-        }
-
-        .camera-box {
-            width: min(760px, 100%);
-            max-height: 94vh;
-
-            background: white;
-            border-radius: 18px;
-
-            padding: 14px;
-
-            box-shadow:
-                0 20px 60px rgba(0, 0, 0, 0.3);
-
-            overflow: hidden;
-        }
-
-        .camera-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-
-            font-size: 18px;
-
-            margin-bottom: 12px;
-        }
-
-        .camera-close {
-            width: 36px;
-            height: 36px;
-
-            border: none;
-            border-radius: 50%;
-
-            background: #eef2f7;
-
-            cursor: pointer;
-            font-size: 16px;
-        }
-
-        .camera-close:hover {
-            background: #e2e8f0;
-        }
-
-        #cameraVideo {
-            display: block;
-
-            width: 100%;
-
-            max-height: 68vh;
-
-            object-fit: contain;
-
-            background: #000;
-
-            border-radius: 14px;
-        }
-
-        .camera-error {
-            min-height: 18px;
-
-            margin-top: 8px;
-
-            color: #dc2626;
-
-            font-size: 13px;
-
-            text-align: center;
-        }
-
-        .camera-controls {
-            display: flex;
-
-            gap: 10px;
-
-            margin-top: 12px;
-        }
-
-        .camera-action {
-            flex: 1;
-
-            padding: 12px;
-
-            border: none;
-
-            border-radius: 11px;
-
-            cursor: pointer;
-
-            font-weight: 700;
-
-            font-size: 14px;
-        }
-
-        .camera-action.capture {
-            background: #2563eb;
-            color: white;
-        }
-
-        .camera-action.capture:hover {
-            background: #1d4ed8;
-        }
-
-        .camera-action.gallery {
-            background: #eef2f7;
-            color: #111827;
-        }
-
-        .camera-action.gallery:hover {
-            background: #e2e8f0;
-        }
-
-
-        /* =====================================================
-           MOBILE
-        ====================================================== */
-
-        @media (max-width: 760px) {
-
-            .sidebar {
-                display: none;
-            }
-
-            .composer {
-                left: 0;
-                padding: 10px;
-            }
-
-            .chat {
-                padding: 20px 10px 150px;
-            }
-
-            .bubble {
-                max-width: 92%;
-            }
-
-            .welcome {
-                margin-top: 45px;
-            }
-
-            .welcome h1 {
-                font-size: 30px;
-            }
-
-            .welcome-logo {
-                width: 145px;
-                height: 145px;
-            }
-
-            .icon-btn,
-            .voice-btn,
-            .send-btn {
-                width: 38px;
-                height: 38px;
-            }
-
-            textarea {
-                font-size: 14px;
-            }
-
-            .camera-box {
-                padding: 10px;
-                border-radius: 14px;
-            }
-
-            #cameraVideo {
-                max-height: 62vh;
-                border-radius: 10px;
-            }
-
-            .camera-controls {
-                gap: 7px;
-            }
-
-            .camera-action {
-                padding: 10px;
-                font-size: 13px;
-            }
-        }
-
-
-        @media (max-width: 470px) {
-
-            .auth-box {
-                padding: 22px;
-            }
-
-            .halper-logo {
-                width: 125px;
-                height: 125px;
-            }
-
-            .bubble {
-                font-size: 14px;
-            }
-
-        }
-
-
-        /* =====================================================
-           EXTRA MOBILE FRIENDLY
-        ====================================================== */
-
-        @media (max-width: 760px) {
-
-            .auth-screen {
-                min-height: 100dvh;
-                padding: 12px;
-            }
-
-            .auth-box {
-                width: 100%;
-                max-width: 100%;
-                padding: 20px;
-                border-radius: 16px;
-            }
-
-            .subtitle {
-                margin-bottom: 18px;
-                font-size: 13px;
-            }
-
-            .tabs {
-                gap: 6px;
-            }
-
-            .tab {
-                min-height: 42px;
-                padding: 10px 8px;
-            }
-
-            .field input {
-                min-height: 44px;
-                font-size: 16px;
-            }
-
-            .auth-button {
-                min-height: 44px;
-            }
-
-            .topbar {
-                height: 52px;
-                padding: 0 12px;
-            }
-
-            .top-title {
-                font-size: 16px;
-            }
-
-            .chat {
-                padding: 16px 8px 150px;
-            }
-
-            .message {
-                gap: 7px;
-                margin-bottom: 18px;
-            }
-
-            .avatar {
-                width: 32px;
-                height: 32px;
-                font-size: 13px;
-            }
-
-            .assistant-logo {
-                width: 32px;
-                height: 32px;
-            }
-
-            .bubble {
-                max-width: calc(100vw - 62px);
-                padding: 11px;
-                line-height: 1.55;
-                font-size: 14px;
-                overflow-wrap: anywhere;
-            }
-
-            .actions {
-                gap: 6px;
-            }
-
-            .action-btn {
-                min-height: 34px;
-                padding: 7px 9px;
-                font-size: 11px;
-            }
-
-            .composer {
-                padding:
-                    8px 7px
-                    max(
-                        env(safe-area-inset-bottom),
-                        8px
-                    );
-            }
-
-            .composer-box {
-                border-radius: 13px;
-                padding: 6px;
-            }
-
-            .input-row {
-                gap: 5px;
-            }
-
-            .voice-btn,
-            .icon-btn,
-            .send-btn {
-                width: 36px;
-                height: 36px;
-            }
-
-            .voice-btn {
-                transform: scale(0.92);
-            }
-
-            textarea {
-                min-width: 0;
-                min-height: 38px;
-                max-height: 120px;
-                font-size: 16px;
-                padding: 8px;
-            }
-
-            .camera-tools {
-                gap: 4px;
-            }
-
-            .image-preview {
-                max-width: 220px;
-                max-height: 160px;
-            }
-
-            .camera-modal {
-                padding: 8px;
-                align-items: flex-end;
-            }
-
-            .camera-box {
-                width: 100%;
-                max-height: 92dvh;
-                border-radius: 16px 16px 10px 10px;
-                padding: 10px;
-            }
-
-            #cameraVideo {
-                max-height: 58dvh;
-            }
-
-            .camera-controls {
-                gap: 7px;
-            }
-
-            .camera-action {
-                min-height: 44px;
-                padding: 10px;
-            }
-        }
-
-        @media (max-width: 420px) {
-
-            .auth-box {
-                padding: 17px;
-            }
-
-            .halper-logo {
-                width: 110px;
-                height: 110px;
-            }
-
-            .welcome-logo {
-                width: 125px;
-                height: 125px;
-            }
-
-            .tab {
-                font-size: 12px;
-            }
-
-            .bubble {
-                max-width: calc(100vw - 53px);
-                font-size: 13px;
-            }
-
-            .action-btn {
-                font-size: 10px;
-                padding: 6px 7px;
-            }
-
-            .camera-tools .icon-btn,
-            .voice-btn,
-            .send-btn {
-                width: 34px;
-                height: 34px;
-            }
-        }
-
-    </style>
-</head>
-
-
-<body>
-
-
-{% if not logged_in %}
-
-
-<!-- =========================================================
-     LOGIN / CREATE ACCOUNT
-========================================================== -->
-
-<div class="auth-screen">
-
-    <div class="auth-box">
-
-        <!-- NEW HALPER LOGO -->
-        <div class="logo">
-            <img
-                src="{{ url_for('static', filename='halper-logo.png') }}"
-                class="halper-logo"
-                alt="Halper Logo"
-            >
-        </div>
-
-        <div class="subtitle">
-            Your PCMB study assistant
-        </div>
-
-
-        <div class="tabs">
-
-            <button
-                class="tab active"
-                id="loginTab"
-                type="button"
-                onclick="showAuth('login')"
-            >
-                Login
-            </button>
-
-            <button
-                class="tab"
-                id="registerTab"
-                type="button"
-                onclick="showAuth('register')"
-            >
-                Create Account
-            </button>
-
-        </div>
-
-
-        <!-- LOGIN -->
-
-        <div
-            class="auth-form active"
-            id="loginForm"
-        >
-
-            <div class="field">
-
-                <label>
-                    Username, Email or Phone
-                </label>
-
-                <input
-                    type="text"
-                    id="loginValue"
-                    placeholder="Username, email or phone"
-                    autocomplete="username"
-                >
-
-            </div>
-
-
-            <div class="field">
-
-                <label>
-                    Password
-                </label>
-
-                <div class="password-wrap">
-
-                    <input
-                        type="password"
-                        id="loginPassword"
-                        placeholder="Password"
-                        autocomplete="current-password"
-                    >
-
-                    <button
-                        type="button"
-                        class="show-password"
-                        onclick="togglePassword('loginPassword')"
-                    >
-                        👁
-                    </button>
-
-                </div>
-
-            </div>
-
-
-            <button
-                type="button"
-                class="auth-button"
-                onclick="login()"
-            >
-                Login
-            </button>
-
-        </div>
-
-
-        <!-- CREATE ACCOUNT -->
-
-        <div
-            class="auth-form"
-            id="registerForm"
-        >
-
-            <div class="field">
-
-                <label>
-                    Username
-                </label>
-
-                <input
-                    type="text"
-                    id="registerUsername"
-                    placeholder="Choose a username"
-                    autocomplete="username"
-                >
-
-            </div>
-
-
-            <div class="field">
-
-                <label>
-                    Email <span>(or Phone)</span>
-                </label>
-
-                <input
-                    type="email"
-                    id="registerEmail"
-                    placeholder="Optional if using phone"
-                    autocomplete="email"
-                >
-
-            </div>
-
-
-            <div class="field">
-
-                <label>
-                    Phone <span>(or Email)</span>
-                </label>
-
-                <input
-                    type="tel"
-                    id="registerPhone"
-                    placeholder="Optional if using email"
-                    autocomplete="tel"
-                >
-
-            </div>
-
-
-            <p
-                style="
-                    font-size:12px;
-                    color:#667085;
-                    margin:-2px 0 14px;
-                "
-            >
-                Enter either an email address or a phone number.
-            </p>
-
-
-            <div class="field">
-
-                <label>
-                    Password
-                </label>
-
-                <div class="password-wrap">
-
-                    <input
-                        type="password"
-                        id="registerPassword"
-                        placeholder="At least 6 characters"
-                        autocomplete="new-password"
-                    >
-
-                    <button
-                        type="button"
-                        class="show-password"
-                        onclick="togglePassword('registerPassword')"
-                    >
-                        👁
-                    </button>
-
-                </div>
-
-            </div>
-
-
-            <button
-                type="button"
-                class="auth-button"
-                onclick="register()"
-            >
-                Create Account
-            </button>
-
-        </div>
-
-
-        <div
-            class="auth-message"
-            id="authMessage"
-        ></div>
-
-    </div>
-
-</div>
-
-
-{% else %}
-
-
-<!-- =========================================================
-     MAIN APP
-========================================================== -->
-
-<div class="app">
-
-
-    <!-- SIDEBAR -->
-
-    <aside class="sidebar">
-
-        <div class="brand">
-
-            <img
-                src="{{ url_for('static', filename='halper-logo.png') }}"
-                class="sidebar-logo"
-                alt="Halper"
-            >
-
-        </div>
-
-
-        <button
-            type="button"
-            class="new-chat"
-            onclick="newChat()"
-        >
-            ＋ New Chat
-        </button>
-
-
-        <div class="sidebar-bottom">
-
-            Logged in as:
-
-            <strong>
-                {{ username }}
-            </strong>
-
-
-            <button
-                type="button"
-                class="logout"
-                onclick="location.href='/logout'"
-            >
-                Logout
-            </button>
-
-        </div>
-
-    </aside>
-
-
-    <!-- MAIN -->
-
-    <main class="main">
-
-
-        <header class="topbar">
-
-            <div class="top-title">
-                Halper
-            </div>
-
-        </header>
-
-
-        <!-- CHAT -->
-
-        <section
-            class="chat"
-            id="chat"
-        >
-
-            <div
-                class="chat-inner"
-                id="chatInner"
-            >
-
-
-                <div
-                    class="welcome"
-                    id="welcome"
-                >
-
-                    <!-- NEW HALPER LOGO -->
-
-                    <img
-                        src="{{ url_for('static', filename='halper-logo.png') }}"
-                        class="welcome-logo"
-                        alt="Halper Logo"
-                    >
-
-                    <p>
-                        Hello {{ username }}! 👋
-                    </p>
-
-                    <p>
-                        Ask Mathematics, Physics,
-                        Chemistry, Biology or general questions.
-                    </p>
-
-                    <p>
-                        You can also use the camera,
-                        gallery or microphone.
-                    </p>
-
-                </div>
-
-
-            </div>
-
-        </section>
-
-
-        <!-- COMPOSER -->
-
-        <div class="composer">
-
-            <div class="composer-box">
-
-
-                <!-- IMAGE PREVIEW -->
-
-                <div
-                    class="image-preview-wrap"
-                    id="imagePreviewWrap"
-                >
-
-                    <img
-                        id="imagePreview"
-                        class="image-preview"
-                        alt="Selected image"
-                    >
-
-
-                    <button
-                        type="button"
-                        class="remove-image"
-                        onclick="removeImage()"
-                    >
-                        Remove image
-                    </button>
-
-                </div>
-
-
-                <!-- INPUT ROW -->
-
-                <div class="input-row">
-
-
-                    <!-- MICROPHONE -->
-
-                    <button
-                        type="button"
-                        class="voice-btn"
-                        onclick="startDictation()"
-                        title="Voice input"
-                        aria-label="Voice input"
-                    >
-                        <span class="mic-body"></span>
-                    </button>
-
-
-                    <!-- CAMERA / GALLERY -->
-
-                    <div class="camera-tools">
-
-                        <button
-                            type="button"
-                            class="icon-btn"
-                            onclick="openCameraModal()"
-                            title="Camera"
-                            aria-label="Camera"
-                        >
-                            📷
-                        </button>
-
-
-                        <button
-                            type="button"
-                            class="icon-btn"
-                            onclick="document.getElementById('imageFileInput').click()"
-                            title="Choose image"
-                            aria-label="Choose image"
-                        >
-                            🖼️
-                        </button>
-
-
-                        <input
-                            type="file"
-                            id="imageFileInput"
-                            accept="image/*"
-                            hidden
-                            onchange="selectImage(event)"
-                        >
-
-                    </div>
-
-
-                    <!-- TEXT -->
-
-                    <textarea
-                        id="messageInput"
-                        placeholder="Ask Halper anything..."
-                        rows="1"
-                        oninput="autoResize(this)"
-                        onkeydown="handleKey(event)"
-                    ></textarea>
-
-
-                    <!-- SEND -->
-
-                    <button
-                        type="button"
-                        class="send-btn"
-                        id="sendButton"
-                        onclick="sendMessage()"
-                        title="Send"
-                        aria-label="Send"
-                    >
-                        ➤
-                    </button>
-
-                </div>
-
-            </div>
-
-        </div>
-
-    </main>
-
-</div>
-
-
-<!-- =========================================================
-     CAMERA MODAL
-========================================================== -->
-
-<div
-    id="cameraModal"
-    class="camera-modal"
-    style="display:none;"
->
-
-    <div class="camera-box">
-
-
-        <div class="camera-header">
-
-            <strong>
-                📷 Camera
-            </strong>
-
-
-            <button
-                type="button"
-                class="camera-close"
-                onclick="closeCameraModal()"
-            >
-                ✕
-            </button>
-
-        </div>
-
-
-        <video
-            id="cameraVideo"
-            autoplay
-            playsinline
-        ></video>
-
-
-        <canvas
-            id="cameraCanvas"
-            style="display:none;"
-        ></canvas>
-
-
-        <div
-            id="cameraError"
-            class="camera-error"
-        ></div>
-
-
-        <div class="camera-controls">
-
-            <button
-                type="button"
-                class="camera-action capture"
-                onclick="capturePhoto()"
-            >
-                📸 Capture
-            </button>
-
-
-            <button
-                type="button"
-                class="camera-action gallery"
-                onclick="document.getElementById('imageFileInput').click()"
-            >
-                🖼️ Gallery
-            </button>
-
-        </div>
-
-    </div>
-
-</div>
-
-
-{% endif %}
-
-
-<script>
-
-
-/* ============================================================
-   AUTH TABS
-============================================================ */
-
-function showAuth(type) {
-
-    const loginForm =
-        document.getElementById("loginForm");
-
-    const registerForm =
-        document.getElementById("registerForm");
-
-    const loginTab =
-        document.getElementById("loginTab");
-
-    const registerTab =
-        document.getElementById("registerTab");
-
-    const message =
-        document.getElementById("authMessage");
-
-
-    if (type === "login") {
-
-        loginForm.classList.add("active");
-        registerForm.classList.remove("active");
-
-        loginTab.classList.add("active");
-        registerTab.classList.remove("active");
-
-    } else {
-
-        loginForm.classList.remove("active");
-        registerForm.classList.add("active");
-
-        loginTab.classList.remove("active");
-        registerTab.classList.add("active");
-    }
-
-
-    if (message) {
-        message.textContent = "";
-    }
+import os
+import re
+import json
+import uuid
+import sqlite3
+from datetime import datetime
+from functools import wraps
+
+import requests
+
+from flask import (
+    Flask,
+    render_template,
+    request,
+    jsonify,
+    session,
+    redirect,
+    url_for
+)
+
+from werkzeug.security import (
+    generate_password_hash,
+    check_password_hash
+)
+
+
+# ============================================================
+# HALPER 2.0
+# Local AI + Ollama
+# ============================================================
+
+app = Flask(__name__)
+
+app.secret_key = os.environ.get(
+    "SECRET_KEY",
+    "halper-2-secret-change-this"
+)
+
+BASE_DIR = os.path.dirname(
+    os.path.abspath(__file__)
+)
+
+DATA_DIR = os.environ.get(
+    "DATA_DIR",
+    BASE_DIR
+)
+
+os.makedirs(DATA_DIR, exist_ok=True)
+
+
+# ============================================================
+# HALPER CREATOR INFORMATION
+# ============================================================
+#
+# EDIT ONLY THIS SECTION.
+#
+# Put only information that you are comfortable making public
+# to anyone who uses Halper.
+#
+# Do NOT put passwords, API keys, phone numbers, home address,
+# or other private information here.
+# ============================================================
+
+CREATOR_INFO = {
+
+    "name": "YOUR NAME",
+
+    "role": "Creator and developer of Halper",
+
+    "project": "Halper 2.0",
+
+    "about": (
+        "Halper is an educational AI project created "
+        "to help students learn and solve questions."
+    ),
+
+    "extra": (
+        "Replace this text with any additional public "
+        "information you want Halper to share."
+    )
 }
 
 
-/* ============================================================
-   PASSWORD
-============================================================ */
+# ============================================================
+# OLLAMA CONFIGURATION
+# ============================================================
 
-function togglePassword(id) {
+OLLAMA_URL = os.environ.get(
+    "OLLAMA_URL",
+    "http://127.0.0.1:11434"
+).rstrip("/")
 
-    const input =
-        document.getElementById(id);
+OLLAMA_MODEL = os.environ.get(
+    "OLLAMA_MODEL",
+    "llama3.2:3b"
+)
 
-    if (!input) {
-        return;
-    }
-
-    input.type =
-        input.type === "password"
-            ? "text"
-            : "password";
-}
-
-
-/* ============================================================
-   REGISTER
-============================================================ */
-
-async function register() {
-
-    const username =
-        document
-            .getElementById("registerUsername")
-            .value
-            .trim();
-
-    const email =
-        document
-            .getElementById("registerEmail")
-            .value
-            .trim();
-
-    const phone =
-        document
-            .getElementById("registerPhone")
-            .value
-            .trim();
-
-    const password =
-        document
-            .getElementById("registerPassword")
-            .value;
-
-    const message =
-        document.getElementById("authMessage");
+OLLAMA_TIMEOUT = int(
+    os.environ.get(
+        "OLLAMA_TIMEOUT",
+        "180"
+    )
+)
 
 
-    if (!username) {
+# ============================================================
+# DATA FILES
+# ============================================================
 
-        message.textContent =
-            "Please enter a username.";
+USERS_FILE = os.path.join(
+    DATA_DIR,
+    "users.json"
+)
 
-        return;
-    }
-
-
-    if (!email && !phone) {
-
-        message.textContent =
-            "Enter either email or phone number.";
-
-        return;
-    }
+DATABASE_FILE = os.path.join(
+    DATA_DIR,
+    "halper.db"
+)
 
 
-    if (password.length < 6) {
+# ============================================================
+# JSON HELPERS
+# ============================================================
 
-        message.textContent =
-            "Password must be at least 6 characters.";
+def load_json(filename, default):
 
-        return;
-    }
+    try:
+
+        if not os.path.exists(filename):
+            return default
+
+        with open(
+            filename,
+            "r",
+            encoding="utf-8"
+        ) as file:
+
+            return json.load(file)
+
+    except Exception as error:
+
+        print(
+            "JSON LOAD ERROR:",
+            repr(error)
+        )
+
+        return default
 
 
-    try {
+def save_json(filename, data):
 
-        const response =
-            await fetch(
-                "/register",
+    temporary_file = filename + ".tmp"
+
+    try:
+
+        with open(
+            temporary_file,
+            "w",
+            encoding="utf-8"
+        ) as file:
+
+            json.dump(
+                data,
+                file,
+                indent=2,
+                ensure_ascii=False
+            )
+
+        os.replace(
+            temporary_file,
+            filename
+        )
+
+        return True
+
+    except Exception as error:
+
+        print(
+            "JSON SAVE ERROR:",
+            repr(error)
+        )
+
+        try:
+
+            if os.path.exists(
+                temporary_file
+            ):
+                os.remove(
+                    temporary_file
+                )
+
+        except Exception:
+            pass
+
+        return False
+
+
+# ============================================================
+# USERS FILE
+# ============================================================
+
+if not os.path.exists(USERS_FILE):
+
+    save_json(
+        USERS_FILE,
+        {}
+    )
+
+
+# ============================================================
+# DATABASE
+# ============================================================
+
+def get_db():
+
+    connection = sqlite3.connect(
+        DATABASE_FILE,
+        timeout=30
+    )
+
+    connection.row_factory = sqlite3.Row
+
+    return connection
+
+
+def initialize_database():
+
+    connection = get_db()
+
+    try:
+
+        connection.execute(
+            "PRAGMA foreign_keys = ON"
+        )
+
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS chats (
+
+                id TEXT PRIMARY KEY,
+
+                username TEXT NOT NULL,
+
+                title TEXT NOT NULL
+                    DEFAULT 'New Chat',
+
+                created_at TEXT NOT NULL,
+
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS messages (
+
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+                chat_id TEXT NOT NULL,
+
+                role TEXT NOT NULL,
+
+                content TEXT NOT NULL,
+
+                timestamp TEXT NOT NULL,
+
+                FOREIGN KEY(chat_id)
+                    REFERENCES chats(id)
+                    ON DELETE CASCADE
+            )
+            """
+        )
+
+        connection.execute(
+            """
+            CREATE INDEX IF NOT EXISTS
+            idx_chats_username
+            ON chats(username)
+            """
+        )
+
+        connection.execute(
+            """
+            CREATE INDEX IF NOT EXISTS
+            idx_messages_chat
+            ON messages(chat_id)
+            """
+        )
+
+        connection.commit()
+
+    except Exception as error:
+
+        connection.rollback()
+
+        print(
+            "DATABASE INITIALIZATION ERROR:",
+            repr(error)
+        )
+
+    finally:
+
+        connection.close()
+
+
+initialize_database()
+
+
+# ============================================================
+# TIME
+# ============================================================
+
+def now_iso():
+
+    return datetime.utcnow().isoformat()
+
+
+# ============================================================
+# CREATOR QUESTION DETECTION
+# ============================================================
+
+def is_creator_question(text):
+
+    text = str(
+        text or ""
+    ).lower().strip()
+
+    creator_phrases = [
+
+        "who created you",
+
+        "who is your creator",
+
+        "who created halper",
+
+        "who made you",
+
+        "who made halper",
+
+        "who developed you",
+
+        "who developed halper",
+
+        "who built you",
+
+        "who built halper",
+
+        "who programmed you",
+
+        "who programmed halper",
+
+        "who designed you",
+
+        "who designed halper",
+
+        "who is behind halper",
+
+        "who is behind you",
+
+        "who is your developer",
+
+        "who is halper's developer",
+
+        "who is halper developer",
+
+        "who is your maker",
+
+        "who is halper's maker",
+
+        "who is halper maker",
+
+        "tell me about your creator",
+
+        "tell me about halper creator",
+
+        "tell me about your developer",
+
+        "tell me about halper developer",
+
+        "who is your father",
+
+        "who is halper's father",
+
+        "who is halper father",
+
+        "who is your dad",
+
+        "who is halper's dad",
+
+        "who is halper dad"
+    ]
+
+    for phrase in creator_phrases:
+
+        if phrase in text:
+
+            return True
+
+    # Additional natural-language checks.
+
+    creator_words = (
+        "creator",
+        "developer",
+        "maker",
+        "father",
+        "dad",
+        "created",
+        "developed",
+        "built",
+        "made"
+    )
+
+    halper_words = (
+        "you",
+        "halper",
+        "your"
+    )
+
+    has_creator_word = any(
+        word in text
+        for word in creator_words
+    )
+
+    has_halper_reference = any(
+        word in text
+        for word in halper_words
+    )
+
+    return (
+        has_creator_word
+        and
+        has_halper_reference
+    )
+
+
+def creator_response():
+
+    name = CREATOR_INFO.get(
+        "name",
+        "the creator"
+    )
+
+    role = CREATOR_INFO.get(
+        "role",
+        "the developer"
+    )
+
+    project = CREATOR_INFO.get(
+        "project",
+        "Halper"
+    )
+
+    about = CREATOR_INFO.get(
+        "about",
+        ""
+    )
+
+    extra = CREATOR_INFO.get(
+        "extra",
+        ""
+    )
+
+    response = (
+        f"I was created and developed by {name}. "
+        f"They are the {role} of {project}.\n\n"
+        f"{about}"
+    )
+
+    if extra:
+
+        response += (
+            f"\n\n{extra}"
+        )
+
+    return response
+
+
+# ============================================================
+# AUTHENTICATION
+# ============================================================
+
+def current_username():
+
+    return session.get(
+        "username"
+    )
+
+
+def login_required(function):
+
+    @wraps(function)
+    def wrapper(*args, **kwargs):
+
+        if not session.get(
+            "username"
+        ):
+
+            return jsonify({
+                "success": False,
+                "message":
+                    "Please login first."
+            }), 401
+
+        return function(
+            *args,
+            **kwargs
+        )
+
+    return wrapper
+
+
+# ============================================================
+# CHAT FUNCTIONS
+# ============================================================
+
+def create_chat(username):
+
+    chat_id = str(
+        uuid.uuid4()
+    )
+
+    timestamp = now_iso()
+
+    connection = get_db()
+
+    try:
+
+        connection.execute(
+            """
+            INSERT INTO chats
+            (
+                id,
+                username,
+                title,
+                created_at,
+                updated_at
+            )
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                chat_id,
+                username,
+                "New Chat",
+                timestamp,
+                timestamp
+            )
+        )
+
+        connection.commit()
+
+    finally:
+
+        connection.close()
+
+    return chat_id
+
+
+def chat_exists(
+    chat_id,
+    username
+):
+
+    connection = get_db()
+
+    try:
+
+        row = connection.execute(
+            """
+            SELECT id
+            FROM chats
+            WHERE id = ?
+            AND username = ?
+            """,
+            (
+                chat_id,
+                username
+            )
+        ).fetchone()
+
+        return row is not None
+
+    finally:
+
+        connection.close()
+
+
+def get_latest_chat(username):
+
+    connection = get_db()
+
+    try:
+
+        row = connection.execute(
+            """
+            SELECT id
+            FROM chats
+            WHERE username = ?
+            ORDER BY updated_at DESC
+            LIMIT 1
+            """,
+            (username,)
+        ).fetchone()
+
+        if row:
+            return row["id"]
+
+        return None
+
+    finally:
+
+        connection.close()
+
+
+def get_current_chat():
+
+    username = current_username()
+
+    if not username:
+        return None
+
+    saved_chat = session.get(
+        "chat_id"
+    )
+
+    if saved_chat:
+
+        if chat_exists(
+            saved_chat,
+            username
+        ):
+            return saved_chat
+
+    latest = get_latest_chat(
+        username
+    )
+
+    if latest:
+
+        session["chat_id"] = latest
+
+        return latest
+
+    new_chat = create_chat(
+        username
+    )
+
+    session["chat_id"] = new_chat
+
+    return new_chat
+
+
+def save_message(
+    chat_id,
+    role,
+    content
+):
+
+    connection = get_db()
+
+    try:
+
+        timestamp = now_iso()
+
+        connection.execute(
+            """
+            INSERT INTO messages
+            (
+                chat_id,
+                role,
+                content,
+                timestamp
+            )
+            VALUES (?, ?, ?, ?)
+            """,
+            (
+                chat_id,
+                role,
+                content,
+                timestamp
+            )
+        )
+
+        connection.execute(
+            """
+            UPDATE chats
+            SET updated_at = ?
+            WHERE id = ?
+            """,
+            (
+                timestamp,
+                chat_id
+            )
+        )
+
+        connection.commit()
+
+        return True
+
+    except Exception as error:
+
+        connection.rollback()
+
+        print(
+            "SAVE MESSAGE ERROR:",
+            repr(error)
+        )
+
+        return False
+
+    finally:
+
+        connection.close()
+
+
+def set_chat_title(
+    chat_id,
+    title
+):
+
+    connection = get_db()
+
+    try:
+
+        connection.execute(
+            """
+            UPDATE chats
+            SET title = ?,
+                updated_at = ?
+            WHERE id = ?
+            """,
+            (
+                title,
+                now_iso(),
+                chat_id
+            )
+        )
+
+        connection.commit()
+
+    finally:
+
+        connection.close()
+
+
+def get_chat(
+    chat_id,
+    username
+):
+
+    connection = get_db()
+
+    try:
+
+        chat = connection.execute(
+            """
+            SELECT
+                id,
+                title,
+                created_at,
+                updated_at
+            FROM chats
+            WHERE id = ?
+            AND username = ?
+            """,
+            (
+                chat_id,
+                username
+            )
+        ).fetchone()
+
+        if not chat:
+            return None
+
+        messages = connection.execute(
+            """
+            SELECT
+                role,
+                content,
+                timestamp
+            FROM messages
+            WHERE chat_id = ?
+            ORDER BY id ASC
+            """,
+            (chat_id,)
+        ).fetchall()
+
+        return {
+
+            "id":
+                chat["id"],
+
+            "title":
+                chat["title"],
+
+            "created_at":
+                chat["created_at"],
+
+            "updated_at":
+                chat["updated_at"],
+
+            "messages": [
+
                 {
-                    method: "POST",
+                    "role":
+                        row["role"],
 
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
+                    "content":
+                        row["content"],
 
-                    body: JSON.stringify({
-                        username,
-                        email,
-                        phone,
-                        password
-                    })
+                    "timestamp":
+                        row["timestamp"]
                 }
-            );
 
-
-        const data =
-            await response.json();
-
-
-        if (data.success) {
-
-            location.reload();
-
-        } else {
-
-            message.textContent =
-                data.message ||
-                "Could not create account.";
+                for row in messages
+            ]
         }
 
-    } catch (error) {
+    finally:
 
-        console.error(
-            "REGISTER ERROR:",
-            error
-        );
-
-        message.textContent =
-            "Could not connect to server.";
-    }
-}
+        connection.close()
 
 
-/* ============================================================
-   LOGIN
-============================================================ */
+# ============================================================
+# OLLAMA CONNECTION CHECK
+# ============================================================
 
-async function login() {
+def check_ollama():
 
-    const loginValue =
-        document
-            .getElementById("loginValue")
-            .value
-            .trim();
+    try:
 
-    const password =
-        document
-            .getElementById("loginPassword")
-            .value;
+        response = requests.get(
+            f"{OLLAMA_URL}/api/tags",
+            timeout=10
+        )
 
-    const message =
-        document.getElementById("authMessage");
+        if response.status_code != 200:
 
+            return False, (
+                f"Ollama returned HTTP "
+                f"{response.status_code}"
+            )
 
-    if (!loginValue || !password) {
+        data = response.json()
 
-        message.textContent =
-            "Enter your login details.";
+        models = data.get(
+            "models",
+            []
+        )
 
-        return;
-    }
+        model_names = []
 
+        for model in models:
 
-    try {
+            if isinstance(
+                model,
+                dict
+            ):
 
-        const response =
-            await fetch(
-                "/login",
-                {
-                    method: "POST",
+                name = model.get(
+                    "name"
+                )
 
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
+                if name:
+                    model_names.append(
+                        name
+                    )
 
-                    body: JSON.stringify({
-                        login:
-                            loginValue,
-                        password:
-                            password
-                    })
-                }
-            );
+        return True, {
 
+            "models":
+                model_names,
 
-        const data =
-            await response.json();
+            "selected_model":
+                OLLAMA_MODEL,
 
-
-        if (data.success) {
-
-            location.reload();
-
-        } else {
-
-            message.textContent =
-                data.message ||
-                "Login failed.";
+            "model_available":
+                OLLAMA_MODEL in model_names
         }
 
-    } catch (error) {
+    except requests.exceptions.ConnectionError:
 
-        console.error(
-            "LOGIN ERROR:",
-            error
-        );
+        return False, (
+            "Cannot connect to Ollama. "
+            "Make sure Ollama is running."
+        )
 
-        message.textContent =
-            "Could not connect to server.";
-    }
-}
+    except Exception as error:
 
-
-/* ============================================================
-   CHAT STATE
-============================================================ */
-
-let busy = false;
-let selectedImage = null;
-let cameraStream = null;
+        return False, str(error)
 
 
-/* ============================================================
-   HTML ESCAPE
-============================================================ */
+# ============================================================
+# OLLAMA AI
+# ============================================================
 
-function escapeHtml(text) {
+def call_ollama(
+    prompt,
+    conversation=None
+):
 
-    return String(text)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-}
+    if conversation is None:
 
+        conversation = []
 
-/* ============================================================
-   CLEAN MATH / LATEX
-============================================================ */
+    messages = [
 
-function cleanMathFormatting(text) {
+        {
+            "role":
+                "system",
 
-    let clean = String(text);
-
-    clean = clean.replace(/\\\[/g, "");
-    clean = clean.replace(/\\\]/g, "");
-    clean = clean.replace(/\\\(/g, "");
-    clean = clean.replace(/\\\)/g, "");
-    clean = clean.replace(/\$\$/g, "");
-    clean = clean.replace(/\$/g, "");
-
-    clean = clean.replace(/\\begin\{[^}]*\}/g, "");
-    clean = clean.replace(/\\end\{[^}]*\}/g, "");
-
-    clean = clean.replace(
-        /\\text\{([^{}]*)\}/g,
-        "$1"
-    );
-
-    clean = clean.replace(
-        /\\mathrm\{([^{}]*)\}/g,
-        "$1"
-    );
-
-    clean = clean.replace(
-        /\\mathbf\{([^{}]*)\}/g,
-        "$1"
-    );
-
-    clean = clean.replace(
-        /\\mathit\{([^{}]*)\}/g,
-        "$1"
-    );
-
-    clean = clean.replace(
-        /\\boxed\{([^{}]*)\}/g,
-        "$1"
-    );
-
-    clean = clean.replace(
-        /\\frac\{([^{}]*)\}\{([^{}]*)\}/g,
-        "($1/$2)"
-    );
-
-    clean = clean.replace(
-        /\\dfrac\{([^{}]*)\}\{([^{}]*)\}/g,
-        "($1/$2)"
-    );
-
-
-    const symbols = {
-
-        "\\times": "×",
-        "\\cdot": "·",
-        "\\div": "÷",
-        "\\pm": "±",
-        "\\mp": "∓",
-        "\\leq": "≤",
-        "\\le": "≤",
-        "\\geq": "≥",
-        "\\ge": "≥",
-        "\\neq": "≠",
-        "\\ne": "≠",
-        "\\approx": "≈",
-        "\\rightarrow": "→",
-        "\\to": "→",
-        "\\leftarrow": "←",
-        "\\Rightarrow": "⇒",
-        "\\Leftarrow": "⇐",
-        "\\sqrt": "√",
-        "\\infty": "∞"
-    };
-
-
-    Object.keys(symbols).forEach(
-        command => {
-
-            clean =
-                clean
-                    .split(command)
-                    .join(symbols[command]);
-
+            "content": (
+                "You are Halper 2.0, a helpful "
+                "educational AI tutor. "
+                "Give accurate, clear and friendly "
+                "answers. "
+                "For mathematics, show useful steps. "
+                "For physics, show formulas and units. "
+                "For chemistry, check equations carefully. "
+                "For biology, use correct scientific terms. "
+                "Do not invent facts. "
+                "If asked about your creator, developer, "
+                "maker, father or who made you, use the "
+                "creator information supplied by the "
+                "application."
+            )
         }
-    );
-
-
-    clean = clean.replace(
-        /\\[,;:!]/g,
-        ""
-    );
-
-    clean = clean.replace(
-        /\\quad/g,
-        " "
-    );
-
-    clean = clean.replace(
-        /\\qquad/g,
-        " "
-    );
-
-    clean = clean.replace(
-        /\\ /g,
-        " "
-    );
-
-
-    clean = clean.replace(
-        /\\([a-zA-Z]+)/g,
-        "$1"
-    );
-
-
-    clean = clean.replace(
-        /\\left/g,
-        ""
-    );
-
-    clean = clean.replace(
-        /\\right/g,
-        ""
-    );
-
-
-    clean = clean.replace(
-        /\^0\b/g,
-        "⁰"
-    );
-
-    clean = clean.replace(
-        /\^1\b/g,
-        "¹"
-    );
-
-    clean = clean.replace(
-        /\^2\b/g,
-        "²"
-    );
-
-    clean = clean.replace(
-        /\^3\b/g,
-        "³"
-    );
+    ]
 
-    clean = clean.replace(
-        /\^4\b/g,
-        "⁴"
-    );
+    # Add recent conversation.
+    for item in conversation[-12:]:
 
-    clean = clean.replace(
-        /\^5\b/g,
-        "⁵"
-    );
+        role = item.get(
+            "role"
+        )
 
-    clean = clean.replace(
-        /\^6\b/g,
-        "⁶"
-    );
+        content = item.get(
+            "content",
+            ""
+        )
 
-    clean = clean.replace(
-        /\^7\b/g,
-        "⁷"
-    );
+        if role not in (
+            "user",
+            "assistant"
+        ):
+            continue
 
-    clean = clean.replace(
-        /\^8\b/g,
-        "⁸"
-    );
+        if not content:
+            continue
 
-    clean = clean.replace(
-        /\^9\b/g,
-        "⁹"
-    );
+        messages.append({
 
+            "role":
+                role,
 
-    clean = clean.replace(
-        /_0\b/g,
-        "₀"
-    );
+            "content":
+                str(content)
+        })
 
-    clean = clean.replace(
-        /_1\b/g,
-        "₁"
-    );
+    messages.append({
 
-    clean = clean.replace(
-        /_2\b/g,
-        "₂"
-    );
+        "role":
+            "user",
 
-    clean = clean.replace(
-        /_3\b/g,
-        "₃"
-    );
+        "content":
+            prompt
+    })
 
-    clean = clean.replace(
-        /_4\b/g,
-        "₄"
-    );
+    payload = {
 
-    clean = clean.replace(
-        /_5\b/g,
-        "₅"
-    );
+        "model":
+            OLLAMA_MODEL,
 
-    clean = clean.replace(
-        /_6\b/g,
-        "₆"
-    );
+        "messages":
+            messages,
 
-    clean = clean.replace(
-        /_7\b/g,
-        "₇"
-    );
+        "stream":
+            False,
 
-    clean = clean.replace(
-        /_8\b/g,
-        "₈"
-    );
+        "options": {
 
-    clean = clean.replace(
-        /_9\b/g,
-        "₉"
-    );
+            "temperature":
+                0.3,
 
-
-    clean = clean.replace(
-        /[ \t]{2,}/g,
-        " "
-    );
-
-
-    return clean.trim();
-}
-
-
-/* ============================================================
-   FORMAT ANSWER
-============================================================ */
-
-function formatAnswer(text) {
-
-    let clean =
-        cleanMathFormatting(text);
-
-    let html =
-        escapeHtml(clean);
-
-
-    html = html.replace(
-        /\*\*(.*?)\*\*/gs,
-        "<strong>$1</strong>"
-    );
-
-
-    html = html.replace(
-        /^### (.*?)$/gm,
-        "<h3>$1</h3>"
-    );
-
-    html = html.replace(
-        /^## (.*?)$/gm,
-        "<h2>$1</h2>"
-    );
-
-    html = html.replace(
-        /^# (.*?)$/gm,
-        "<h2>$1</h2>"
-    );
-
-
-    html = html.replace(
-        /^- (.*?)$/gm,
-        "• $1"
-    );
-
-
-    html = html.replace(
-        /\n/g,
-        "<br>"
-    );
-
-
-    return html;
-}
-
-
-/* ============================================================
-   ADD MESSAGE
-============================================================ */
-
-function addMessage(role, text) {
-
-    const message =
-        document.createElement("div");
-
-    message.className =
-        "message " + role;
-
-
-    const avatar =
-        document.createElement("div");
-
-    avatar.className =
-        "avatar";
-
-
-    /*
-       NEW:
-       Use Halper image instead of 🤖
-    */
-
-    if (role === "user") {
-
-        avatar.textContent = "U";
-
-    } else {
-
-        const logo =
-            document.createElement("img");
-
-        logo.src =
-            "{{ url_for('static', filename='halper-logo.png') }}";
-
-        logo.className =
-            "assistant-logo";
-
-        logo.alt =
-            "Halper";
-
-        avatar.appendChild(logo);
+            "num_predict":
+                1500
+        }
     }
 
+    try:
 
-    const bubble =
-        document.createElement("div");
+        response = requests.post(
+            f"{OLLAMA_URL}/api/chat",
+            json=payload,
+            timeout=OLLAMA_TIMEOUT
+        )
 
-    bubble.className =
-        "bubble";
+        if response.status_code != 200:
+
+            print(
+                "OLLAMA HTTP ERROR:",
+                response.status_code,
+                response.text
+            )
+
+            return (
+                False,
+                "Ollama returned HTTP "
+                + str(response.status_code)
+            )
+
+        data = response.json()
+
+        message = data.get(
+            "message"
+        )
+
+        if not isinstance(
+            message,
+            dict
+        ):
+
+            return (
+                False,
+                "Ollama returned no message."
+            )
+
+        answer = message.get(
+            "content",
+            ""
+        )
+
+        answer = str(
+            answer
+        ).strip()
+
+        if not answer:
+
+            return (
+                False,
+                "Ollama returned an empty answer."
+            )
+
+        return (
+            True,
+            answer
+        )
+
+    except requests.exceptions.ConnectionError:
+
+        return (
+            False,
+            "Cannot connect to Ollama. "
+            "Make sure Ollama is running."
+        )
+
+    except requests.exceptions.Timeout:
+
+        return (
+            False,
+            "Ollama took too long to respond."
+        )
+
+    except Exception as error:
+
+        print(
+            "OLLAMA ERROR:",
+            repr(error)
+        )
+
+        return (
+            False,
+            str(error)
+        )
 
 
-    bubble.innerHTML =
-        formatAnswer(text);
+# ============================================================
+# LOGIN
+# ============================================================
 
+@app.route(
+    "/login",
+    methods=["POST"]
+)
+def login():
 
-    message.appendChild(avatar);
+    data = request.get_json(
+        silent=True
+    ) or {}
 
-    message.appendChild(bubble);
+    login_value = str(
+        data.get(
+            "login",
+            ""
+        )
+    ).strip()
 
+    password = str(
+        data.get(
+            "password",
+            ""
+        )
+    )
 
-    document
-        .getElementById("chatInner")
-        .appendChild(message);
+    if not login_value or not password:
 
+        return jsonify({
 
-    scrollBottom();
+            "success":
+                False,
 
+            "message":
+                "Enter username/email and password."
+        }), 400
 
-    return {
-        message,
-        bubble
-    };
-}
+    users = load_json(
+        USERS_FILE,
+        {}
+    )
 
+    username_found = None
+    user_found = None
 
-/* ============================================================
-   CAMERA
-============================================================ */
+    for username, user in users.items():
 
-async function openCameraModal() {
+        if not isinstance(
+            user,
+            dict
+        ):
+            continue
 
-    const modal =
-        document.getElementById("cameraModal");
+        email = str(
+            user.get(
+                "email",
+                ""
+            )
+        ).lower()
 
-    const video =
-        document.getElementById("cameraVideo");
-
-    const errorBox =
-        document.getElementById("cameraError");
-
-
-    errorBox.textContent = "";
-
-    modal.style.display = "flex";
-
-
-    try {
+        phone = str(
+            user.get(
+                "phone",
+                ""
+            )
+        )
 
         if (
-            !navigator.mediaDevices ||
-            !navigator.mediaDevices.getUserMedia
-        ) {
+            username.lower()
+            == login_value.lower()
+            or
+            email
+            == login_value.lower()
+            or
+            phone
+            == login_value
+        ):
 
-            throw new Error(
-                "Camera access is not supported by this browser."
-            );
-        }
+            username_found = username
+            user_found = user
 
+            break
 
-        cameraStream =
-            await navigator.mediaDevices.getUserMedia({
+    if not user_found:
 
-                video: {
-                    facingMode: {
-                        ideal: "environment"
-                    },
+        return jsonify({
 
-                    width: {
-                        ideal: 1920
-                    },
+            "success":
+                False,
 
-                    height: {
-                        ideal: 1080
-                    }
-                },
+            "message":
+                "Invalid username, email or phone."
+        }), 401
 
-                audio: false
-            });
+    try:
 
+        password_correct = check_password_hash(
+            user_found.get(
+                "password",
+                ""
+            ),
+            password
+        )
 
-        video.srcObject =
-            cameraStream;
+    except Exception:
 
+        password_correct = False
 
-    } catch (error) {
+    if not password_correct:
 
-        console.error(
-            "CAMERA ERROR:",
-            error
-        );
+        return jsonify({
 
+            "success":
+                False,
 
-        errorBox.textContent =
-            "Camera access failed. Allow camera permission or use Gallery.";
-    }
-}
+            "message":
+                "Incorrect password."
+        }), 401
 
+    session["username"] = username_found
 
-/* ============================================================
-   CAPTURE PHOTO
-============================================================ */
+    latest = get_latest_chat(
+        username_found
+    )
 
-function capturePhoto() {
+    if latest:
 
-    const video =
-        document.getElementById("cameraVideo");
+        session["chat_id"] = latest
 
-    const canvas =
-        document.getElementById("cameraCanvas");
+    else:
 
+        session["chat_id"] = create_chat(
+            username_found
+        )
 
-    if (
-        !video.videoWidth ||
-        !video.videoHeight
-    ) {
+    return jsonify({
 
-        document.getElementById(
-            "cameraError"
-        ).textContent =
-            "Camera is not ready yet.";
+        "success":
+            True,
 
-        return;
-    }
+        "message":
+            "Login successful.",
 
+        "username":
+            username_found
+    })
 
-    const maxSize = 1920;
 
+# ============================================================
+# REGISTER
+# ============================================================
 
-    let width =
-        video.videoWidth;
+@app.route(
+    "/register",
+    methods=["POST"]
+)
+def register():
 
-    let height =
-        video.videoHeight;
+    data = request.get_json(
+        silent=True
+    ) or {}
 
-
-    if (width > maxSize) {
-
-        height =
-            Math.round(
-                height *
-                maxSize /
-                width
-            );
-
-        width = maxSize;
-    }
-
-
-    if (height > maxSize) {
-
-        width =
-            Math.round(
-                width *
-                maxSize /
-                height
-            );
-
-        height = maxSize;
-    }
-
-
-    canvas.width = width;
-
-    canvas.height = height;
-
-
-    const ctx =
-        canvas.getContext("2d");
-
-
-    ctx.drawImage(
-        video,
-        0,
-        0,
-        width,
-        height
-    );
-
-
-    canvas.toBlob(
-        function(blob) {
-
-            if (!blob) {
-                return;
-            }
-
-
-            selectedImage =
-                new File(
-                    [blob],
-                    "camera-question.jpg",
-                    {
-                        type:
-                            "image/jpeg"
-                    }
-                );
-
-
-            showImagePreview(
-                selectedImage
-            );
-
-
-            closeCameraModal();
-
-        },
-
-        "image/jpeg",
-
-        0.90
-    );
-}
-
-
-/* ============================================================
-   CLOSE CAMERA
-============================================================ */
-
-function closeCameraModal() {
-
-    const modal =
-        document.getElementById("cameraModal");
-
-    const video =
-        document.getElementById("cameraVideo");
-
-
-    if (cameraStream) {
-
-        cameraStream
-            .getTracks()
-            .forEach(
-                track =>
-                    track.stop()
-            );
-
-        cameraStream = null;
-    }
-
-
-    video.srcObject = null;
-
-    modal.style.display = "none";
-}
-
-
-/* ============================================================
-   SELECT IMAGE
-============================================================ */
-
-function selectImage(event) {
-
-    const file =
-        event.target.files[0];
-
-
-    if (!file) {
-        return;
-    }
-
-
-    if (
-        !file.type.startsWith("image/")
-    ) {
-
-        alert(
-            "Please select an image."
-        );
-
-        return;
-    }
-
-
-    selectedImage = file;
-
-    showImagePreview(file);
-}
-
-
-/* ============================================================
-   IMAGE PREVIEW
-============================================================ */
-
-function showImagePreview(file) {
-
-    const preview =
-        document.getElementById(
-            "imagePreview"
-        );
-
-    const wrap =
-        document.getElementById(
-            "imagePreviewWrap"
-        );
-
-
-    if (!preview || !wrap) {
-        return;
-    }
-
-
-    preview.src =
-        URL.createObjectURL(file);
-
-
-    wrap.style.display =
-        "block";
-}
-
-
-/* ============================================================
-   REMOVE IMAGE
-============================================================ */
-
-function removeImage() {
-
-    selectedImage = null;
-
-
-    const fileInput =
-        document.getElementById(
-            "imageFileInput"
-        );
-
-
-    if (fileInput) {
-        fileInput.value = "";
-    }
-
-
-    const preview =
-        document.getElementById(
-            "imagePreview"
-        );
-
-
-    const wrap =
-        document.getElementById(
-            "imagePreviewWrap"
-        );
-
-
-    if (preview) {
-
-        preview.removeAttribute(
-            "src"
-        );
-    }
-
-
-    if (wrap) {
-
-        wrap.style.display =
-            "none";
-    }
-}
-
-
-/* ============================================================
-   COMPRESS IMAGE
-============================================================ */
-
-function compressImage(file) {
-
-    return new Promise(
-        (
-            resolve,
-            reject
-        ) => {
-
-            const reader =
-                new FileReader();
-
-            const image =
-                new Image();
-
-
-            reader.onload =
-                function() {
-
-                    image.onload =
-                        function() {
-
-                            const maxSize =
-                                1600;
-
-
-                            let width =
-                                image.width;
-
-                            let height =
-                                image.height;
-
-
-                            if (
-                                width >
-                                maxSize
-                            ) {
-
-                                height =
-                                    Math.round(
-                                        height *
-                                        maxSize /
-                                        width
-                                    );
-
-                                width =
-                                    maxSize;
-                            }
-
-
-                            if (
-                                height >
-                                maxSize
-                            ) {
-
-                                width =
-                                    Math.round(
-                                        width *
-                                        maxSize /
-                                        height
-                                    );
-
-                                height =
-                                    maxSize;
-                            }
-
-
-                            const canvas =
-                                document.createElement(
-                                    "canvas"
-                                );
-
-
-                            canvas.width =
-                                width;
-
-                            canvas.height =
-                                height;
-
-
-                            const ctx =
-                                canvas.getContext(
-                                    "2d"
-                                );
-
-
-                            ctx.drawImage(
-                                image,
-                                0,
-                                0,
-                                width,
-                                height
-                            );
-
-
-                            resolve(
-                                canvas.toDataURL(
-                                    "image/jpeg",
-                                    0.85
-                                )
-                            );
-                        };
-
-
-                    image.onerror =
-                        reject;
-
-
-                    image.src =
-                        reader.result;
-                };
-
-
-            reader.onerror =
-                reject;
-
-
-            reader.readAsDataURL(file);
-        }
-    );
-}
-
-
-/* ============================================================
-   SEND MESSAGE
-============================================================ */
-
-async function sendMessage() {
-
-    if (busy) {
-        return;
-    }
-
-
-    const input =
-        document.getElementById(
-            "messageInput"
-        );
-
-    const sendButton =
-        document.getElementById(
-            "sendButton"
-        );
-
-
-    const text =
-        input.value.trim();
-
-
-    if (
-        !text &&
-        !selectedImage
-    ) {
-        return;
-    }
-
-
-    busy = true;
-
-
-    if (sendButton) {
-        sendButton.disabled = true;
-    }
-
-
-    const welcome =
-        document.getElementById(
-            "welcome"
-        );
-
-
-    if (welcome) {
-        welcome.remove();
-    }
-
-
-    if (text) {
-
-        addMessage(
-            "user",
-            text
-        );
-
-    } else {
-
-        addMessage(
-            "user",
-            "📷 Image question"
-        );
-    }
-
-
-    const answer =
-        addMessage(
-            "assistant",
+    username = str(
+        data.get(
+            "username",
             ""
-        );
+        )
+    ).strip()
 
+    email = str(
+        data.get(
+            "email",
+            ""
+        )
+    ).strip()
 
-    answer.bubble.innerHTML = `
-        <div class="loading">
-            <span></span>
-            <span></span>
-            <span></span>
-        </div>
-    `;
+    phone = str(
+        data.get(
+            "phone",
+            ""
+        )
+    ).strip()
 
+    password = str(
+        data.get(
+            "password",
+            ""
+        )
+    )
 
-    try {
+    if len(username) < 3:
 
-        let imageData = "";
+        return jsonify({
 
+            "success":
+                False,
 
-        if (selectedImage) {
+            "message":
+                "Username must contain at least 3 characters."
+        }), 400
 
-            imageData =
-                await compressImage(
-                    selectedImage
-                );
-        }
+    if not re.fullmatch(
+        r"[A-Za-z0-9_.-]+",
+        username
+    ):
 
+        return jsonify({
 
-        const response =
-            await fetch(
-                "/chat",
-                {
-                    method:
-                        "POST",
+            "success":
+                False,
 
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
+            "message":
+                "Username contains invalid characters."
+        }), 400
 
-                    body:
-                        JSON.stringify({
-                            message:
-                                text,
+    if not email and not phone:
 
-                            image:
-                                imageData
-                        })
-                }
-            );
+        return jsonify({
 
+            "success":
+                False,
 
-        if (!response.ok) {
+            "message":
+                "Enter an email or phone number."
+        }), 400
 
-            const errorText =
-                await response.text();
+    if email:
 
+        if not re.fullmatch(
+            r"[^@\s]+@[^@\s]+\.[^@\s]+",
+            email
+        ):
 
-            throw new Error(
-                errorText ||
-                "Server error."
-            );
-        }
+            return jsonify({
 
+                "success":
+                    False,
 
-        if (!response.body) {
+                "message":
+                    "Enter a valid email address."
+            }), 400
 
-            throw new Error(
-                "No response received."
-            );
-        }
+    if len(password) < 6:
 
+        return jsonify({
 
-        const reader =
-            response.body.getReader();
+            "success":
+                False,
 
-        const decoder =
-            new TextDecoder();
+            "message":
+                "Password must contain at least 6 characters."
+        }), 400
 
-        let result = "";
+    users = load_json(
+        USERS_FILE,
+        {}
+    )
 
+    for existing_username, user in users.items():
 
-        answer.bubble.textContent = "";
+        if not isinstance(
+            user,
+            dict
+        ):
+            continue
 
+        if (
+            existing_username.lower()
+            == username.lower()
+        ):
 
-        while (true) {
+            return jsonify({
 
-            const {
-                value,
-                done
-            } =
-                await reader.read();
+                "success":
+                    False,
 
+                "message":
+                    "Username already exists."
+            }), 409
 
-            if (done) {
-                break;
-            }
+        existing_email = str(
+            user.get(
+                "email",
+                ""
+            )
+        ).lower()
 
+        if (
+            email
+            and
+            existing_email
+            == email.lower()
+        ):
 
-            result +=
-                decoder.decode(
-                    value,
-                    {
-                        stream:
-                            true
-                    }
-                );
+            return jsonify({
 
+                "success":
+                    False,
 
-            answer.bubble.innerHTML =
-                formatAnswer(
-                    result
-                );
+                "message":
+                    "Email already exists."
+            }), 409
 
+        existing_phone = str(
+            user.get(
+                "phone",
+                ""
+            )
+        )
 
-            scrollBottom();
-        }
+        if (
+            phone
+            and
+            existing_phone
+            == phone
+        ):
 
+            return jsonify({
 
-        if (!result.trim()) {
+                "success":
+                    False,
 
-            result =
-                "I couldn't generate an answer.";
+                "message":
+                    "Phone number already exists."
+            }), 409
 
+    users[username] = {
 
-            answer.bubble.innerHTML =
-                formatAnswer(
-                    result
-                );
-        }
+        "email":
+            email,
 
+        "phone":
+            phone,
 
-        addActions(
-            answer.message,
-            result
-        );
+        "password":
+            generate_password_hash(
+                password
+            ),
 
-
-    } catch (error) {
-
-        console.error(
-            "CHAT ERROR:",
-            error
-        );
-
-
-        answer.bubble.innerHTML =
-            "<strong>" +
-            escapeHtml(
-                error.message ||
-                "Something went wrong."
-            ) +
-            "</strong>";
+        "created_at":
+            now_iso()
     }
 
+    if not save_json(
+        USERS_FILE,
+        users
+    ):
 
-    input.value = "";
+        return jsonify({
 
-    autoResize(input);
+            "success":
+                False,
 
-    removeImage();
+            "message":
+                "Could not save the account."
+        }), 500
 
-    busy = false;
+    session["username"] = username
 
+    session["chat_id"] = create_chat(
+        username
+    )
 
-    if (sendButton) {
-        sendButton.disabled = false;
-    }
+    return jsonify({
 
+        "success":
+            True,
 
-    input.focus();
+        "message":
+            "Account created successfully.",
 
-    scrollBottom();
-}
-
-
-/* ============================================================
-   ACTION BUTTONS
-============================================================ */
-
-function addActions(message, answer) {
-
-    const actions =
-        document.createElement(
-            "div"
-        );
-
-
-    actions.className =
-        "actions";
+        "username":
+            username
+    })
 
 
-    const items = [
+# ============================================================
+# LOGOUT
+# ============================================================
 
-        [
-            "🔄 Improve Answer",
+@app.route(
+    "/logout"
+)
+def logout():
+
+    session.clear()
+
+    return redirect(
+        url_for("home")
+    )
+
+
+# ============================================================
+# NEW CHAT
+# ============================================================
+
+@app.route(
+    "/new-chat",
+    methods=["POST"]
+)
+@login_required
+def new_chat():
+
+    username = current_username()
+
+    chat_id = create_chat(
+        username
+    )
+
+    session["chat_id"] = chat_id
+
+    return jsonify({
+
+        "success":
+            True,
+
+        "chat_id":
+            chat_id,
+
+        "title":
+            "New Chat"
+    })
+
+
+# ============================================================
+# HISTORY
+# ============================================================
+
+@app.route(
+    "/history",
+    methods=["GET"]
+)
+@login_required
+def history():
+
+    username = current_username()
+
+    connection = get_db()
+
+    try:
+
+        rows = connection.execute(
+            """
+            SELECT
+                id,
+                title,
+                created_at,
+                updated_at
+            FROM chats
+            WHERE username = ?
+            ORDER BY updated_at DESC
+            """,
+            (username,)
+        ).fetchall()
+
+        chats = []
+
+        for row in rows:
+
+            chats.append({
+
+                "id":
+                    row["id"],
+
+                "title":
+                    row["title"]
+                    or
+                    "New Chat",
+
+                "created_at":
+                    row["created_at"],
+
+                "updated_at":
+                    row["updated_at"]
+            })
+
+        return jsonify({
+
+            "success":
+                True,
+
+            "chats":
+                chats
+        })
+
+    except Exception as error:
+
+        print(
+            "HISTORY ERROR:",
+            repr(error)
+        )
+
+        return jsonify({
+
+            "success":
+                False,
+
+            "message":
+                "Could not load history."
+        }), 500
+
+    finally:
+
+        connection.close()
+
+
+# ============================================================
+# OPEN CHAT
+# ============================================================
+
+@app.route(
+    "/chat/<chat_id>",
+    methods=["GET"]
+)
+@login_required
+def open_chat(chat_id):
+
+    username = current_username()
+
+    chat = get_chat(
+        chat_id,
+        username
+    )
+
+    if not chat:
+
+        return jsonify({
+
+            "success":
+                False,
+
+            "message":
+                "Chat not found."
+        }), 404
+
+    session["chat_id"] = chat_id
+
+    return jsonify({
+
+        "success":
+            True,
+
+        "chat":
+            chat
+    })
+
+
+# ============================================================
+# MAIN CHAT
+# ============================================================
+
+@app.route(
+    "/chat",
+    methods=["POST"]
+)
+@login_required
+def chat():
+
+    data = request.get_json(
+        silent=True
+    ) or {}
+
+    user_message = str(
+        data.get(
+            "message",
+            ""
+        )
+    ).strip()
+
+    if not user_message:
+
+        return jsonify({
+
+            "success":
+                False,
+
+            "message":
+                "Please enter a message."
+        }), 400
+
+    username = current_username()
+
+    chat_id = get_current_chat()
+
+    if not chat_id:
+
+        return jsonify({
+
+            "success":
+                False,
+
+            "message":
+                "Could not create chat."
+        }), 500
+
+    # --------------------------------------------------------
+    # CREATOR QUESTION
+    # --------------------------------------------------------
+
+    if is_creator_question(
+        user_message
+    ):
+
+        answer = creator_response()
+
+        save_message(
+            chat_id,
+            "user",
+            user_message
+        )
+
+        save_message(
+            chat_id,
+            "assistant",
+            answer
+        )
+
+        current_chat = get_chat(
+            chat_id,
+            username
+        )
+
+        if (
+            current_chat
+            and
+            current_chat.get("title")
+            == "New Chat"
+        ):
+
+            set_chat_title(
+                chat_id,
+                user_message[:50]
+            )
+
+        return jsonify({
+
+            "success":
+                True,
+
+            "answer":
+                answer,
+
+            "response":
+                answer,
+
+            "reply":
+                answer,
+
+            "message":
+                answer,
+
+            "chat_id":
+                chat_id
+        })
+
+    # --------------------------------------------------------
+    # GET PREVIOUS CONVERSATION
+    # --------------------------------------------------------
+
+    old_chat = get_chat(
+        chat_id,
+        username
+    )
+
+    conversation = []
+
+    if old_chat:
+
+        conversation = old_chat.get(
+            "messages",
+            []
+        )
+
+    # --------------------------------------------------------
+    # SAVE USER MESSAGE
+    # --------------------------------------------------------
+
+    if not save_message(
+        chat_id,
+        "user",
+        user_message
+    ):
+
+        return jsonify({
+
+            "success":
+                False,
+
+            "message":
+                "Could not save your message."
+        }), 500
+
+    # --------------------------------------------------------
+    # CHAT TITLE
+    # --------------------------------------------------------
+
+    if (
+        old_chat
+        and
+        old_chat.get("title")
+        == "New Chat"
+    ):
+
+        title = user_message[:50]
+
+        if len(user_message) > 50:
+
+            title += "..."
+
+        set_chat_title(
+            chat_id,
+            title
+        )
+
+    # --------------------------------------------------------
+    # OLLAMA
+    # --------------------------------------------------------
+
+    success, answer = call_ollama(
+        user_message,
+        conversation
+    )
+
+    if not success:
+
+        print(
+            "AI ERROR:",
+            answer
+        )
+
+        return jsonify({
+
+            "success":
+                False,
+
+            "answer":
+                "⚠️ " + answer,
+
+            "error":
+                answer,
+
+            "chat_id":
+                chat_id
+        }), 502
+
+    # --------------------------------------------------------
+    # SAVE AI RESPONSE
+    # --------------------------------------------------------
+
+    save_message(
+        chat_id,
+        "assistant",
+        answer
+    )
+
+    return jsonify({
+
+        "success":
+            True,
+
+        "answer":
+            answer,
+
+        "response":
+            answer,
+
+        "reply":
+            answer,
+
+        "message":
+            answer,
+
+        "chat_id":
+            chat_id
+    })
+
+
+# ============================================================
+# IMPROVE
+# ============================================================
+
+@app.route(
+    "/improve",
+    methods=["POST"]
+)
+@login_required
+def improve():
+
+    data = request.get_json(
+        silent=True
+    ) or {}
+
+    question = str(
+        data.get(
+            "question",
+            ""
+        )
+    ).strip()
+
+    answer = str(
+        data.get(
+            "answer",
+            ""
+        )
+    ).strip()
+
+    action = str(
+        data.get(
+            "action",
             "improve"
-        ],
-
-        [
-            "🔎 Check Again",
-            "check"
-        ],
-
-        [
-            "📚 Explain More",
-            "explain"
-        ],
-
-        [
-            "⚡ Make Shorter",
-            "short"
-        ],
-
-        [
-            "🔊 Read Answer",
-            "read"
-        ],
-
-        [
-            "⏹ Stop Reading",
-            "stop"
-        ]
-    ];
-
-
-    items.forEach(
-        ([label, action]) => {
-
-            const button =
-                document.createElement(
-                    "button"
-                );
-
-
-            button.type =
-                "button";
-
-            button.className =
-                "action-btn";
-
-            button.textContent =
-                label;
-
-
-            button.onclick =
-                function() {
-
-                    if (
-                        action ===
-                        "read"
-                    ) {
-
-                        readAnswer(
-                            answer
-                        );
-
-                    } else if (
-                        action ===
-                        "stop"
-                    ) {
-
-                        stopReading();
-
-                    } else {
-
-                        improveAnswer(
-                            action,
-                            answer
-                        );
-                    }
-                };
-
-
-            actions.appendChild(
-                button
-            );
-        }
-    );
-
-
-    message
-        .querySelector(
-            ".bubble"
         )
-        .appendChild(
-            actions
-        );
-}
+    ).strip().lower()
 
+    instructions = {
 
-/* ============================================================
-   FIND LAST QUESTION
-============================================================ */
+        "improve":
+            "Improve the answer while keeping it correct.",
 
-function findLastQuestion() {
+        "check":
+            "Check the answer carefully and correct any errors.",
 
-    const messages =
-        document.querySelectorAll(
-            ".message.user"
-        );
+        "explain":
+            "Explain the answer step by step in simple language.",
 
-
-    if (!messages.length) {
-        return "";
+        "short":
+            "Make the answer shorter while keeping the important information."
     }
 
+    instruction = instructions.get(
+        action,
+        instructions["improve"]
+    )
 
-    return messages[
-        messages.length - 1
-    ]
-        .querySelector(
-            ".bubble"
-        )
-        .innerText
-        .trim();
-}
+    prompt = f"""
+Question:
+
+{question}
+
+Existing answer:
+
+{answer}
+
+Task:
+
+{instruction}
+
+Give the corrected and useful result.
+"""
+
+    success, result = call_ollama(
+        prompt
+    )
+
+    if not success:
+
+        return jsonify({
+
+            "success":
+                False,
+
+            "answer":
+                "⚠️ " + result,
+
+            "error":
+                result
+        }), 502
+
+    return jsonify({
+
+        "success":
+            True,
+
+        "answer":
+            result,
+
+        "response":
+            result,
+
+        "reply":
+            result
+    })
 
 
-/* ============================================================
-   IMPROVE
-============================================================ */
+# ============================================================
+# HEALTH
+# ============================================================
 
-async function improveAnswer(
-    action,
-    oldAnswer
-) {
+@app.route(
+    "/health",
+    methods=["GET"]
+)
+def health():
 
-    if (busy) {
-        return;
-    }
+    ollama_ok, ollama_info = (
+        check_ollama()
+    )
 
+    return jsonify({
 
-    const question =
-        findLastQuestion();
+        "status":
+            "ok",
 
+        "application":
+            "Halper 2.0",
 
-    if (!question) {
-        return;
-    }
+        "ai_provider":
+            "Ollama",
 
+        "ollama_url":
+            OLLAMA_URL,
 
-    busy = true;
+        "ollama_model":
+            OLLAMA_MODEL,
 
+        "ollama_connected":
+            ollama_ok,
 
-    const answer =
-        addMessage(
-            "assistant",
-            "Working..."
-        );
+        "ollama_info":
+            ollama_info,
 
+        "creator_configured":
+            bool(
+                CREATOR_INFO.get(
+                    "name"
+                )
+                and
+                CREATOR_INFO.get(
+                    "name"
+                )
+                != "YOUR NAME"
+            ),
 
-    try {
+        "routes": {
 
-        const response =
-            await fetch(
+            "home":
+                "/",
+
+            "login":
+                "/login",
+
+            "register":
+                "/register",
+
+            "chat":
+                "/chat",
+
+            "history":
+                "/history",
+
+            "new_chat":
+                "/new-chat",
+
+            "improve":
                 "/improve",
-                {
-                    method:
-                        "POST",
 
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body:
-                        JSON.stringify({
-                            question:
-                                question,
-
-                            answer:
-                                oldAnswer,
-
-                            action:
-                                action
-                        })
-                }
-            );
-
-
-        if (!response.ok) {
-
-            throw new Error(
-                await response.text()
-            );
+            "health":
+                "/health"
         }
-
-
-        const reader =
-            response.body.getReader();
-
-        const decoder =
-            new TextDecoder();
-
-        let result = "";
-
-
-        answer.bubble.textContent =
-            "";
-
-
-        while (true) {
-
-            const {
-                value,
-                done
-            } =
-                await reader.read();
-
-
-            if (done) {
-                break;
-            }
-
-
-            result +=
-                decoder.decode(
-                    value,
-                    {
-                        stream:
-                            true
-                    }
-                );
-
-
-            answer.bubble.innerHTML =
-                formatAnswer(
-                    result
-                );
-
-
-            scrollBottom();
-        }
-
-
-    } catch (error) {
-
-        console.error(
-            "IMPROVE ERROR:",
-            error
-        );
-
-
-        answer.bubble.innerHTML =
-            "<strong>" +
-            escapeHtml(
-                error.message ||
-                "Could not improve answer."
-            ) +
-            "</strong>";
-    }
-
-
-    busy = false;
-}
-
-
-/* ============================================================
-   MICROPHONE
-============================================================ */
-
-function startDictation() {
-
-    const SpeechRecognition =
-        window.SpeechRecognition ||
-        window.webkitSpeechRecognition;
-
-
-    if (!SpeechRecognition) {
-
-        alert(
-            "Voice input is not supported in this browser."
-        );
-
-        return;
-    }
-
-
-    const recognition =
-        new SpeechRecognition();
-
-
-    recognition.lang =
-        "en-IN";
-
-    recognition.continuous =
-        false;
-
-    recognition.interimResults =
-        true;
-
-
-    const input =
-        document.getElementById(
-            "messageInput"
-        );
-
-
-    input.placeholder =
-        "Listening...";
-
-
-    recognition.onresult =
-        function(event) {
-
-            let text = "";
-
-
-            for (
-                let i =
-                    event.resultIndex;
-
-                i <
-                event.results.length;
-
-                i++
-            ) {
-
-                text +=
-                    event.results[
-                        i
-                    ][0].transcript;
-            }
-
-
-            input.value =
-                text;
-
-
-            autoResize(
-                input
-            );
-        };
-
-
-    recognition.onerror =
-        function(error) {
-
-            console.error(
-                "VOICE ERROR:",
-                error
-            );
-
-
-            input.placeholder =
-                "Ask Halper anything...";
-        };
-
-
-    recognition.onend =
-        function() {
-
-            input.placeholder =
-                "Ask Halper anything...";
-        };
-
-
-    recognition.start();
-}
-
-
-/* ============================================================
-   TEXT TO SPEECH
-============================================================ */
-
-function readAnswer(text) {
-
-    if (
-        !(
-            "speechSynthesis"
-            in window
-        )
-    ) {
-
-        alert(
-            "Text-to-speech is not supported."
-        );
-
-        return;
-    }
-
-
-    window.speechSynthesis.cancel();
-
-
-    const cleanText =
-        cleanMathFormatting(
-            text
-        )
-        .replace(
-            /[*#]/g,
+    })
+
+
+# ============================================================
+# HOME
+# ============================================================
+
+@app.route("/")
+def home():
+
+    return render_template(
+        "index.html",
+        logged_in=(
+            "username" in session
+        ),
+        username=session.get(
+            "username",
             ""
         )
-        .replace(
-            /\n+/g,
-            ". "
-        );
+    )
 
 
-    const speech =
-        new SpeechSynthesisUtterance(
-            cleanText
-        );
+# ============================================================
+# ERROR HANDLERS
+# ============================================================
 
+@app.errorhandler(404)
+def page_not_found(error):
 
-    speech.rate =
-        0.95;
+    return jsonify({
 
-    speech.pitch =
-        1;
+        "success":
+            False,
 
+        "message":
+            "Route not found.",
 
-    window.speechSynthesis.speak(
-        speech
-    );
-}
+        "path":
+            request.path
+    }), 404
 
 
-/* ============================================================
-   STOP TEXT TO SPEECH
-============================================================ */
+@app.errorhandler(500)
+def internal_error(error):
 
-function stopReading() {
+    print(
+        "INTERNAL SERVER ERROR:",
+        repr(error)
+    )
 
-    if (
-        "speechSynthesis"
-        in window
-    ) {
+    return jsonify({
 
-        window.speechSynthesis.cancel();
-    }
-}
+        "success":
+            False,
 
+        "message":
+            "Internal server error."
+    }), 500
 
-/* ============================================================
-   KEYBOARD
-============================================================ */
 
-function handleKey(event) {
+# ============================================================
+# START
+# ============================================================
 
-    if (
-        event.key === "Enter" &&
-        !event.shiftKey
-    ) {
+if __name__ == "__main__":
 
-        event.preventDefault();
+    port = int(
+        os.environ.get(
+            "PORT",
+            "5000"
+        )
+    )
 
-        sendMessage();
-    }
-}
+    print()
+    print("=" * 55)
+    print("                  HALPER 2.0")
+    print("=" * 55)
+    print("AI Provider :", "Ollama")
+    print("Model       :", OLLAMA_MODEL)
+    print("Ollama URL  :", OLLAMA_URL)
+    print("Creator     :", CREATOR_INFO["name"])
+    print("Port        :", port)
+    print("=" * 55)
+    print()
 
-
-/* ============================================================
-   TEXTAREA RESIZE
-============================================================ */
-
-function autoResize(textarea) {
-
-    if (!textarea) {
-        return;
-    }
-
-
-    textarea.style.height =
-        "auto";
-
-
-    textarea.style.height =
-        Math.min(
-            textarea.scrollHeight,
-            150
-        ) + "px";
-}
-
-
-/* ============================================================
-   NEW CHAT
-============================================================ */
-
-function newChat() {
-
-    stopReading();
-
-
-    document.getElementById(
-        "chatInner"
-    ).innerHTML = `
-
-        <div
-            class="welcome"
-            id="welcome"
-        >
-
-            <img
-                src="{{ url_for('static', filename='halper-logo.png') }}"
-                class="welcome-logo"
-                alt="Halper Logo"
-            >
-
-            <p>
-                Ask Mathematics, Physics,
-                Chemistry, Biology or general questions.
-            </p>
-
-            <p>
-                You can also use the camera,
-                gallery or microphone.
-            </p>
-
-        </div>
-    `;
-
-
-    const input =
-        document.getElementById(
-            "messageInput"
-        );
-
-
-    if (input) {
-
-        input.value = "";
-
-        autoResize(input);
-
-        input.focus();
-    }
-
-
-    removeImage();
-}
-
-
-/* ============================================================
-   SCROLL
-============================================================ */
-
-function scrollBottom() {
-
-    const chat =
-        document.getElementById(
-            "chat"
-        );
-
-
-    if (!chat) {
-        return;
-    }
-
-
-    setTimeout(
-        function() {
-
-            chat.scrollTop =
-                chat.scrollHeight;
-
-        },
-        20
-    );
-}
-
-
-/* ============================================================
-   STARTUP
-============================================================ */
-
-document.addEventListener(
-    "visibilitychange",
-    function() {
-
-        if (document.hidden) {
-            stopReading();
-        }
-
-    }
-);
-
-
-document.addEventListener(
-    "DOMContentLoaded",
-    function() {
-
-        const input =
-            document.getElementById(
-                "messageInput"
-            );
-
-
-        if (input) {
-            input.focus();
-        }
-
-    }
-);
-
-</script>
-
-</body>
-</html>
+    app.run(
+        host="0.0.0.0",
+        port=port,
+        debug=True
+    )

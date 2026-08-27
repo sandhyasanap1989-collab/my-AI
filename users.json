@@ -1,7 +1,1 @@
-{
-  "ram": {
-    "email": "",
-    "phone": "9834022225",
-    "password": "scrypt:32768:8:1$cj0qvryC43srzleB$52a7760df8fc95b70cfecc9c0e3f7fd4b66035f4295a4f426e5c8eb0d3a8c332f2e45cbebd849546173f559b7e9511e90f86c1cc590be790bd033dd8edf7daa2"
-  }
-}
+{}

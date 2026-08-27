@@ -1,1689 +1,1266 @@
-from flask import Flask, render_template, request, Response, session, redirect, url_for
 import os
 import re
 import json
-import threading
+import uuid
+import sqlite3
+from datetime import datetime
+from functools import wraps
 
+import requests
+from flask import (
+    Flask,
+    render_template,
+    request,
+    jsonify,
+    session,
+    redirect,
+    url_for
+)
 from werkzeug.security import generate_password_hash, check_password_hash
-from openai import OpenAI
 
 
 # ============================================================
-# APP
+# HALPER 2.0
+# Flask + Local Ollama
 # ============================================================
 
 app = Flask(__name__)
 
-app.secret_key = os.getenv(
-    "FLASK_SECRET_KEY",
-    "change-this-secret-key",
+app.secret_key = os.environ.get(
+    "SECRET_KEY",
+    "halper-2-secret-change-this"
 )
 
-USERS_FILE = "users.json"
-QUESTION_SETS_FILE = "question_sets.json"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-FILE_LOCK = threading.Lock()
+DATA_DIR = os.environ.get(
+    "DATA_DIR",
+    BASE_DIR
+)
+
+os.makedirs(DATA_DIR, exist_ok=True)
 
 
 # ============================================================
-# HUGGING FACE
+# CREATOR INFORMATION
+# ============================================================
+# CHANGE THESE VALUES
+# Do NOT put passwords, API keys or private information here.
 # ============================================================
 
-HF_TOKEN = os.getenv("HF_TOKEN")
+CREATOR_INFO = {
+    "name": "YOUR NAME",
+    "role": "Creator and developer of Halper",
+    "project": "Halper 2.0",
 
-TEXT_MODEL = "openai/gpt-oss-120b"
-VISION_MODEL = "Qwen/Qwen2.5-VL-3B-Instruct"
+    "about": (
+        "Halper is an educational AI project created "
+        "to help students learn, practice and understand "
+        "different subjects."
+    ),
 
-hf_client = None
-
-if HF_TOKEN:
-    hf_client = OpenAI(
-        base_url="https://router.huggingface.co/v1",
-        api_key=HF_TOKEN,
+    "extra": (
+        "Halper 2.0 uses local AI through Ollama."
     )
+}
 
 
 # ============================================================
-# CREATOR
+# OLLAMA
 # ============================================================
 
-CREATOR_NAME = "Soham Chandrahas Sanap"
+OLLAMA_URL = os.environ.get(
+    "OLLAMA_URL",
+    "http://127.0.0.1:11434"
+).rstrip("/")
 
-CREATOR_RESPONSE = f"""
-My creator is **{CREATOR_NAME}**.
+OLLAMA_MODEL = os.environ.get(
+    "OLLAMA_MODEL",
+    "llama3.2:3b"
+)
 
-He built Halper as a study assistant for Mathematics,
-Physics, Chemistry and Biology.
-""".strip()
-
-
-# IMPORTANT:
-# Every phrase that means "who made you" must reach this
-# function instead of the normal AI.
-
-CREATOR_PATTERNS = [
-    r"\bwho\s+created\s+you\b",
-    r"\bwho\s+made\s+you\b",
-    r"\bwho\s+developed\s+you\b",
-    r"\bwho\s+built\s+you\b",
-    r"\bwho\s+is\s+your\s+creator\b",
-    r"\bwho\s+is\s+your\s+maker\b",
-    r"\bwho\s+is\s+your\s+father\b",
-    r"\bwho\s+is\s+your\s+dad\b",
-    r"\bwho\s+is\s+your\s+parent\b",
-    r"\bwho\s+made\s+this\s+ai\b",
-    r"\bwho\s+built\s+this\s+ai\b",
-    r"\bwho\s+created\s+this\s+ai\b",
-    r"\bwho\s+developed\s+this\s+ai\b",
-    r"\btell\s+me\s+your\s+creator\b",
-    r"\btell\s+me\s+who\s+made\s+you\b",
-    r"\bmeans\s+who\s+created\s+you\b",
-]
-
-
-def is_creator_question(question):
-    q = " ".join(
-        question.lower().strip().split()
+OLLAMA_TIMEOUT = int(
+    os.environ.get(
+        "OLLAMA_TIMEOUT",
+        "180"
     )
-
-    return any(
-        re.search(pattern, q)
-        for pattern in CREATOR_PATTERNS
-    )
+)
 
 
 # ============================================================
-# FILE HELPERS
+# FILES
 # ============================================================
 
-def load_json(path, default):
-    if not os.path.exists(path):
-        return default
+USERS_FILE = os.path.join(
+    DATA_DIR,
+    "users.json"
+)
 
+DATABASE_FILE = os.path.join(
+    DATA_DIR,
+    "halper.db"
+)
+
+
+# ============================================================
+# JSON HELPERS
+# ============================================================
+
+def load_json(filename, default):
     try:
+        if not os.path.exists(filename):
+            return default
+
         with open(
-            path,
+            filename,
             "r",
-            encoding="utf-8",
+            encoding="utf-8"
         ) as file:
             return json.load(file)
 
-    except (
-        OSError,
-        json.JSONDecodeError,
-    ):
+    except Exception as error:
+        print("JSON LOAD ERROR:", repr(error))
         return default
 
 
-def save_json(path, data):
-    temp = path + ".tmp"
+def save_json(filename, data):
+    temporary_file = filename + ".tmp"
 
-    with open(
-        temp,
-        "w",
-        encoding="utf-8",
-    ) as file:
-        json.dump(
-            data,
-            file,
-            indent=2,
-            ensure_ascii=False,
+    try:
+        with open(
+            temporary_file,
+            "w",
+            encoding="utf-8"
+        ) as file:
+            json.dump(
+                data,
+                file,
+                indent=2,
+                ensure_ascii=False
+            )
+
+        os.replace(
+            temporary_file,
+            filename
         )
 
-    os.replace(
-        temp,
-        path,
+        return True
+
+    except Exception as error:
+        print("JSON SAVE ERROR:", repr(error))
+
+        try:
+            if os.path.exists(temporary_file):
+                os.remove(temporary_file)
+        except Exception:
+            pass
+
+        return False
+
+
+if not os.path.exists(USERS_FILE):
+    save_json(USERS_FILE, {})
+
+
+# ============================================================
+# DATABASE
+# ============================================================
+
+def get_db():
+    connection = sqlite3.connect(
+        DATABASE_FILE,
+        timeout=30
     )
 
+    connection.row_factory = sqlite3.Row
+
+    return connection
+
+
+def initialize_database():
+
+    connection = get_db()
+
+    try:
+
+        connection.execute(
+            "PRAGMA foreign_keys = ON"
+        )
+
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS chats (
+                id TEXT PRIMARY KEY,
+                username TEXT NOT NULL,
+                title TEXT NOT NULL DEFAULT 'New Chat',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                chat_id TEXT NOT NULL,
+                role TEXT NOT NULL,
+                content TEXT NOT NULL,
+                timestamp TEXT NOT NULL,
+
+                FOREIGN KEY(chat_id)
+                REFERENCES chats(id)
+                ON DELETE CASCADE
+            )
+            """
+        )
+
+        connection.execute(
+            """
+            CREATE INDEX IF NOT EXISTS
+            idx_chats_username
+            ON chats(username)
+            """
+        )
+
+        connection.execute(
+            """
+            CREATE INDEX IF NOT EXISTS
+            idx_messages_chat
+            ON messages(chat_id)
+            """
+        )
+
+        connection.commit()
+
+    except Exception as error:
+
+        connection.rollback()
+
+        print(
+            "DATABASE INITIALIZATION ERROR:",
+            repr(error)
+        )
+
+    finally:
+        connection.close()
+
+
+initialize_database()
+
 
 # ============================================================
-# USERS
+# TIME
 # ============================================================
 
-def load_users():
-    data = load_json(
-        USERS_FILE,
-        {},
+def now_iso():
+    return datetime.utcnow().isoformat()
+
+
+# ============================================================
+# CREATOR QUESTIONS
+# ============================================================
+
+def is_creator_question(text):
+
+    text = str(
+        text or ""
+    ).lower().strip()
+
+    phrases = [
+
+        "who created you",
+        "who is your creator",
+        "who created halper",
+
+        "who made you",
+        "who made halper",
+
+        "who developed you",
+        "who developed halper",
+
+        "who built you",
+        "who built halper",
+
+        "who programmed you",
+        "who programmed halper",
+
+        "who designed you",
+        "who designed halper",
+
+        "who is behind halper",
+        "who is behind you",
+
+        "who is your developer",
+        "who is halper developer",
+        "who is halper's developer",
+
+        "who is your maker",
+        "who is halper maker",
+        "who is halper's maker",
+
+        "tell me about your creator",
+        "tell me about halper creator",
+
+        "tell me about your developer",
+        "tell me about halper developer",
+
+        "who is your father",
+        "who is halper father",
+        "who is halper's father",
+
+        "who is your dad",
+        "who is halper dad",
+        "who is halper's dad"
+    ]
+
+    for phrase in phrases:
+
+        if phrase in text:
+            return True
+
+    creator_words = (
+        "creator",
+        "developer",
+        "maker",
+        "father",
+        "dad",
+        "created",
+        "developed",
+        "built",
+        "made"
+    )
+
+    halper_words = (
+        "you",
+        "halper",
+        "your"
+    )
+
+    has_creator_word = any(
+        word in text
+        for word in creator_words
+    )
+
+    has_halper_reference = any(
+        word in text
+        for word in halper_words
     )
 
     return (
-        data
-        if isinstance(data, dict)
-        else {}
+        has_creator_word
+        and
+        has_halper_reference
     )
 
 
-def save_users(data):
-    with FILE_LOCK:
-        save_json(
-            USERS_FILE,
-            data,
+def creator_response():
+
+    name = CREATOR_INFO.get(
+        "name",
+        "the creator"
+    )
+
+    role = CREATOR_INFO.get(
+        "role",
+        "the developer"
+    )
+
+    project = CREATOR_INFO.get(
+        "project",
+        "Halper 2.0"
+    )
+
+    about = CREATOR_INFO.get(
+        "about",
+        ""
+    )
+
+    extra = CREATOR_INFO.get(
+        "extra",
+        ""
+    )
+
+    response = (
+        f"I was created and developed by {name}. "
+        f"They are the {role} of {project}.\n\n"
+        f"{about}"
+    )
+
+    if extra:
+        response += (
+            f"\n\n{extra}"
         )
 
+    return response
+
 
 # ============================================================
-# QUESTION SET STORAGE
+# AUTHENTICATION
 # ============================================================
 
-def get_username():
+def current_username():
     return session.get("username")
 
 
-def load_question_sets():
-    data = load_json(
-        QUESTION_SETS_FILE,
-        {},
+def login_required(function):
+
+    @wraps(function)
+    def wrapper(*args, **kwargs):
+
+        if not session.get("username"):
+
+            return jsonify({
+                "success": False,
+                "message": "Please login first."
+            }), 401
+
+        return function(
+            *args,
+            **kwargs
+        )
+
+    return wrapper
+
+
+# ============================================================
+# CHAT FUNCTIONS
+# ============================================================
+
+def create_chat(username):
+
+    chat_id = str(
+        uuid.uuid4()
     )
 
-    return (
-        data
-        if isinstance(data, dict)
-        else {}
-    )
+    timestamp = now_iso()
+
+    connection = get_db()
+
+    try:
+
+        connection.execute(
+            """
+            INSERT INTO chats
+            (
+                id,
+                username,
+                title,
+                created_at,
+                updated_at
+            )
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                chat_id,
+                username,
+                "New Chat",
+                timestamp,
+                timestamp
+            )
+        )
+
+        connection.commit()
+
+    finally:
+
+        connection.close()
+
+    return chat_id
 
 
-def get_question_set():
-    username = get_username()
+def chat_exists(chat_id, username):
+
+    connection = get_db()
+
+    try:
+
+        row = connection.execute(
+            """
+            SELECT id
+            FROM chats
+            WHERE id = ?
+            AND username = ?
+            """,
+            (
+                chat_id,
+                username
+            )
+        ).fetchone()
+
+        return row is not None
+
+    finally:
+
+        connection.close()
+
+
+def get_latest_chat(username):
+
+    connection = get_db()
+
+    try:
+
+        row = connection.execute(
+            """
+            SELECT id
+            FROM chats
+            WHERE username = ?
+            ORDER BY updated_at DESC
+            LIMIT 1
+            """,
+            (username,)
+        ).fetchone()
+
+        if row:
+            return row["id"]
+
+        return None
+
+    finally:
+
+        connection.close()
+
+
+def get_current_chat():
+
+    username = current_username()
 
     if not username:
         return None
 
-    sets = load_question_sets()
+    saved_chat = session.get(
+        "chat_id"
+    )
 
-    return sets.get(username)
+    if saved_chat:
+
+        if chat_exists(
+            saved_chat,
+            username
+        ):
+            return saved_chat
+
+    latest = get_latest_chat(
+        username
+    )
+
+    if latest:
+
+        session["chat_id"] = latest
+
+        return latest
+
+    new_chat = create_chat(
+        username
+    )
+
+    session["chat_id"] = new_chat
+
+    return new_chat
 
 
-def save_question_set(
-    request_text,
-    answer,
-    subject,
-    difficulty,
+def save_message(
+    chat_id,
+    role,
+    content
 ):
-    username = get_username()
 
-    if not username:
-        return
-
-    sets = load_question_sets()
-
-    sets[username] = {
-        "request": request_text,
-        "answer": answer,
-        "subject": subject,
-        "difficulty": difficulty,
-    }
-
-    with FILE_LOCK:
-        save_json(
-            QUESTION_SETS_FILE,
-            sets,
-        )
-
-
-def clear_question_set():
-    username = get_username()
-
-    if not username:
-        return
-
-    sets = load_question_sets()
-
-    if username in sets:
-        del sets[username]
-
-        with FILE_LOCK:
-            save_json(
-                QUESTION_SETS_FILE,
-                sets,
-            )
-
-
-# ============================================================
-# CHAT HISTORY
-# ============================================================
-
-def get_history():
-    return session.get(
-        "chat_history",
-        [],
-    )
-
-
-def save_history(
-    question,
-    answer,
-    category="normal",
-):
-    history = get_history()
-
-    history.append({
-        "question": question,
-        "answer": answer[:12000],
-        "category": category,
-    })
-
-    # Keep session small.
-    session["chat_history"] = history[-8:]
-    session.modified = True
-
-
-# ============================================================
-# FORMATTING
-# ============================================================
-
-PLAIN_MATH_RULE = """
-Never use LaTeX.
-
-Use readable notation:
-1/2
-√2
-√3
-sin θ
-cos θ
-tan θ
-sec θ
-cosec θ
-cot θ
-π
-θ
-α
-β
-Ω
-μ
-λ
-Δ
-×
-÷
-≤
-≥
-≠
-≈
-x²
-x³
-
-Do not output:
-\\frac
-\\sqrt
-\\sin
-\\cos
-\\tan
-\\left
-\\right
-\\[
-\\]
-\\(
-\\)
-$$
-"""
-
-
-def clean_output(text):
-    if not text:
-        return ""
-
-    text = str(text)
-
-    replacements = {
-        "\\[": "",
-        "\\]": "",
-        "\\(": "",
-        "\\)": "",
-        "$$": "",
-
-        "\\times": "×",
-        "\\cdot": "·",
-        "\\div": "÷",
-        "\\pm": "±",
-
-        "\\leq": "≤",
-        "\\le": "≤",
-        "\\geq": "≥",
-        "\\ge": "≥",
-        "\\neq": "≠",
-        "\\ne": "≠",
-        "\\approx": "≈",
-
-        "\\rightarrow": "→",
-        "\\to": "→",
-
-        "\\Omega": "Ω",
-        "\\mu": "μ",
-        "\\lambda": "λ",
-        "\\rho": "ρ",
-        "\\sigma": "σ",
-        "\\epsilon": "ε",
-        "\\theta": "θ",
-        "\\alpha": "α",
-        "\\beta": "β",
-        "\\gamma": "γ",
-        "\\Delta": "Δ",
-        "\\omega": "ω",
-        "\\pi": "π",
-        "\\infty": "∞",
-        "\\circ": "°",
-
-        "\\sin": "sin",
-        "\\cos": "cos",
-        "\\tan": "tan",
-        "\\sec": "sec",
-        "\\csc": "cosec",
-        "\\cot": "cot",
-        "\\log": "log",
-        "\\ln": "ln",
-
-        "\\left": "",
-        "\\right": "",
-
-        "\\quad": " ",
-        "\\qquad": " ",
-        "\\;": " ",
-        "\\,": " ",
-        "\\!": "",
-    }
-
-    for old, new in replacements.items():
-        text = text.replace(
-            old,
-            new,
-        )
-
-    text = re.sub(
-        r"\\(?:d)?frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}",
-        r"(\1/\2)",
-        text,
-    )
-
-    text = re.sub(
-        r"\\sqrt\s*\{([^{}]*)\}",
-        r"√(\1)",
-        text,
-    )
-
-    text = re.sub(
-        r"\\(?:text|mathrm|mathbf|mathit|boxed)\s*\{([^{}]*)\}",
-        r"\1",
-        text,
-    )
-
-    text = re.sub(
-        r"\\[A-Za-z]+",
-        lambda m: m.group(0)[1:],
-        text,
-    )
-
-    text = text.replace(
-        "√(2)",
-        "√2",
-    )
-    text = text.replace(
-        "√(3)",
-        "√3",
-    )
-    text = text.replace(
-        "√(5)",
-        "√5",
-    )
-
-    text = text.replace(
-        "^2",
-        "²",
-    )
-    text = text.replace(
-        "^3",
-        "³",
-    )
-
-    text = re.sub(
-        r"\n{3,}",
-        "\n\n",
-        text,
-    )
-
-    return text.strip()
-
-
-# ============================================================
-# SUBJECT DETECTION
-# ============================================================
-
-def detect_subject(question):
-    q = question.lower()
-
-    groups = {
-        "math": [
-            "math",
-            "mathematics",
-            "algebra",
-            "equation",
-            "quadratic",
-            "polynomial",
-            "trigonometry",
-            "trigonometric",
-            "sin",
-            "cos",
-            "tan",
-            "sec",
-            "cosec",
-            "cot",
-            "geometry",
-            "identity",
-            "surds",
-            "probability",
-            "permutation",
-            "combination",
-            "sequence",
-            "series",
-            "calculus",
-            "integral",
-            "derivative",
-            "matrix",
-            "determinant",
-            "vector",
-            "complex",
-            "number theory",
-            "divisibility",
-            "function",
-            "proof",
-        ],
-
-        "physics": [
-            "physics",
-            "force",
-            "velocity",
-            "acceleration",
-            "newton",
-            "momentum",
-            "work",
-            "energy",
-            "power",
-            "friction",
-            "gravitation",
-            "gravity",
-            "current",
-            "voltage",
-            "resistance",
-            "circuit",
-            "electric",
-            "magnetic",
-            "lens",
-            "mirror",
-            "refraction",
-            "heat",
-            "temperature",
-            "pressure",
-            "density",
-            "rotation",
-            "torque",
-            "oscillation",
-            "shm",
-            "wave",
-            "capacitor",
-            "induction",
-        ],
-
-        "chemistry": [
-            "chemistry",
-            "mole",
-            "molarity",
-            "stoichiometry",
-            "redox",
-            "acid",
-            "base",
-            "equilibrium",
-            "enthalpy",
-            "electrochemistry",
-            "organic",
-            "alkane",
-            "alkene",
-            "benzene",
-            "reaction",
-            "compound",
-            "atom",
-            "electron",
-        ],
-
-        "biology": [
-            "biology",
-            "cell",
-            "mitosis",
-            "meiosis",
-            "chromosome",
-            "gene",
-            "genetics",
-            "allele",
-            "dna",
-            "rna",
-            "protein",
-            "enzyme",
-            "photosynthesis",
-            "respiration",
-            "plant",
-            "animal",
-            "reproduction",
-            "reproduction",
-            "evolution",
-            "ecology",
-            "hormone",
-            "neuron",
-        ],
-    }
-
-    scores = {
-        key: sum(
-            word in q
-            for word in words
-        )
-        for key, words in groups.items()
-    }
-
-    best = max(
-        scores,
-        key=scores.get,
-    )
-
-    return (
-        best
-        if scores[best] > 0
-        else "general"
-    )
-
-
-# ============================================================
-# DIFFICULTY
-# ============================================================
-
-def detect_difficulty(question):
-    q = question.lower()
-
-    hard_words = [
-        "jee advanced",
-        "jee adv",
-        "hardest",
-        "hard",
-        "difficult",
-        "challenging",
-        "olympiad",
-        "prove",
-        "derive",
-        "derivation",
-        "multi-step",
-        "constraint",
-        "optimization",
-        "small oscillation",
-        "multiple correct",
-        "integer answer",
-    ]
-
-    score = sum(
-        q.count(word) * 2
-        for word in hard_words
-    )
-
-    if len(q) > 350:
-        score += 2
-
-    if score >= 6:
-        return "advanced"
-
-    if score >= 2:
-        return "intermediate"
-
-    return "basic"
-
-
-# ============================================================
-# AI PROMPTS
-# ============================================================
-
-GENERAL_PROMPT = """
-You are Halper, a careful study assistant.
-
-Answer the user's actual question.
-
-Never switch subjects without a reason.
-Never invent personal information.
-Never use unrelated memory.
-
-Read the complete question.
-Check important calculations.
-Answer every requested part.
-"""
-
-MATH_PROMPT = GENERAL_PROMPT + """
-You are an expert Mathematics solver.
-
-For difficult Mathematics:
-- identify the target
-- identify the given information
-- choose the correct method
-- solve step by step
-- check algebra
-- check arithmetic
-- verify the final result
-- verify MCQ options
-- check domains and conditions
-- actually prove identities when asked
-"""
-
-PHYSICS_PROMPT = GENERAL_PROMPT + """
-You are an expert Physics solver.
-
-For difficult Physics:
-- understand the physical setup
-- identify forces and constraints
-- choose coordinates
-- find equilibrium when necessary
-- write the governing equations
-- derive the result
-- check signs
-- check units
-- check dimensions
-- check limiting cases when useful
-"""
-
-CHEMISTRY_PROMPT = GENERAL_PROMPT + """
-You are an expert Chemistry solver.
-Check reactions, stoichiometry, units and numerical calculations.
-"""
-
-BIOLOGY_PROMPT = GENERAL_PROMPT + """
-You are an expert Biology solver.
-Use correct biological concepts and answer the exact question.
-"""
-
-
-def subject_prompt(subject):
-    return {
-        "math": MATH_PROMPT,
-        "physics": PHYSICS_PROMPT,
-        "chemistry": CHEMISTRY_PROMPT,
-        "biology": BIOLOGY_PROMPT,
-        "general": GENERAL_PROMPT,
-    }.get(
-        subject,
-        GENERAL_PROMPT,
-    ) + "\n\n" + PLAIN_MATH_RULE
-
-
-# ============================================================
-# TEXT AI
-# ============================================================
-
-def text_ai(
-    instructions,
-    user_input,
-    reasoning="medium",
-    max_tokens=7000,
-):
-    if not hf_client:
-        raise RuntimeError(
-            "HF_TOKEN is missing."
-        )
-
-    instructions += (
-        "\n\n"
-        + PLAIN_MATH_RULE
-    )
+    connection = get_db()
 
     try:
-        response = hf_client.responses.create(
-            model=TEXT_MODEL,
-            instructions=instructions,
-            input=user_input,
-            reasoning={
-                "effort": reasoning,
-            },
-            max_output_tokens=max_tokens,
+
+        timestamp = now_iso()
+
+        connection.execute(
+            """
+            INSERT INTO messages
+            (
+                chat_id,
+                role,
+                content,
+                timestamp
+            )
+            VALUES (?, ?, ?, ?)
+            """,
+            (
+                chat_id,
+                role,
+                content,
+                timestamp
+            )
         )
 
-        return clean_output(
-            response.output_text or ""
+        connection.execute(
+            """
+            UPDATE chats
+            SET updated_at = ?
+            WHERE id = ?
+            """,
+            (
+                timestamp,
+                chat_id
+            )
+        )
+
+        connection.commit()
+
+        return True
+
+    except Exception as error:
+
+        connection.rollback()
+
+        print(
+            "SAVE MESSAGE ERROR:",
+            repr(error)
+        )
+
+        return False
+
+    finally:
+
+        connection.close()
+
+
+def set_chat_title(
+    chat_id,
+    title
+):
+
+    connection = get_db()
+
+    try:
+
+        connection.execute(
+            """
+            UPDATE chats
+            SET title = ?,
+                updated_at = ?
+            WHERE id = ?
+            """,
+            (
+                title,
+                now_iso(),
+                chat_id
+            )
+        )
+
+        connection.commit()
+
+    finally:
+
+        connection.close()
+
+
+def get_chat(
+    chat_id,
+    username
+):
+
+    connection = get_db()
+
+    try:
+
+        chat = connection.execute(
+            """
+            SELECT
+                id,
+                title,
+                created_at,
+                updated_at
+            FROM chats
+            WHERE id = ?
+            AND username = ?
+            """,
+            (
+                chat_id,
+                username
+            )
+        ).fetchone()
+
+        if not chat:
+            return None
+
+        messages = connection.execute(
+            """
+            SELECT
+                role,
+                content,
+                timestamp
+            FROM messages
+            WHERE chat_id = ?
+            ORDER BY id ASC
+            """,
+            (chat_id,)
+        ).fetchall()
+
+        return {
+            "id": chat["id"],
+            "title": chat["title"],
+            "created_at": chat["created_at"],
+            "updated_at": chat["updated_at"],
+
+            "messages": [
+                {
+                    "role": row["role"],
+                    "content": row["content"],
+                    "timestamp": row["timestamp"]
+                }
+
+                for row in messages
+            ]
+        }
+
+    finally:
+
+        connection.close()
+
+
+# ============================================================
+# OLLAMA CHECK
+# ============================================================
+
+def check_ollama():
+
+    try:
+
+        response = requests.get(
+            f"{OLLAMA_URL}/api/tags",
+            timeout=10
+        )
+
+        if response.status_code != 200:
+
+            return (
+                False,
+                f"Ollama returned HTTP "
+                f"{response.status_code}"
+            )
+
+        data = response.json()
+
+        models = data.get(
+            "models",
+            []
+        )
+
+        model_names = []
+
+        for model in models:
+
+            if isinstance(model, dict):
+
+                name = model.get(
+                    "name"
+                )
+
+                if name:
+                    model_names.append(name)
+
+        return (
+            True,
+            {
+                "models": model_names,
+                "selected_model": OLLAMA_MODEL,
+                "model_available":
+                    OLLAMA_MODEL in model_names
+            }
+        )
+
+    except requests.exceptions.ConnectionError:
+
+        return (
+            False,
+            "Cannot connect to Ollama. "
+            "Make sure Ollama is running."
         )
 
     except Exception as error:
 
-        print(
-            "TEXT RESPONSES ERROR:",
-            repr(error),
-        )
-
-        response = hf_client.chat.completions.create(
-            model=TEXT_MODEL,
-            messages=[
-                {
-                    "role": "system",
-                    "content": instructions,
-                },
-                {
-                    "role": "user",
-                    "content": user_input,
-                },
-            ],
-            temperature=0.05,
-            max_tokens=max_tokens,
-        )
-
-        if not response.choices:
-            return ""
-
-        return clean_output(
-            response.choices[0]
-            .message
-            .content
-            or ""
+        return (
+            False,
+            str(error)
         )
 
 
 # ============================================================
-# VISION / CAMERA
+# OLLAMA AI
 # ============================================================
 
-VISION_PROMPT = """
-You are Halper's image-question solver.
+def call_ollama(
+    prompt,
+    conversation=None
+):
 
-Read the COMPLETE image.
+    if conversation is None:
+        conversation = []
 
-Determine whether it contains Mathematics, Physics,
-Chemistry, Biology or another academic topic.
+    system_prompt = """
+You are Halper 2.0, a helpful educational AI tutor.
 
-Actually solve the question.
+Your job is to help students understand topics clearly.
 
-Do not invent text that is not visible.
+Rules:
 
-For Mathematics:
-check algebra and arithmetic.
+1. Give accurate answers.
+2. Explain difficult topics simply.
+3. For mathematics, show useful steps.
+4. For physics, include formulas and units when useful.
+5. For chemistry, check equations carefully.
+6. For biology, use correct scientific terminology.
+7. Do not invent facts.
+8. If the user asks for a short answer, keep it short.
+9. If the user asks for a detailed explanation, explain properly.
+10. Be friendly and respectful.
 
-For Physics:
-check equations, units and dimensions.
-
-For Chemistry:
-check reactions and numerical values.
-
-For Biology:
-read diagrams and labels carefully.
+If the user asks who created, developed, built,
+made, designed, or programmed Halper, the application
+may provide creator information separately.
 """
 
+    messages = [
+        {
+            "role": "system",
+            "content": system_prompt
+        }
+    ]
 
-def analyze_image(
-    image_data,
-    question,
-):
-    if not hf_client:
-        return (
-            "❌ HF_TOKEN is missing."
+    for item in conversation[-12:]:
+
+        role = item.get(
+            "role"
         )
 
-    if not image_data:
-        return (
-            "❌ No image was received."
+        content = item.get(
+            "content",
+            ""
         )
 
-    if not image_data.startswith(
-        "data:image/"
-    ):
-        return (
-            "❌ Invalid image data."
-        )
+        if role not in (
+            "user",
+            "assistant"
+        ):
+            continue
 
-    if len(image_data) > 12_000_000:
-        return (
-            "❌ Image is too large."
-        )
+        if not content:
+            continue
 
-    prompt = (
-        question.strip()
-        if question.strip()
-        else
-        "Read this entire image and solve the academic question."
-    )
+        messages.append({
+            "role": role,
+            "content": str(content)
+        })
+
+    messages.append({
+        "role": "user",
+        "content": prompt
+    })
+
+    payload = {
+        "model": OLLAMA_MODEL,
+
+        "messages": messages,
+
+        "stream": False,
+
+        "options": {
+            "temperature": 0.3,
+            "num_predict": 1500
+        }
+    }
 
     try:
-        response = hf_client.chat.completions.create(
-            model=VISION_MODEL,
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        VISION_PROMPT
-                        + "\n\n"
-                        + PLAIN_MATH_RULE
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": prompt,
-                        },
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": image_data,
-                            },
-                        },
-                    ],
-                },
-            ],
-            temperature=0.05,
-            max_tokens=7000,
+
+        response = requests.post(
+            f"{OLLAMA_URL}/api/chat",
+            json=payload,
+            timeout=OLLAMA_TIMEOUT
         )
 
-        if not response.choices:
-            return (
-                "❌ Vision AI returned no answer."
+        if response.status_code != 200:
+
+            print(
+                "OLLAMA HTTP ERROR:",
+                response.status_code,
+                response.text
             )
 
-        answer = (
-            response.choices[0]
-            .message
-            .content
-            or ""
+            return (
+                False,
+                "Ollama returned HTTP "
+                + str(response.status_code)
+            )
+
+        data = response.json()
+
+        message = data.get(
+            "message"
         )
 
-        return clean_output(
+        if not isinstance(
+            message,
+            dict
+        ):
+
+            return (
+                False,
+                "Ollama returned no message."
+            )
+
+        answer = message.get(
+            "content",
+            ""
+        )
+
+        answer = str(
+            answer
+        ).strip()
+
+        if not answer:
+
+            return (
+                False,
+                "Ollama returned an empty answer."
+            )
+
+        return (
+            True,
             answer
         )
 
+    except requests.exceptions.ConnectionError:
+
+        return (
+            False,
+            "Cannot connect to Ollama. "
+            "Start Ollama and try again."
+        )
+
+    except requests.exceptions.Timeout:
+
+        return (
+            False,
+            "Ollama took too long to respond."
+        )
+
     except Exception as error:
 
         print(
-            "VISION ERROR:",
-            repr(error),
+            "OLLAMA ERROR:",
+            repr(error)
         )
 
         return (
-            "❌ I could not analyze that image right now.\n\n"
-            + str(error)
+            False,
+            str(error)
         )
 
 
 # ============================================================
-# FOLLOW-UP INTENT
+# LOGIN
 # ============================================================
 
-def normalize(text):
-    return " ".join(
-        text.lower().strip().split()
+@app.route(
+    "/login",
+    methods=["POST"]
+)
+def login():
+
+    data = request.get_json(
+        silent=True
+    ) or {}
+
+    login_value = str(
+        data.get("login", "")
+    ).strip()
+
+    password = str(
+        data.get("password", "")
     )
 
+    if not login_value or not password:
 
-def is_answer_key_request(q):
-    x = normalize(q)
+        return jsonify({
+            "success": False,
+            "message":
+                "Enter username/email and password."
+        }), 400
 
-    exact = {
-        "ans",
-        "answer",
-        "answers",
-        "answer key",
-        "show answers",
-        "give answers",
-        "give ans",
-        "ans of all",
-        "answers of all",
-        "answer all",
-        "give ans of all",
-        "solutions",
-    }
-
-    if x in exact:
-        return True
-
-    return bool(
-        re.search(
-            r"\b(answers?|ans)\b.*\ball\b",
-            x,
-        )
+    users = load_json(
+        USERS_FILE,
+        {}
     )
 
+    username_found = None
+    user_found = None
 
-def is_mcq_conversion_request(q):
-    x = normalize(q)
+    for username, user in users.items():
 
-    phrases = [
-        "multiple choice",
-        "multiple-choice",
-        "mcq",
-        "mcqs",
-        "mcq questions",
-        "multiple choice questions",
-    ]
-
-    conversion_words = [
-        "adapt",
-        "convert",
-        "turn",
-        "change",
-        "make",
-        "transform",
-    ]
-
-    has_format = any(
-        phrase in x
-        for phrase in phrases
-    )
-
-    has_conversion = any(
-        word in x
-        for word in conversion_words
-    )
-
-    return (
-        has_format
-        and has_conversion
-    )
-
-
-def is_option_request(q):
-    x = normalize(q)
-
-    return x in {
-        "with options",
-        "add options",
-        "give options",
-        "make mcq",
-        "make mcqs",
-        "make them mcq",
-        "make these mcq",
-    }
-
-
-def is_explain_all_request(q):
-    x = normalize(q)
-
-    return x in {
-        "explain all",
-        "explain answers",
-        "explain all questions",
-        "solve all",
-        "solve all questions",
-    }
-
-
-def continuation_count(q):
-    x = normalize(q)
-
-    patterns = [
-        r"^(other|another|next|more|remaining)\s+(\d+)\s+questions?$",
-        r"^give\s+(?:me\s+)?(?:the\s+)?other\s+(\d+)\s+questions?$",
-        r"^give\s+(?:me\s+)?another\s+(\d+)\s+questions?$",
-    ]
-
-    for pattern in patterns:
-        match = re.match(
-            pattern,
-            x,
-        )
-
-        if match:
-            number_group = (
-                2
-                if match.lastindex == 2
-                else 1
-            )
-
-            return min(
-                max(
-                    int(
-                        match.group(
-                            number_group
-                        )
-                    ),
-                    1,
-                ),
-                50,
-            )
-
-    return None
-
-
-# ============================================================
-# QUESTION GENERATION
-# ============================================================
-
-def requested_count(q):
-    match = re.search(
-        r"\b(\d+)\s+(?:questions?|mcqs?)\b",
-        q.lower(),
-    )
-
-    if not match:
-        return None
-
-    return min(
-        max(
-            int(
-                match.group(1)
-            ),
-            1,
-        ),
-        50,
-    )
-
-
-def extract_question_numbers(text):
-    return sorted({
-        int(number)
-        for number in re.findall(
-            r"(?:^|\n)\s*(\d+)\.\s+",
-            text,
-        )
-    })
-
-
-def last_question_number(text):
-    numbers = extract_question_numbers(
-        text
-    )
-
-    return (
-        max(numbers)
-        if numbers
-        else 0
-    )
-
-
-def validate_mcq_batch(
-    text,
-    start,
-    end,
-):
-    expected = set(
-        range(
-            start,
-            end + 1,
-        )
-    )
-
-    actual = set(
-        extract_question_numbers(
-            text
-        )
-    )
-
-    missing = sorted(
-        expected - actual
-    )
-
-    if missing:
-        return False
-
-    # Table detector.
-    if text.count("|") > 2:
-        return False
-
-    # Require A-D somewhere for each block.
-    blocks = re.split(
-        r"(?:^|\n)\s*\d+\.\s+",
-        text,
-    )[1:]
-
-    wanted = (
-        end - start + 1
-    )
-
-    if len(blocks) < wanted:
-        return False
-
-    for block in blocks[:wanted]:
-        options = set(
-            re.findall(
-                r"(?:^|\n)\s*([ABCD])\.\s+",
-                block,
-                flags=re.MULTILINE,
-            )
-        )
-
-        if options != {
-            "A",
-            "B",
-            "C",
-            "D",
-        }:
-            return False
-
-    return True
-
-
-def make_mcq_batch(
-    subject,
-    difficulty,
-    start,
-    end,
-    previous_context="",
-):
-    prompt = f"""
-Generate exactly {end - start + 1}
-multiple-choice questions.
-
-Number them {start} through {end}.
-
-STRICT FORMAT:
-
-{start}. Question
-A. Option
-B. Option
-C. Option
-D. Option
-
-STRICT RULES:
-- No Markdown table.
-- No | characters.
-- No LaTeX.
-- Every question complete.
-- Every question has A, B, C and D.
-- No answer key.
-- No introduction.
-- No conclusion.
-- Keep the exact topic.
-- Keep the exact subject.
-- Make questions different.
-- Check numbering before finishing.
-
-Subject: {subject}
-Difficulty: {difficulty}
-
-Previous context:
-{previous_context}
-"""
-
-    return text_ai(
-        subject_prompt(subject),
-        prompt,
-        reasoning="medium",
-        max_tokens=7500,
-    )
-
-
-def generate_questions(
-    subject,
-    difficulty,
-    count,
-    start=1,
-    previous_context="",
-):
-    pieces = []
-
-    current = start
-    final_number = (
-        start
-        + count
-        - 1
-    )
-
-    while current <= final_number:
-        end = min(
-            current + 4,
-            final_number,
-        )
-
-        batch = make_mcq_batch(
-            subject,
-            difficulty,
-            current,
-            end,
-            previous_context,
-        )
-
-        attempts = 0
-
-        while (
-            not validate_mcq_batch(
-                batch,
-                current,
-                end,
-            )
-            and attempts < 2
+        if not isinstance(
+            user,
+            dict
         ):
-            attempts += 1
+            continue
 
-            batch = make_mcq_batch(
-                subject,
-                difficulty,
-                current,
-                end,
-                previous_context,
-            )
+        email = str(
+            user.get("email", "")
+        ).lower()
 
-        if not validate_mcq_batch(
-            batch,
-            current,
-            end,
-        ):
-            raise RuntimeError(
-                f"Could not validate questions "
-                f"{current}-{end}."
-            )
-
-        pieces.append(
-            batch
+        phone = str(
+            user.get("phone", "")
         )
 
-        current = end + 1
+        if (
+            username.lower()
+            == login_value.lower()
+            or
+            email
+            == login_value.lower()
+            or
+            phone
+            == login_value
+        ):
 
-    result = clean_output(
-        "\n\n".join(pieces)
-    )
+            username_found = username
+            user_found = user
 
-    return result
+            break
 
+    if not user_found:
 
-# ============================================================
-# QUESTION-SET CONVERTER
-# ============================================================
-
-def convert_existing_set_to_mcq(
-    active_set,
-):
-    subject = active_set[
-        "subject"
-    ]
-
-    original = active_set[
-        "answer"
-    ]
-
-    prompt = f"""
-Convert the EXISTING question set below into
-multiple-choice questions.
-
-THIS IS A CONVERSION TASK, NOT A NEW QUESTION TASK.
-
-CRITICAL RULES:
-
-1. Use ONLY the supplied questions.
-2. Keep EXACTLY the same subject.
-3. Keep EXACTLY the same topic.
-4. Keep the same question meaning.
-5. Do NOT switch to Chemistry, Physics, Mathematics,
-   Biology or another subject.
-6. Do NOT invent unrelated questions.
-7. Add exactly four options:
-   A. ...
-   B. ...
-   C. ...
-   D. ...
-8. Keep the original numbering.
-9. Return the COMPLETE set.
-10. Do not provide the answer key.
-11. Do not use a Markdown table.
-12. Do not use the | character.
-13. Do not use LaTeX.
-
-SUBJECT:
-{subject}
-
-EXISTING QUESTIONS:
-{original}
-"""
-
-    result = text_ai(
-        subject_prompt(subject),
-        prompt,
-        reasoning="medium",
-        max_tokens=18000,
-    )
-
-    return result
-
-
-# ============================================================
-# ANSWER EXISTING SET
-# ============================================================
-
-def answer_existing_set(
-    active_set,
-):
-    subject = active_set[
-        "subject"
-    ]
-
-    original = active_set[
-        "answer"
-    ]
-
-    prompt = f"""
-Answer EVERY question in the existing question set.
-
-This is an ANSWER-THE-EXISTING-SET task.
-
-Rules:
-- Use ONLY these questions.
-- Keep original numbering.
-- Do not create new questions.
-- Do not switch subject.
-- Give the correct option when options exist.
-- Give a concise explanation.
-- Do not discuss the creator.
-- Check every answer.
-
-Subject:
-{subject}
-
-Question set:
-{original}
-"""
-
-    return text_ai(
-        subject_prompt(subject),
-        prompt,
-        reasoning="high",
-        max_tokens=18000,
-    )
-
-
-# ============================================================
-# ADVANCED MATH / PHYSICS VERIFICATION
-# ============================================================
-
-def verify_solution(
-    question,
-    answer,
-    subject,
-):
-    if subject not in {
-        "math",
-        "physics",
-    }:
-        return answer
-
-    verifier = f"""
-You are the verification stage for a difficult
-{subject} problem.
-
-Check the proposed solution.
-
-Check:
-- equations
-- algebra
-- arithmetic
-- signs
-- units
-- dimensions
-- conditions
-- final answer
-- MCQ option
-
-If anything is wrong, correct it.
-
-Return only the corrected educational solution.
-Do not reveal hidden chain-of-thought.
-Do not use LaTeX.
-
-QUESTION:
-{question}
-
-PROPOSED ANSWER:
-{answer}
-"""
+        return jsonify({
+            "success": False,
+            "message":
+                "Invalid username, email or phone."
+        }), 401
 
     try:
-        return text_ai(
-            subject_prompt(subject),
-            verifier,
-            reasoning="high",
-            max_tokens=10000,
+
+        password_correct = check_password_hash(
+            user_found.get(
+                "password",
+                ""
+            ),
+            password
         )
 
     except Exception:
-        return answer
 
+        password_correct = False
 
-# ============================================================
-# NORMAL CONTEXT
-# ============================================================
+    if not password_correct:
 
-def build_normal_context(question):
-    history = [
-        item
-        for item in get_history()
-        if item.get(
-            "category"
-        ) == "normal"
-    ]
+        return jsonify({
+            "success": False,
+            "message":
+                "Incorrect password."
+        }), 401
 
-    if not history:
-        return question
+    session["username"] = username_found
 
-    # Long/new questions stand on their own.
-    if len(
-        question.split()
-    ) > 7:
-        return question
+    latest = get_latest_chat(
+        username_found
+    )
 
-    recent = history[-4:]
+    if latest:
 
-    parts = [
-        "Relevant recent normal conversation:"
-    ]
+        session["chat_id"] = latest
 
-    for item in recent:
-        parts.append(
-            "USER: "
-            + item["question"]
-        )
-        parts.append(
-            "Halper: "
-            + item["answer"]
+    else:
+
+        session["chat_id"] = create_chat(
+            username_found
         )
 
-    parts.append(
-        "CURRENT QUESTION: "
-        + question
-    )
-
-    parts.append(
-        "Use previous context only when it is clearly relevant."
-    )
-
-    return "\n".join(parts)
+    return jsonify({
+        "success": True,
+        "message":
+            "Login successful.",
+        "username":
+            username_found
+    })
 
 
 # ============================================================
-# ROUTES
+# REGISTER
 # ============================================================
-
-@app.route("/")
-def home():
-    return render_template(
-        "index.html",
-        logged_in=(
-            "username" in session
-        ),
-        username=session.get(
-            "username"
-        ),
-    )
-
 
 @app.route(
     "/register",
-    methods=["POST"],
+    methods=["POST"]
 )
 def register():
-    data = (
-        request.get_json(
-            silent=True
-        )
-        or {}
-    )
 
-    username = data.get(
-        "username",
-        "",
+    data = request.get_json(
+        silent=True
+    ) or {}
+
+    username = str(
+        data.get("username", "")
     ).strip()
 
-    email = data.get(
-        "email",
-        "",
-    ).strip().lower()
-
-    phone = data.get(
-        "phone",
-        "",
+    email = str(
+        data.get("email", "")
     ).strip()
 
-    password = data.get(
-        "password",
-        "",
+    phone = str(
+        data.get("phone", "")
+    ).strip()
+
+    password = str(
+        data.get("password", "")
     )
 
-    if not username or not password:
-        return {
+    if len(username) < 3:
+
+        return jsonify({
             "success": False,
             "message":
-                "Username and password are required.",
-        }, 400
+                "Username must contain at least 3 characters."
+        }), 400
+
+    if not re.fullmatch(
+        r"[A-Za-z0-9_.-]+",
+        username
+    ):
+
+        return jsonify({
+            "success": False,
+            "message":
+                "Username contains invalid characters."
+        }), 400
 
     if not email and not phone:
-        return {
+
+        return jsonify({
             "success": False,
             "message":
-                "Enter either an email or phone number.",
-        }, 400
+                "Enter an email or phone number."
+        }), 400
 
-    if len(password) < 6:
-        return {
-            "success": False,
-            "message":
-                "Password must be at least 6 characters.",
-        }, 400
+    if email:
 
-    all_users = load_users()
+        if not re.fullmatch(
+            r"[^@\s]+@[^@\s]+\.[^@\s]+",
+            email
+        ):
 
-    for name, user in all_users.items():
-
-        if name.lower() == username.lower():
-            return {
+            return jsonify({
                 "success": False,
                 "message":
-                    "Username already exists.",
-            }, 400
+                    "Enter a valid email address."
+            }), 400
+
+    if len(password) < 6:
+
+        return jsonify({
+            "success": False,
+            "message":
+                "Password must contain at least 6 characters."
+        }), 400
+
+    users = load_json(
+        USERS_FILE,
+        {}
+    )
+
+    for existing_username, user in users.items():
+
+        if not isinstance(
+            user,
+            dict
+        ):
+            continue
+
+        if (
+            existing_username.lower()
+            == username.lower()
+        ):
+
+            return jsonify({
+                "success": False,
+                "message":
+                    "Username already exists."
+            }), 409
+
+        existing_email = str(
+            user.get("email", "")
+        ).lower()
 
         if (
             email
-            and user.get(
-                "email",
-                "",
-            ).lower() == email
+            and existing_email
+            == email.lower()
         ):
-            return {
+
+            return jsonify({
                 "success": False,
                 "message":
-                    "Email already registered.",
-            }, 400
+                    "Email already exists."
+            }), 409
+
+        existing_phone = str(
+            user.get("phone", "")
+        )
 
         if (
             phone
-            and user.get(
-                "phone",
-                "",
-            ) == phone
+            and existing_phone
+            == phone
         ):
-            return {
+
+            return jsonify({
                 "success": False,
                 "message":
-                    "Phone already registered.",
-            }, 400
+                    "Phone number already exists."
+            }), 409
 
-    all_users[username] = {
+    users[username] = {
         "email": email,
         "phone": phone,
+
         "password":
             generate_password_hash(
                 password
             ),
+
+        "created_at":
+            now_iso()
     }
 
-    save_users(
-        all_users
-    )
+    if not save_json(
+        USERS_FILE,
+        users
+    ):
+
+        return jsonify({
+            "success": False,
+            "message":
+                "Could not save the account."
+        }), 500
 
     session["username"] = username
-    session["chat_history"] = []
 
-    clear_question_set()
+    session["chat_id"] = create_chat(
+        username
+    )
 
-    return {
+    return jsonify({
         "success": True,
         "message":
             "Account created successfully.",
-    }
+        "username":
+            username
+    })
 
 
-@app.route(
-    "/login",
-    methods=["POST"],
-)
-def login():
-    data = (
-        request.get_json(
-            silent=True
-        )
-        or {}
-    )
-
-    login_value = data.get(
-        "login",
-        "",
-    ).strip()
-
-    password = data.get(
-        "password",
-        "",
-    )
-
-    all_users = load_users()
-
-    for username, user in all_users.items():
-
-        matches = (
-            username.lower()
-            == login_value.lower()
-            or
-            user.get(
-                "email",
-                "",
-            ).lower()
-            == login_value.lower()
-            or
-            user.get(
-                "phone",
-                "",
-            )
-            == login_value
-        )
-
-        if matches:
-            if check_password_hash(
-                user.get(
-                    "password",
-                    "",
-                ),
-                password,
-            ):
-                session["username"] = username
-                session["chat_history"] = []
-
-                clear_question_set()
-
-                return {
-                    "success": True,
-                    "message":
-                        "Login successful.",
-                }
-
-            break
-
-    return {
-        "success": False,
-        "message":
-            "Invalid username/email/phone or password.",
-    }, 401
-
+# ============================================================
+# LOGOUT
+# ============================================================
 
 @app.route("/logout")
 def logout():
+
     session.clear()
 
     return redirect(
@@ -1691,593 +1268,536 @@ def logout():
     )
 
 
+# ============================================================
+# NEW CHAT
+# ============================================================
+
 @app.route(
     "/new-chat",
-    methods=["POST"],
+    methods=["POST"]
 )
+@login_required
 def new_chat():
-    session["chat_history"] = []
 
-    clear_question_set()
+    username = current_username()
 
-    return {
+    chat_id = create_chat(
+        username
+    )
+
+    session["chat_id"] = chat_id
+
+    return jsonify({
         "success": True,
-    }
+        "chat_id": chat_id,
+        "title": "New Chat"
+    })
 
 
 # ============================================================
-# CHAT
+# HISTORY
+# ============================================================
+
+@app.route(
+    "/history",
+    methods=["GET"]
+)
+@login_required
+def history():
+
+    username = current_username()
+
+    connection = get_db()
+
+    try:
+
+        rows = connection.execute(
+            """
+            SELECT
+                id,
+                title,
+                created_at,
+                updated_at
+            FROM chats
+            WHERE username = ?
+            ORDER BY updated_at DESC
+            """,
+            (username,)
+        ).fetchall()
+
+        chats = []
+
+        for row in rows:
+
+            chats.append({
+                "id": row["id"],
+                "title":
+                    row["title"]
+                    or
+                    "New Chat",
+
+                "created_at":
+                    row["created_at"],
+
+                "updated_at":
+                    row["updated_at"]
+            })
+
+        return jsonify({
+            "success": True,
+            "chats": chats
+        })
+
+    except Exception as error:
+
+        print(
+            "HISTORY ERROR:",
+            repr(error)
+        )
+
+        return jsonify({
+            "success": False,
+            "message":
+                "Could not load history."
+        }), 500
+
+    finally:
+
+        connection.close()
+
+
+# ============================================================
+# OPEN CHAT
+# IMPORTANT: <chat_id>
+# ============================================================
+
+@app.route(
+    "/chat/<chat_id>",
+    methods=["GET"]
+)
+@login_required
+def open_chat(chat_id):
+
+    username = current_username()
+
+    chat = get_chat(
+        chat_id,
+        username
+    )
+
+    if not chat:
+
+        return jsonify({
+            "success": False,
+            "message":
+                "Chat not found."
+        }), 404
+
+    session["chat_id"] = chat_id
+
+    return jsonify({
+        "success": True,
+        "chat": chat
+    })
+
+
+# ============================================================
+# MAIN CHAT
 # ============================================================
 
 @app.route(
     "/chat",
-    methods=["POST"],
+    methods=["POST"]
 )
+@login_required
 def chat():
 
-    if "username" not in session:
-        return Response(
-            "Please login first.",
-            status=401,
-            mimetype="text/plain",
-        )
+    data = request.get_json(
+        silent=True
+    ) or {}
 
-    data = (
-        request.get_json(
-            silent=True
-        )
-        or {}
-    )
-
-    question = data.get(
-        "message",
-        "",
+    user_message = str(
+        data.get("message", "")
     ).strip()
 
-    image_data = data.get(
-        "image",
-        "",
-    )
+    if not user_message:
 
-    # ========================================================
-    # IMAGE / CAMERA FIRST
-    # ========================================================
+        return jsonify({
+            "success": False,
+            "message":
+                "Please enter a message."
+        }), 400
 
-    if image_data:
+    username = current_username()
 
-        answer = analyze_image(
-            image_data,
-            question,
+    chat_id = get_current_chat()
+
+    if not chat_id:
+
+        return jsonify({
+            "success": False,
+            "message":
+                "Could not create chat."
+        }), 500
+
+    # --------------------------------------------------------
+    # CREATOR QUESTION
+    # --------------------------------------------------------
+
+    if is_creator_question(
+        user_message
+    ):
+
+        answer = creator_response()
+
+        save_message(
+            chat_id,
+            "user",
+            user_message
         )
 
-        save_history(
-            question or "Image question",
-            answer,
-            "normal",
-        )
-
-        return Response(
-            answer,
-            mimetype="text/plain",
-        )
-
-    if not question:
-        return Response(
-            "Please type a question or capture an image.",
-            mimetype="text/plain",
-        )
-
-    # ========================================================
-    # CREATOR MUST BE CHECKED BEFORE NORMAL AI
-    # ========================================================
-
-    if is_creator_question(question):
-
-        answer = clean_output(
-            CREATOR_RESPONSE
-        )
-
-        save_history(
-            question,
-            answer,
-            "creator",
-        )
-
-        return Response(
-            answer,
-            mimetype="text/plain",
-        )
-
-    # ========================================================
-    # BASIC CHAT
-    # ========================================================
-
-    normalized = normalize(question)
-
-    if normalized in {
-        "hi",
-        "hello",
-        "hey",
-        "hii",
-        "hiii",
-        "helo",
-    }:
-
-        answer = (
-            "Hello! 👋 I'm Halper.\n\n"
-            "Ask Mathematics, Physics, Chemistry, "
-            "Biology or general questions."
-        )
-
-        save_history(
-            question,
-            answer,
-            "normal",
-        )
-
-        return Response(
-            answer,
-            mimetype="text/plain",
-        )
-
-    # ========================================================
-    # GET ACTIVE QUESTION SET
-    # ========================================================
-
-    active_set = get_question_set()
-
-    # ========================================================
-    # EXACT QUESTION-SET FOLLOW-UP ROUTING
-    #
-    # THIS MUST HAPPEN BEFORE NORMAL AI.
-    # ========================================================
-
-    if active_set:
-
-        # ----------------------------------------------------
-        # CONVERT TO MCQ
-        # ----------------------------------------------------
-
-        if is_mcq_conversion_request(
-            question
-        ) or is_option_request(
-            question
-        ):
-
-            answer = convert_existing_set_to_mcq(
-                active_set
-            )
-
-            answer = clean_output(
-                answer
-            )
-
-            # Replace active set with converted set.
-            save_question_set(
-                active_set["request"],
-                answer,
-                active_set["subject"],
-                active_set["difficulty"],
-            )
-
-            save_history(
-                question,
-                answer,
-                "question_generation",
-            )
-
-            return Response(
-                answer,
-                mimetype="text/plain",
-            )
-
-        # ----------------------------------------------------
-        # ANSWERS OF ALL
-        # ----------------------------------------------------
-
-        if is_answer_key_request(
-            question
-        ):
-
-            answer = answer_existing_set(
-                active_set
-            )
-
-            answer = clean_output(
-                answer
-            )
-
-            save_history(
-                question,
-                answer,
-                "question_generation",
-            )
-
-            return Response(
-                answer,
-                mimetype="text/plain",
-            )
-
-        # ----------------------------------------------------
-        # EXPLAIN ALL
-        # ----------------------------------------------------
-
-        if is_explain_all_request(
-            question
-        ):
-
-            answer = text_ai(
-                subject_prompt(
-                    active_set["subject"]
-                )
-                + """
-Solve every question in the existing question set.
-
-Keep the original numbering.
-Do not skip questions.
-Do not create unrelated questions.
-""",
-                active_set["answer"],
-                reasoning="high",
-                max_tokens=18000,
-            )
-
-            answer = clean_output(
-                answer
-            )
-
-            save_history(
-                question,
-                answer,
-                "question_generation",
-            )
-
-            return Response(
-                answer,
-                mimetype="text/plain",
-            )
-
-        # ----------------------------------------------------
-        # CONTINUE WITH A NUMBER
-        # ----------------------------------------------------
-
-        amount = continuation_count(
-            question
-        )
-
-        if amount is not None:
-
-            start = (
-                last_question_number(
-                    active_set["answer"]
-                )
-                + 1
-            )
-
-            answer = generate_questions(
-                active_set["subject"],
-                active_set["difficulty"],
-                amount,
-                start,
-                active_set["answer"],
-            )
-
-            combined = clean_output(
-                active_set["answer"]
-                + "\n\n"
-                + answer
-            )
-
-            save_question_set(
-                active_set["request"],
-                combined,
-                active_set["subject"],
-                active_set["difficulty"],
-            )
-
-            save_history(
-                question,
-                answer,
-                "question_generation",
-            )
-
-            return Response(
-                answer,
-                mimetype="text/plain",
-            )
-
-        # ----------------------------------------------------
-        # "CONTINUE" / "MORE"
-        # ----------------------------------------------------
-
-        if normalized in {
-            "continue",
-            "more",
-            "another",
-        }:
-
-            start = (
-                last_question_number(
-                    active_set["answer"]
-                )
-                + 1
-            )
-
-            answer = generate_questions(
-                active_set["subject"],
-                active_set["difficulty"],
-                5,
-                start,
-                active_set["answer"],
-            )
-
-            combined = clean_output(
-                active_set["answer"]
-                + "\n\n"
-                + answer
-            )
-
-            save_question_set(
-                active_set["request"],
-                combined,
-                active_set["subject"],
-                active_set["difficulty"],
-            )
-
-            save_history(
-                question,
-                answer,
-                "question_generation",
-            )
-
-            return Response(
-                answer,
-                mimetype="text/plain",
-            )
-
-    # ========================================================
-    # NEW QUESTION SET
-    # ========================================================
-
-    count = requested_count(
-        question
-    )
-
-    if count is not None:
-
-        detected_subject = detect_subject(
-            question
-        )
-
-        detected_difficulty = detect_difficulty(
-            question
-        )
-
-        answer = generate_questions(
-            detected_subject,
-            detected_difficulty,
-            count,
-        )
-
-        answer = clean_output(
+        save_message(
+            chat_id,
+            "assistant",
             answer
         )
 
-        save_question_set(
-            question,
-            answer,
-            detected_subject,
-            detected_difficulty,
+        current_chat = get_chat(
+            chat_id,
+            username
         )
 
-        save_history(
-            question,
-            answer,
-            "question_generation",
-        )
+        if (
+            current_chat
+            and
+            current_chat.get("title")
+            == "New Chat"
+        ):
 
-        return Response(
-            answer,
-            mimetype="text/plain",
-        )
-
-    # ========================================================
-    # NORMAL / HARD MATH / PHYSICS
-    # ========================================================
-
-    detected_subject = detect_subject(
-        question
-    )
-
-    detected_difficulty = detect_difficulty(
-        question
-    )
-
-    context = build_normal_context(
-        question
-    )
-
-    if detected_difficulty == "advanced":
-
-        answer = text_ai(
-            subject_prompt(
-                detected_subject
-            )
-            + """
-ADVANCED SOLVING MODE
-
-Solve very carefully.
-
-Recheck:
-- equations
-- algebra
-- arithmetic
-- signs
-- units
-- dimensions
-- conditions
-- final result
-- MCQ options
-
-Never guess.
-""",
-            context,
-            reasoning="high",
-            max_tokens=10000,
-        )
-
-        if detected_subject in {
-            "math",
-            "physics",
-        }:
-
-            answer = verify_solution(
-                question,
-                answer,
-                detected_subject,
+            set_chat_title(
+                chat_id,
+                user_message[:50]
             )
 
-    elif detected_difficulty == "intermediate":
+        return jsonify({
+            "success": True,
+            "answer": answer,
+            "response": answer,
+            "reply": answer,
+            "message": answer,
+            "chat_id": chat_id
+        })
 
-        answer = text_ai(
-            subject_prompt(
-                detected_subject
-            ),
-            context,
-            reasoning="medium",
-            max_tokens=6000,
+    # --------------------------------------------------------
+    # GET OLD CONVERSATION
+    # --------------------------------------------------------
+
+    old_chat = get_chat(
+        chat_id,
+        username
+    )
+
+    conversation = []
+
+    if old_chat:
+
+        conversation = old_chat.get(
+            "messages",
+            []
         )
 
-    else:
+    # --------------------------------------------------------
+    # SAVE USER MESSAGE
+    # --------------------------------------------------------
 
-        answer = text_ai(
-            subject_prompt(
-                detected_subject
-            ),
-            context,
-            reasoning="low",
-            max_tokens=3500,
+    if not save_message(
+        chat_id,
+        "user",
+        user_message
+    ):
+
+        return jsonify({
+            "success": False,
+            "message":
+                "Could not save your message."
+        }), 500
+
+    # --------------------------------------------------------
+    # TITLE
+    # --------------------------------------------------------
+
+    if (
+        old_chat
+        and
+        old_chat.get("title")
+        == "New Chat"
+    ):
+
+        title = user_message[:50]
+
+        if len(user_message) > 50:
+            title += "..."
+
+        set_chat_title(
+            chat_id,
+            title
         )
 
-    answer = clean_output(
+    # --------------------------------------------------------
+    # OLLAMA
+    # --------------------------------------------------------
+
+    success, answer = call_ollama(
+        user_message,
+        conversation
+    )
+
+    if not success:
+
+        print(
+            "AI ERROR:",
+            answer
+        )
+
+        return jsonify({
+            "success": False,
+            "answer":
+                "⚠️ " + answer,
+            "error": answer,
+            "chat_id":
+                chat_id
+        }), 502
+
+    # --------------------------------------------------------
+    # SAVE AI RESPONSE
+    # --------------------------------------------------------
+
+    save_message(
+        chat_id,
+        "assistant",
         answer
     )
 
-    save_history(
-        question,
-        answer,
-        "normal",
-    )
-
-    return Response(
-        answer,
-        mimetype="text/plain",
-    )
+    return jsonify({
+        "success": True,
+        "answer": answer,
+        "response": answer,
+        "reply": answer,
+        "message": answer,
+        "chat_id": chat_id
+    })
 
 
 # ============================================================
-# IMPROVE / CHECK / EXPLAIN / SHORTEN
+# IMPROVE
 # ============================================================
 
 @app.route(
     "/improve",
-    methods=["POST"],
+    methods=["POST"]
 )
+@login_required
 def improve():
 
-    if "username" not in session:
-        return Response(
-            "Please login first.",
-            status=401,
-            mimetype="text/plain",
+    data = request.get_json(
+        silent=True
+    ) or {}
+
+    question = str(
+        data.get("question", "")
+    ).strip()
+
+    answer = str(
+        data.get("answer", "")
+    ).strip()
+
+    action = str(
+        data.get(
+            "action",
+            "improve"
         )
+    ).strip().lower()
 
-    data = (
-        request.get_json(
-            silent=True
-        )
-        or {}
-    )
+    instructions = {
 
-    question = data.get(
-        "question",
-        "",
-    )
-
-    old_answer = data.get(
-        "answer",
-        "",
-    )
-
-    action = data.get(
-        "action",
-        "improve",
-    )
-
-    tasks = {
         "improve":
-            "Improve the answer and make it clearer.",
+            "Improve the answer while keeping it correct.",
+
         "check":
-            "Check the answer for mistakes and correct them.",
+            "Check the answer carefully and correct any errors.",
+
         "explain":
-            "Explain the answer in more detail.",
+            "Explain the answer step by step in simple language.",
+
         "short":
-            "Make the answer shorter without losing important information.",
+            "Make the answer shorter while keeping the important information."
     }
 
-    task = tasks.get(
+    instruction = instructions.get(
         action,
-        tasks["improve"],
+        instructions["improve"]
     )
 
-    detected_subject = detect_subject(
-        question
+    prompt = f"""
+Question:
+
+{question}
+
+Existing answer:
+
+{answer}
+
+Task:
+
+{instruction}
+
+Give the corrected and useful result.
+"""
+
+    success, result = call_ollama(
+        prompt
     )
 
-    answer = text_ai(
-        subject_prompt(
-            detected_subject
-        )
-        + "\n\n"
-        + task,
-        "QUESTION:\n"
-        + question
-        + "\n\nANSWER:\n"
-        + old_answer,
-        reasoning=(
-            "high"
-            if detected_subject in {
-                "math",
-                "physics",
-            }
-            else "medium"
-        ),
-        max_tokens=9000,
-    )
+    if not success:
 
-    return Response(
-        clean_output(answer),
-        mimetype="text/plain",
-    )
+        return jsonify({
+            "success": False,
+            "answer":
+                "⚠️ " + result,
+            "error":
+                result
+        }), 502
+
+    return jsonify({
+        "success": True,
+        "answer": result,
+        "response": result,
+        "reply": result
+    })
 
 
 # ============================================================
 # HEALTH
 # ============================================================
 
-@app.route("/health")
+@app.route(
+    "/health",
+    methods=["GET"]
+)
 def health():
-    return {
+
+    ollama_ok, ollama_info = check_ollama()
+
+    return jsonify({
+
         "status": "ok",
-        "hf_configured": bool(HF_TOKEN),
-        "text_model": TEXT_MODEL,
-        "vision_model": VISION_MODEL,
-        "creator_routing": True,
-        "question_set_routing": True,
-        "math_verification": True,
-        "physics_verification": True,
-        "vision": True,
-    }
+
+        "application":
+            "Halper 2.0",
+
+        "ai_provider":
+            "Ollama",
+
+        "ollama_url":
+            OLLAMA_URL,
+
+        "ollama_model":
+            OLLAMA_MODEL,
+
+        "ollama_connected":
+            ollama_ok,
+
+        "ollama_info":
+            ollama_info,
+
+        "creator_configured":
+            bool(
+                CREATOR_INFO.get("name")
+                and
+                CREATOR_INFO.get("name")
+                != "YOUR NAME"
+            ),
+
+        "routes": {
+
+            "home":
+                "/",
+
+            "login":
+                "/login",
+
+            "register":
+                "/register",
+
+            "chat":
+                "/chat",
+
+            "open_chat":
+                "/chat/<chat_id>",
+
+            "history":
+                "/history",
+
+            "new_chat":
+                "/new-chat",
+
+            "improve":
+                "/improve",
+
+            "health":
+                "/health"
+        }
+    })
+
+
+# ============================================================
+# HOME
+# ============================================================
+
+@app.route("/")
+def home():
+
+    return render_template(
+        "index.html",
+        logged_in=(
+            "username" in session
+        ),
+        username=session.get(
+            "username",
+            ""
+        )
+    )
+
+
+# ============================================================
+# ERROR HANDLERS
+# ============================================================
+
+@app.errorhandler(404)
+def page_not_found(error):
+
+    return jsonify({
+        "success": False,
+        "message":
+            "Route not found.",
+        "path":
+            request.path
+    }), 404
+
+
+@app.errorhandler(500)
+def internal_error(error):
+
+    print(
+        "INTERNAL SERVER ERROR:",
+        repr(error)
+    )
+
+    return jsonify({
+        "success": False,
+        "message":
+            "Internal server error."
+    }), 500
 
 
 # ============================================================
@@ -2286,25 +1806,41 @@ def health():
 
 if __name__ == "__main__":
 
+    port = int(
+        os.environ.get(
+            "PORT",
+            "5000"
+        )
+    )
+
+    print()
     print("=" * 60)
-    print("Halper")
+    print("              HALPER 2.0")
     print("=" * 60)
-    print("HF configured       :", bool(HF_TOKEN))
-    print("Creator routing     : ON")
-    print("Father/dad routing  : ON")
-    print("Question-set memory : ON")
-    print("MCQ conversion      : ON")
-    print("Answer-key routing  : ON")
-    print("Follow-ups          : ON")
-    print("Hard Mathematics    : ON")
-    print("Hard Physics        : ON")
-    print("Image analysis      : ON")
-    print("Plain math          : ON")
+    print("AI Provider :", "Ollama")
+    print("Model       :", OLLAMA_MODEL)
+    print("Ollama URL  :", OLLAMA_URL)
+    print("Creator     :", CREATOR_INFO["name"])
+    print("Port        :", port)
     print("=" * 60)
+    print()
+
+    ollama_ok, ollama_info = check_ollama()
+
+    if ollama_ok:
+        print("✅ Ollama connection OK")
+        print("Ollama info:", ollama_info)
+    else:
+        print("❌ Ollama connection problem:")
+        print(ollama_info)
+
+    print()
+    print("🌐 Open:")
+    print(f"http://127.0.0.1:{port}")
+    print()
 
     app.run(
-        host="127.0.0.1",
-        port=5000,
-        debug=True,
-        threaded=True,
+        host="0.0.0.0",
+        port=port,
+        debug=True
     )
