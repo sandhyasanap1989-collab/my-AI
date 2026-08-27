@@ -15,9 +15,10 @@
 
         body {
             font-family: Arial, Helvetica, sans-serif;
-            background: #f5f8ff;
+            background: #f5f9ff;
             color: #172033;
-            min-height: 100vh;
+            height: 100vh;
+            overflow: hidden;
         }
 
         button,
@@ -31,86 +32,47 @@
         }
 
         /* ==============================
-           AUTH SCREEN
+           LOGIN / REGISTER
         ============================== */
 
-        #authScreen {
+        .auth-page {
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 20px;
-            background: linear-gradient(135deg, #eaf2ff, #ffffff);
+            background: linear-gradient(135deg, #eaf4ff, #ffffff);
         }
 
-        .auth-box {
+        .auth-card {
             width: 100%;
             max-width: 430px;
             background: white;
-            border-radius: 24px;
+            border-radius: 22px;
             padding: 35px;
-            box-shadow: 0 15px 45px rgba(40, 80, 150, 0.15);
+            box-shadow: 0 15px 45px rgba(30, 100, 180, 0.15);
         }
 
-        .logo-area {
-            text-align: center;
-            margin-bottom: 25px;
-        }
-
-        .logo {
-            width: 85px;
-            height: 85px;
+        .auth-logo {
+            width: 80px;
+            height: 80px;
+            display: block;
             object-fit: contain;
-            border-radius: 20px;
-            margin-bottom: 12px;
+            margin: 0 auto 15px;
+            border-radius: 18px;
         }
 
-        .logo-fallback {
-            width: 85px;
-            height: 85px;
-            border-radius: 20px;
-            margin: auto auto 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #1769ff;
-            color: white;
-            font-size: 32px;
-            font-weight: bold;
-        }
-
-        .logo-area h1 {
+        .auth-title {
+            text-align: center;
             font-size: 30px;
-            color: #1769ff;
+            color: #1677ff;
+            margin-bottom: 8px;
         }
 
-        .logo-area p {
-            color: #718096;
-            margin-top: 6px;
-        }
-
-        .auth-tabs {
-            display: flex;
-            background: #edf3ff;
-            padding: 5px;
-            border-radius: 12px;
-            margin-bottom: 22px;
-        }
-
-        .auth-tab {
-            flex: 1;
-            border: none;
-            padding: 12px;
-            border-radius: 9px;
-            background: transparent;
-            color: #526078;
-            font-weight: bold;
-        }
-
-        .auth-tab.active {
-            background: white;
-            color: #1769ff;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.07);
+        .auth-subtitle {
+            text-align: center;
+            color: #6d7890;
+            margin-bottom: 25px;
         }
 
         .auth-form {
@@ -122,7 +84,7 @@
         }
 
         .field {
-            margin-bottom: 16px;
+            margin-bottom: 15px;
         }
 
         .field label {
@@ -130,13 +92,13 @@
             font-size: 14px;
             font-weight: bold;
             margin-bottom: 7px;
-            color: #334155;
+            color: #33415c;
         }
 
         .field input {
             width: 100%;
             padding: 13px 14px;
-            border: 1px solid #d7deeb;
+            border: 1px solid #d5deeb;
             border-radius: 11px;
             outline: none;
             font-size: 15px;
@@ -144,8 +106,8 @@
         }
 
         .field input:focus {
-            border-color: #1769ff;
-            box-shadow: 0 0 0 3px rgba(23,105,255,0.1);
+            border-color: #1677ff;
+            box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.1);
         }
 
         .password-wrap {
@@ -153,7 +115,7 @@
         }
 
         .password-wrap input {
-            padding-right: 75px;
+            padding-right: 80px;
         }
 
         .show-password {
@@ -163,7 +125,7 @@
             transform: translateY(-50%);
             border: none;
             background: transparent;
-            color: #1769ff;
+            color: #1677ff;
             font-size: 12px;
             font-weight: bold;
         }
@@ -171,185 +133,171 @@
         .primary-btn {
             width: 100%;
             border: none;
-            padding: 14px;
             border-radius: 11px;
-            background: #1769ff;
+            padding: 14px;
+            background: #1677ff;
             color: white;
             font-size: 16px;
             font-weight: bold;
-            transition: 0.2s;
+            margin-top: 5px;
         }
 
         .primary-btn:hover {
-            background: #0d56d8;
+            background: #0868eb;
         }
 
-        .message {
-            min-height: 20px;
-            margin-bottom: 12px;
+        .auth-message {
+            min-height: 22px;
+            margin: 12px 0;
             text-align: center;
             font-size: 14px;
         }
 
-        .message.error {
-            color: #dc2626;
+        .auth-switch {
+            text-align: center;
+            margin-top: 20px;
+            color: #68748b;
+            font-size: 14px;
         }
 
-        .message.success {
-            color: #159447;
+        .auth-switch button {
+            border: none;
+            background: none;
+            color: #1677ff;
+            font-weight: bold;
         }
 
         /* ==============================
            APP
         ============================== */
 
-        #appScreen {
-            display: none;
-            min-height: 100vh;
-        }
-
         .app {
+            height: 100vh;
             display: flex;
-            min-height: 100vh;
         }
-
-        /* ==============================
-           SIDEBAR
-        ============================== */
 
         .sidebar {
             width: 280px;
-            background: white;
-            border-right: 1px solid #e0e7f2;
+            background: #ffffff;
+            border-right: 1px solid #e1e8f2;
             display: flex;
             flex-direction: column;
             transition: 0.25s;
             z-index: 20;
         }
 
-        .sidebar-top {
-            padding: 18px;
-            border-bottom: 1px solid #edf0f5;
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #edf1f7;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .sidebar-logo {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            object-fit: contain;
         }
 
         .brand {
-            display: flex;
-            align-items: center;
-            gap: 11px;
-            margin-bottom: 18px;
-        }
-
-        .brand img {
-            width: 42px;
-            height: 42px;
-            object-fit: contain;
-            border-radius: 11px;
-        }
-
-        .brand-name {
-            font-size: 20px;
+            font-size: 22px;
             font-weight: bold;
-            color: #1769ff;
+            color: #1677ff;
+        }
+
+        .version {
+            font-size: 11px;
+            color: #7d8799;
         }
 
         .new-chat-btn {
-            width: 100%;
+            margin: 18px;
+            border: 1px solid #cfe0f8;
+            background: #eef6ff;
+            color: #1677ff;
+            border-radius: 12px;
             padding: 12px;
-            border: 1px solid #1769ff;
-            color: #1769ff;
-            background: #f7faff;
-            border-radius: 11px;
             font-weight: bold;
         }
 
         .new-chat-btn:hover {
-            background: #eaf2ff;
+            background: #dfeeff;
         }
 
         .history-title {
-            padding: 17px 18px 8px;
+            padding: 0 18px 10px;
             font-size: 12px;
-            color: #8995a8;
             font-weight: bold;
+            color: #8a95a8;
             text-transform: uppercase;
         }
 
-        .history-list {
+        .history {
             flex: 1;
             overflow-y: auto;
-            padding: 0 10px 10px;
+            padding: 0 10px;
         }
 
         .history-item {
             width: 100%;
-            padding: 11px 12px;
             border: none;
             background: transparent;
             text-align: left;
-            border-radius: 10px;
-            color: #334155;
-            margin-bottom: 4px;
-            white-space: nowrap;
+            padding: 11px 12px;
+            border-radius: 9px;
+            margin-bottom: 3px;
+            color: #36435a;
             overflow: hidden;
             text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
-        .history-item:hover {
-            background: #f0f5ff;
-        }
-
+        .history-item:hover,
         .history-item.active {
-            background: #eaf2ff;
-            color: #1769ff;
-            font-weight: bold;
+            background: #eef6ff;
+            color: #1677ff;
         }
 
         .sidebar-bottom {
             padding: 15px;
-            border-top: 1px solid #edf0f5;
+            border-top: 1px solid #edf1f7;
         }
 
-        .user-card {
+        .user-box {
             display: flex;
             align-items: center;
             gap: 10px;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
 
         .user-avatar {
             width: 38px;
             height: 38px;
-            border-radius: 50%;
-            background: #1769ff;
+            background: #1677ff;
             color: white;
+            border-radius: 50%;
             display: flex;
             justify-content: center;
             align-items: center;
             font-weight: bold;
         }
 
-        .user-info {
-            min-width: 0;
-        }
-
         .user-name {
+            font-size: 14px;
             font-weight: bold;
             overflow: hidden;
             text-overflow: ellipsis;
-        }
-
-        .user-label {
-            color: #8a95a7;
-            font-size: 12px;
         }
 
         .logout-btn {
             width: 100%;
             padding: 10px;
             border: none;
-            background: #fff1f1;
-            color: #dc2626;
-            border-radius: 10px;
+            background: #fff0f0;
+            color: #d33;
+            border-radius: 9px;
             font-weight: bold;
         }
 
@@ -362,245 +310,218 @@
             min-width: 0;
             display: flex;
             flex-direction: column;
-            height: 100vh;
         }
 
         .topbar {
-            height: 64px;
+            height: 68px;
             background: white;
-            border-bottom: 1px solid #e0e7f2;
+            border-bottom: 1px solid #e5ebf3;
             display: flex;
             align-items: center;
-            justify-content: space-between;
             padding: 0 20px;
+            gap: 12px;
         }
 
-        .mobile-menu {
+        .menu-btn {
             display: none;
             border: none;
-            background: transparent;
-            font-size: 25px;
-            color: #334155;
+            background: #eef6ff;
+            color: #1677ff;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            font-size: 20px;
         }
 
         .top-title {
+            flex: 1;
+            font-size: 18px;
             font-weight: bold;
-            font-size: 17px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .status {
-            display: flex;
-            align-items: center;
-            gap: 7px;
             font-size: 12px;
-            color: #64748b;
+            color: #6d7890;
         }
 
-        .status-dot {
-            width: 9px;
-            height: 9px;
-            border-radius: 50%;
-            background: #22c55e;
-        }
-
-        .chat-area {
-            flex: 1;
-            overflow-y: auto;
-            padding: 30px 20px;
-        }
+        /* ==============================
+           CHAT
+        ============================== */
 
         .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px 20px 20px;
+        }
+
+        .chat-inner {
             max-width: 900px;
-            margin: auto;
+            margin: 0 auto;
         }
 
         .welcome {
             text-align: center;
-            padding: 80px 20px 30px;
+            padding: 50px 20px;
         }
 
         .welcome-logo {
-            width: 95px;
-            height: 95px;
+            width: 90px;
+            height: 90px;
             object-fit: contain;
-            border-radius: 22px;
-            margin-bottom: 20px;
+            border-radius: 20px;
+            margin-bottom: 18px;
         }
 
-        .welcome h2 {
-            font-size: 30px;
-            margin-bottom: 10px;
+        .welcome h1 {
+            font-size: 32px;
+            margin-bottom: 12px;
             color: #172033;
         }
 
         .welcome p {
-            color: #718096;
-            max-width: 550px;
-            margin: auto;
-            line-height: 1.6;
+            max-width: 650px;
+            margin: 0 auto 25px;
+            line-height: 1.7;
+            color: #6d7890;
         }
 
         .suggestions {
             display: flex;
-            flex-wrap: wrap;
             justify-content: center;
+            flex-wrap: wrap;
             gap: 10px;
-            margin-top: 25px;
         }
 
         .suggestion {
-            border: 1px solid #d8e1ef;
             background: white;
-            padding: 10px 14px;
-            border-radius: 20px;
-            color: #46556c;
+            border: 1px solid #d9e3f0;
+            padding: 11px 14px;
+            border-radius: 12px;
+            color: #35425a;
         }
 
         .suggestion:hover {
-            border-color: #1769ff;
-            color: #1769ff;
+            border-color: #1677ff;
+            color: #1677ff;
+            background: #f5faff;
         }
 
-        /* ==============================
-           MESSAGES
-        ============================== */
-
-        .message-row {
+        .message {
             display: flex;
-            margin-bottom: 25px;
             gap: 12px;
+            margin-bottom: 25px;
+            align-items: flex-start;
         }
 
-        .message-row.user {
+        .message.user {
             justify-content: flex-end;
         }
 
         .avatar {
-            width: 36px;
-            height: 36px;
-            min-width: 36px;
+            width: 38px;
+            height: 38px;
+            min-width: 38px;
             border-radius: 50%;
             display: flex;
             justify-content: center;
             align-items: center;
-            overflow: hidden;
-            font-size: 14px;
             font-weight: bold;
         }
 
-        .avatar img {
+        .assistant .avatar {
+            background: #eaf4ff;
+            overflow: hidden;
+        }
+
+        .assistant .avatar img {
             width: 100%;
             height: 100%;
             object-fit: contain;
         }
 
-        .assistant-avatar {
-            background: #eaf2ff;
-        }
-
-        .user-avatar-message {
-            background: #1769ff;
+        .user .avatar {
+            background: #1677ff;
             color: white;
+            order: 2;
         }
 
-        .bubble {
-            max-width: 75%;
-            padding: 14px 17px;
-            border-radius: 17px;
-            line-height: 1.55;
+        .message-content {
+            max-width: min(750px, 80%);
+            line-height: 1.65;
             white-space: pre-wrap;
-            word-break: break-word;
+            word-wrap: break-word;
         }
 
-        .assistant .bubble {
-            background: white;
-            border: 1px solid #e0e7f2;
-            border-top-left-radius: 5px;
-        }
-
-        .user .bubble {
-            background: #1769ff;
+        .user .message-content {
+            background: #1677ff;
             color: white;
-            border-top-right-radius: 5px;
+            padding: 12px 15px;
+            border-radius: 16px 16px 4px 16px;
         }
 
-        .typing {
-            display: none;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-
-        .typing-bubble {
-            padding: 13px 17px;
+        .assistant .message-content {
             background: white;
-            border: 1px solid #e0e7f2;
-            border-radius: 15px;
+            border: 1px solid #e2e8f1;
+            padding: 13px 16px;
+            border-radius: 4px 16px 16px 16px;
         }
 
-        .typing-dots span {
-            display: inline-block;
-            width: 7px;
-            height: 7px;
-            background: #8da0bc;
-            border-radius: 50%;
-            margin: 0 2px;
-            animation: bounce 1.2s infinite;
+        .message-actions {
+            margin-top: 8px;
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
         }
 
-        .typing-dots span:nth-child(2) {
-            animation-delay: .15s;
+        .action-btn {
+            border: 1px solid #dce5f0;
+            background: white;
+            color: #66738a;
+            border-radius: 7px;
+            padding: 5px 8px;
+            font-size: 11px;
         }
 
-        .typing-dots span:nth-child(3) {
-            animation-delay: .3s;
-        }
-
-        @keyframes bounce {
-            0%, 60%, 100% {
-                transform: translateY(0);
-            }
-            30% {
-                transform: translateY(-5px);
-            }
+        .action-btn:hover {
+            color: #1677ff;
+            border-color: #1677ff;
         }
 
         /* ==============================
            INPUT
         ============================== */
 
-        .input-section {
+        .composer-area {
             background: white;
-            border-top: 1px solid #e0e7f2;
-            padding: 15px 20px 18px;
+            border-top: 1px solid #e3e9f1;
+            padding: 14px 20px 18px;
         }
 
-        .input-container {
+        .composer {
             max-width: 900px;
-            margin: auto;
-        }
-
-        .input-box {
+            margin: 0 auto;
             display: flex;
             align-items: flex-end;
             gap: 8px;
-            border: 1px solid #ccd6e6;
-            background: #fbfdff;
-            border-radius: 17px;
+            border: 1px solid #ccd8e8;
+            border-radius: 16px;
             padding: 8px;
-            box-shadow: 0 4px 18px rgba(40,70,120,0.05);
+            background: #fbfdff;
         }
 
-        .input-box textarea {
+        .composer textarea {
             flex: 1;
-            resize: none;
             border: none;
+            resize: none;
             outline: none;
-            background: transparent;
-            padding: 10px;
-            font-size: 15px;
-            max-height: 130px;
             min-height: 42px;
+            max-height: 140px;
+            padding: 11px 8px;
+            background: transparent;
+            font-size: 15px;
         }
 
         .icon-btn {
@@ -608,42 +529,77 @@
             height: 42px;
             min-width: 42px;
             border: none;
-            border-radius: 12px;
-            background: transparent;
-            color: #63738b;
-            font-size: 19px;
+            border-radius: 11px;
+            background: #eef5fd;
+            color: #1677ff;
+            font-size: 18px;
         }
 
         .icon-btn:hover {
-            background: #edf3ff;
-            color: #1769ff;
-        }
-
-        .mic-btn.listening {
-            background: #ffe9e9;
-            color: #dc2626;
+            background: #dcecff;
         }
 
         .send-btn {
-            width: 44px;
-            height: 44px;
-            min-width: 44px;
-            border: none;
-            border-radius: 13px;
-            background: #1769ff;
+            background: #1677ff;
             color: white;
-            font-size: 19px;
         }
 
         .send-btn:hover {
-            background: #0d56d8;
+            background: #0868eb;
         }
 
-        .input-note {
+        .mic-listening {
+            background: #ffeded;
+            color: #e33;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        .disclaimer {
             text-align: center;
+            color: #929caf;
             font-size: 11px;
-            color: #9aa5b5;
             margin-top: 8px;
+        }
+
+        /* ==============================
+           LOADING
+        ============================== */
+
+        .typing {
+            display: flex;
+            gap: 5px;
+            padding: 8px 0;
+        }
+
+        .typing span {
+            width: 7px;
+            height: 7px;
+            background: #8290a5;
+            border-radius: 50%;
+            animation: typing 1s infinite;
+        }
+
+        .typing span:nth-child(2) {
+            animation-delay: 0.15s;
+        }
+
+        .typing span:nth-child(3) {
+            animation-delay: 0.3s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-5px);
+            }
         }
 
         /* ==============================
@@ -654,61 +610,55 @@
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(15, 23, 42, 0.55);
+            background: rgba(0, 0, 0, 0.55);
             z-index: 100;
             justify-content: center;
             align-items: center;
             padding: 20px;
         }
 
-        .modal-box {
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-card {
+            background: white;
             width: 100%;
             max-width: 500px;
-            background: white;
-            border-radius: 20px;
+            border-radius: 18px;
             padding: 20px;
         }
 
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        .modal-card h2 {
             margin-bottom: 15px;
-        }
-
-        .modal-header h3 {
-            color: #172033;
-        }
-
-        .close-modal {
-            border: none;
-            background: #f1f5f9;
-            width: 35px;
-            height: 35px;
-            border-radius: 50%;
-            font-size: 18px;
         }
 
         #cameraVideo {
             width: 100%;
-            border-radius: 14px;
-            background: black;
+            border-radius: 12px;
+            background: #111;
         }
 
-        .camera-actions {
+        .modal-actions {
             display: flex;
             gap: 10px;
-            margin-top: 14px;
+            margin-top: 15px;
         }
 
-        .camera-actions button {
+        .modal-actions button {
             flex: 1;
-            padding: 12px;
+            padding: 11px;
             border: none;
             border-radius: 10px;
-            background: #1769ff;
+        }
+
+        .close-modal {
+            background: #eee;
+        }
+
+        .capture-btn {
+            background: #1677ff;
             color: white;
-            font-weight: bold;
         }
 
         /* ==============================
@@ -728,46 +678,46 @@
                 left: 0;
             }
 
-            .mobile-menu {
+            .menu-btn {
                 display: block;
             }
 
-            .bubble {
+            .message-content {
                 max-width: 85%;
             }
 
-            .welcome {
-                padding-top: 50px;
+            .welcome h1 {
+                font-size: 26px;
             }
         }
 
         @media (max-width: 500px) {
-            .auth-box {
+            .auth-card {
                 padding: 25px 20px;
             }
 
             .topbar {
-                padding: 0 12px;
+                padding: 0 10px;
             }
 
-            .chat-area {
-                padding: 20px 12px;
+            .chat-container {
+                padding: 20px 10px 10px;
             }
 
-            .input-section {
+            .composer-area {
                 padding: 10px;
             }
 
-            .suggestions {
+            .suggestion {
+                width: 100%;
+            }
+
+            .status {
                 display: none;
             }
 
-            .bubble {
+            .message-content {
                 max-width: 88%;
-            }
-
-            .welcome h2 {
-                font-size: 25px;
             }
         }
     </style>
@@ -775,79 +725,60 @@
 
 <body>
 
-<!-- =========================================================
-     AUTHENTICATION
-========================================================= -->
+{% if not logged_in %}
 
-<div id="authScreen">
+<!-- ==========================================================
+     LOGIN / REGISTER
+========================================================== -->
 
-    <div class="auth-box">
+<div class="auth-page">
 
-        <div class="logo-area">
+    <div class="auth-card">
 
-            <img
-                src="{{ url_for('static', filename='halper-logo.png') }}"
-                class="logo"
-                alt="Halper Logo"
-                onerror="this.style.display='none'; document.getElementById('logoFallback').style.display='flex';"
-            >
+        <img
+            src="{{ url_for('static', filename='halper-logo.png') }}"
+            class="auth-logo"
+            alt="Halper logo"
+            onerror="this.style.display='none'"
+        >
 
-            <div id="logoFallback" class="logo-fallback" style="display:none;">
-                H
-            </div>
+        <h1 class="auth-title">Halper</h1>
 
-            <h1>Halper</h1>
-            <p>Your Educational AI Tutor</p>
-
-        </div>
-
-        <div class="auth-tabs">
-
-            <button
-                class="auth-tab active"
-                id="loginTab"
-                onclick="showAuth('login')"
-            >
-                Login
-            </button>
-
-            <button
-                class="auth-tab"
-                id="registerTab"
-                onclick="showAuth('register')"
-            >
-                Create Account
-            </button>
-
-        </div>
+        <p class="auth-subtitle">
+            Your educational AI tutor
+        </p>
 
         <!-- LOGIN -->
 
         <form id="loginForm" class="auth-form active">
 
             <div class="field">
-                <label>Username, Email or Phone</label>
+                <label for="loginValue">
+                    Username, Email or Phone
+                </label>
 
                 <input
-                    type="text"
                     id="loginValue"
-                    placeholder="Enter username, email or phone"
+                    type="text"
                     autocomplete="username"
+                    placeholder="Enter username, email or phone"
                     required
                 >
             </div>
 
             <div class="field">
 
-                <label>Password</label>
+                <label for="loginPassword">
+                    Password
+                </label>
 
                 <div class="password-wrap">
 
                     <input
-                        type="password"
                         id="loginPassword"
-                        placeholder="Enter password"
+                        type="password"
                         autocomplete="current-password"
+                        placeholder="Enter password"
                         required
                     >
 
@@ -863,11 +794,27 @@
 
             </div>
 
-            <div id="loginMessage" class="message"></div>
+            <div
+                id="loginMessage"
+                class="auth-message"
+            ></div>
 
-            <button type="submit" class="primary-btn">
+            <button
+                type="submit"
+                class="primary-btn"
+            >
                 Login
             </button>
+
+            <div class="auth-switch">
+                Don't have an account?
+                <button
+                    type="button"
+                    onclick="showRegister()"
+                >
+                    Create Account
+                </button>
+            </div>
 
         </form>
 
@@ -876,50 +823,58 @@
         <form id="registerForm" class="auth-form">
 
             <div class="field">
-                <label>Username</label>
+                <label for="registerUsername">
+                    Username
+                </label>
 
                 <input
-                    type="text"
                     id="registerUsername"
-                    placeholder="Choose a username"
+                    type="text"
                     autocomplete="username"
+                    placeholder="Choose a username"
                     required
                 >
             </div>
 
             <div class="field">
-                <label>Email</label>
+                <label for="registerEmail">
+                    Email
+                </label>
 
                 <input
-                    type="email"
                     id="registerEmail"
-                    placeholder="Enter email (optional if phone used)"
+                    type="email"
                     autocomplete="email"
+                    placeholder="Enter email"
                 >
             </div>
 
             <div class="field">
-                <label>Phone</label>
+                <label for="registerPhone">
+                    Phone
+                </label>
 
                 <input
-                    type="tel"
                     id="registerPhone"
-                    placeholder="Enter phone (optional if email used)"
+                    type="tel"
                     autocomplete="tel"
+                    placeholder="Enter phone number"
                 >
             </div>
 
             <div class="field">
 
-                <label>Password</label>
+                <label for="registerPassword">
+                    Password
+                </label>
 
                 <div class="password-wrap">
 
                     <input
-                        type="password"
                         id="registerPassword"
-                        placeholder="Minimum 6 characters"
+                        type="password"
                         autocomplete="new-password"
+                        placeholder="At least 6 characters"
                         required
                     >
 
@@ -935,11 +890,27 @@
 
             </div>
 
-            <div id="registerMessage" class="message"></div>
+            <div
+                id="registerMessage"
+                class="auth-message"
+            ></div>
 
-            <button type="submit" class="primary-btn">
+            <button
+                type="submit"
+                class="primary-btn"
+            >
                 Create Account
             </button>
+
+            <div class="auth-switch">
+                Already have an account?
+                <button
+                    type="button"
+                    onclick="showLogin()"
+                >
+                    Login
+                </button>
+            </div>
 
         </form>
 
@@ -947,195 +918,203 @@
 
 </div>
 
+{% else %}
 
-<!-- =========================================================
-     MAIN APP
-========================================================= -->
+<!-- ==========================================================
+     MAIN APPLICATION
+========================================================== -->
 
-<div id="appScreen">
+<div class="app">
 
-    <div class="app">
+    <!-- SIDEBAR -->
 
-        <!-- SIDEBAR -->
+    <aside
+        id="sidebar"
+        class="sidebar"
+    >
 
-        <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
 
-            <div class="sidebar-top">
+            <img
+                src="{{ url_for('static', filename='halper-logo.png') }}"
+                class="sidebar-logo"
+                alt="Halper"
+                onerror="this.style.display='none'"
+            >
 
+            <div>
                 <div class="brand">
-
-                    <img
-                        src="{{ url_for('static', filename='halper-logo.png') }}"
-                        alt="Halper"
-                    >
-
-                    <div class="brand-name">
-                        Halper 2.0
-                    </div>
-
+                    Halper
                 </div>
 
-                <button
-                    class="new-chat-btn"
-                    onclick="newChat()"
+                <div class="version">
+                    AI Tutor 2.0
+                </div>
+            </div>
+
+        </div>
+
+        <button
+            id="newChatBtn"
+            class="new-chat-btn"
+        >
+            ＋ New Chat
+        </button>
+
+        <div class="history-title">
+            Chat History
+        </div>
+
+        <div
+            id="history"
+            class="history"
+        ></div>
+
+        <div class="sidebar-bottom">
+
+            <div class="user-box">
+
+                <div
+                    id="userAvatar"
+                    class="user-avatar"
                 >
-                    + New Chat
-                </button>
+                    {{ username[:1]|upper }}
+                </div>
+
+                <div
+                    id="usernameDisplay"
+                    class="user-name"
+                >
+                    {{ username }}
+                </div>
 
             </div>
 
-            <div class="history-title">
-                Chat History
+            <button
+                id="logoutBtn"
+                class="logout-btn"
+            >
+                Logout
+            </button>
+
+        </div>
+
+    </aside>
+
+    <!-- MAIN -->
+
+    <main class="main">
+
+        <header class="topbar">
+
+            <button
+                id="menuBtn"
+                class="menu-btn"
+                type="button"
+            >
+                ☰
+            </button>
+
+            <div
+                id="chatTitle"
+                class="top-title"
+            >
+                New Chat
             </div>
 
             <div
-                class="history-list"
-                id="historyList"
+                id="status"
+                class="status"
             >
-                Loading...
+                Ready
             </div>
 
-            <div class="sidebar-bottom">
+        </header>
 
-                <div class="user-card">
+        <section
+            id="chatContainer"
+            class="chat-container"
+        >
 
-                    <div
-                        class="user-avatar"
-                        id="userAvatar"
-                    >
-                        U
-                    </div>
-
-                    <div class="user-info">
-
-                        <div
-                            class="user-name"
-                            id="sidebarUsername"
-                        >
-                            User
-                        </div>
-
-                        <div class="user-label">
-                            Halper account
-                        </div>
-
-                    </div>
-
-                </div>
-
-                <button
-                    class="logout-btn"
-                    onclick="logout()"
-                >
-                    Logout
-                </button>
-
-            </div>
-
-        </aside>
-
-
-        <!-- MAIN -->
-
-        <main class="main">
-
-            <header class="topbar">
-
-                <button
-                    class="mobile-menu"
-                    onclick="toggleSidebar()"
-                >
-                    ☰
-                </button>
-
-                <div class="top-title">
-                    Halper 2.0
-                </div>
-
-                <div class="status">
-
-                    <span class="status-dot"></span>
-
-                    <span id="statusText">
-                        AI Ready
-                    </span>
-
-                </div>
-
-            </header>
-
-
-            <!-- CHAT AREA -->
-
-            <section
-                class="chat-area"
-                id="chatArea"
+            <div
+                id="chatInner"
+                class="chat-inner"
             >
+
+                <!-- Welcome -->
 
                 <div
-                    class="chat-container"
-                    id="chatContainer"
+                    id="welcome"
+                    class="welcome"
                 >
 
-                    <div
-                        class="welcome"
-                        id="welcome"
+                    <img
+                        src="{{ url_for('static', filename='halper-logo.png') }}"
+                        class="welcome-logo"
+                        alt="Halper"
+                        onerror="this.style.display='none'"
                     >
 
-                        <img
-                            src="{{ url_for('static', filename='halper-logo.png') }}"
-                            class="welcome-logo"
-                            alt="Halper"
+                    <h1>
+                        How can I help you?
+                    </h1>
+
+                    <p>
+                        I'm your educational AI tutor.
+                        Ask me questions about mathematics,
+                        physics, chemistry, biology, or any
+                        other subject you are learning.
+                    </p>
+
+                    <div class="suggestions">
+
+                        <!-- FIXED NEWTON BUTTON -->
+                        <button
+                            class="suggestion"
+                            type="button"
+                            onclick="useSuggestion(&quot;Explain Newton's laws of motion&quot;)"
                         >
+                            Explain Newton's laws
+                        </button>
 
-                        <h2>
-                            Hello, I'm Halper 👋
-                        </h2>
+                        <button
+                            class="suggestion"
+                            type="button"
+                            onclick="useSuggestion('Solve 2x + 5 = 15 step by step')"
+                        >
+                            Solve a math problem
+                        </button>
 
-                        <p>
-                            I'm your educational AI tutor.
-                            Ask me questions about mathematics,
-                            physics, chemistry, biology, or any
-                            other subject you are learning.
-                        </p>
+                        <button
+                            class="suggestion"
+                            type="button"
+                            onclick="useSuggestion('Explain photosynthesis simply')"
+                        >
+                            Explain photosynthesis
+                        </button>
 
-                        <div class="suggestions">
-
-                            <button
-                                class="suggestion"
-                                onclick="useSuggestion('Explain Newton\\'s laws of motion')"
-                            >
-                                Explain Newton's laws
-                            </button>
-
-                            <button
-                                class="suggestion"
-                                onclick="useSuggestion('Solve 2x + 5 = 15 step by step')"
-                            >
-                                Solve a math problem
-                            </button>
-
-                            <button
-                                class="suggestion"
-                                onclick="useSuggestion('Explain photosynthesis simply')"
-                            >
-                                Explain biology
-                            </button>
-
-                        </div>
+                        <button
+                            class="suggestion"
+                            type="button"
+                            onclick="useSuggestion('What is the difference between speed and velocity?')"
+                        >
+                            Speed vs velocity
+                        </button>
 
                     </div>
 
+                </div>
 
-                    <div id="messages"></div>
+                <div id="messages"></div>
 
+                <div
+                    id="typingIndicator"
+                    style="display:none"
+                >
 
-                    <div
-                        class="typing"
-                        id="typing"
-                    >
+                    <div class="message assistant">
 
-                        <div class="avatar assistant-avatar">
+                        <div class="avatar">
 
                             <img
                                 src="{{ url_for('static', filename='halper-logo.png') }}"
@@ -1144,14 +1123,12 @@
 
                         </div>
 
-                        <div class="typing-bubble">
+                        <div class="assistant message-content">
 
-                            <div class="typing-dots">
-
+                            <div class="typing">
                                 <span></span>
                                 <span></span>
                                 <span></span>
-
                             </div>
 
                         </div>
@@ -1160,94 +1137,76 @@
 
                 </div>
 
-            </section>
-
-
-            <!-- INPUT -->
-
-            <div class="input-section">
-
-                <div class="input-container">
-
-                    <div class="input-box">
-
-                        <textarea
-                            id="messageInput"
-                            placeholder="Ask Halper anything..."
-                            rows="1"
-                            onkeydown="handleInputKey(event)"
-                        ></textarea>
-
-                        <button
-                            class="icon-btn"
-                            id="micButton"
-                            type="button"
-                            title="Voice input"
-                            onclick="toggleMic()"
-                        >
-                            🎤
-                        </button>
-
-                        <button
-                            class="icon-btn"
-                            type="button"
-                            title="Camera"
-                            onclick="openCamera()"
-                        >
-                            📷
-                        </button>
-
-                        <button
-                            class="send-btn"
-                            type="button"
-                            title="Send"
-                            onclick="sendMessage()"
-                        >
-                            ➤
-                        </button>
-
-                    </div>
-
-                    <div class="input-note">
-                        Halper can make mistakes. Check important information.
-                    </div>
-
-                </div>
-
             </div>
 
-        </main>
+        </section>
 
-    </div>
+        <!-- COMPOSER -->
+
+        <div class="composer-area">
+
+            <form
+                id="chatForm"
+                class="composer"
+            >
+
+                <textarea
+                    id="messageInput"
+                    placeholder="Ask Halper anything..."
+                    rows="1"
+                    autocomplete="off"
+                ></textarea>
+
+                <button
+                    id="cameraBtn"
+                    type="button"
+                    class="icon-btn"
+                    title="Camera"
+                >
+                    📷
+                </button>
+
+                <button
+                    id="micBtn"
+                    type="button"
+                    class="icon-btn"
+                    title="Voice input"
+                >
+                    🎤
+                </button>
+
+                <button
+                    type="submit"
+                    class="icon-btn send-btn"
+                    title="Send"
+                >
+                    ➤
+                </button>
+
+            </form>
+
+            <div class="disclaimer">
+                Halper can make mistakes. Check important information.
+            </div>
+
+        </div>
+
+    </main>
 
 </div>
 
-
-<!-- =========================================================
-     CAMERA MODAL
-========================================================= -->
+<!-- CAMERA MODAL -->
 
 <div
-    class="modal"
     id="cameraModal"
+    class="modal"
 >
 
-    <div class="modal-box">
+    <div class="modal-card">
 
-        <div class="modal-header">
-
-            <h3>
-                Camera
-            </h3>
-
-            <button
-                class="close-modal"
-                onclick="closeCamera()"
-            >
-                ✕
-            </button>
-
-        </div>
+        <h2>
+            Camera
+        </h2>
 
         <video
             id="cameraVideo"
@@ -1255,1154 +1214,1353 @@
             playsinline
         ></video>
 
-        <div class="camera-actions">
+        <canvas
+            id="cameraCanvas"
+            style="display:none"
+        ></canvas>
 
-            <button onclick="capturePhoto()">
+        <div class="modal-actions">
+
+            <button
+                id="closeCamera"
+                type="button"
+                class="close-modal"
+            >
+                Close
+            </button>
+
+            <button
+                id="captureCamera"
+                type="button"
+                class="capture-btn"
+            >
                 Capture
             </button>
 
-            <button onclick="closeCamera()">
-                Cancel
-            </button>
-
         </div>
-
-        <canvas
-            id="cameraCanvas"
-            style="display:none;"
-        ></canvas>
 
     </div>
 
 </div>
 
+{% endif %}
 
 <script>
-/* ============================================================
-   GLOBAL VARIABLES
-============================================================ */
+"use strict";
 
-let currentChatId = null;
-let recognition = null;
-let isListening = false;
-let cameraStream = null;
+/* ==========================================================
+   BASIC HELPERS
+========================================================== */
 
+function getElement(id) {
+    return document.getElementById(id);
+}
 
-/* ============================================================
-   AUTH SCREEN
-============================================================ */
-
-function showAuth(type) {
-
-    const loginForm = document.getElementById("loginForm");
-    const registerForm = document.getElementById("registerForm");
-
-    const loginTab = document.getElementById("loginTab");
-    const registerTab = document.getElementById("registerTab");
-
-    if (type === "login") {
-
-        loginForm.classList.add("active");
-        registerForm.classList.remove("active");
-
-        loginTab.classList.add("active");
-        registerTab.classList.remove("active");
-
-    } else {
-
-        loginForm.classList.remove("active");
-        registerForm.classList.add("active");
-
-        loginTab.classList.remove("active");
-        registerTab.classList.add("active");
-
+function showMessage(element, message, success) {
+    if (!element) {
+        return;
     }
 
-    clearMessages();
+    element.textContent = message || "";
+
+    if (success) {
+        element.style.color = "#16803c";
+    } else {
+        element.style.color = "#d33";
+    }
 }
 
+function togglePassword(inputId, button) {
+    const input = getElement(inputId);
 
-function clearMessages() {
-
-    document.getElementById("loginMessage").textContent = "";
-    document.getElementById("registerMessage").textContent = "";
-
-    document.getElementById("loginMessage").className = "message";
-    document.getElementById("registerMessage").className = "message";
-}
-
-
-function togglePassword(id, button) {
-
-    const input = document.getElementById(id);
+    if (!input) {
+        return;
+    }
 
     if (input.type === "password") {
-
         input.type = "text";
         button.textContent = "HIDE";
-
     } else {
-
         input.type = "password";
         button.textContent = "SHOW";
-
     }
 }
 
+/* ==========================================================
+   LOGIN / REGISTER
+========================================================== */
 
-/* ============================================================
-   LOGIN
-============================================================ */
+function showRegister() {
+    const loginForm = getElement("loginForm");
+    const registerForm = getElement("registerForm");
 
-document.getElementById("loginForm").addEventListener(
-    "submit",
-    async function(event) {
+    if (loginForm) {
+        loginForm.classList.remove("active");
+    }
+
+    if (registerForm) {
+        registerForm.classList.add("active");
+    }
+}
+
+function showLogin() {
+    const loginForm = getElement("loginForm");
+    const registerForm = getElement("registerForm");
+
+    if (registerForm) {
+        registerForm.classList.remove("active");
+    }
+
+    if (loginForm) {
+        loginForm.classList.add("active");
+    }
+}
+
+const loginForm = getElement("loginForm");
+
+if (loginForm) {
+
+    loginForm.addEventListener("submit", async function(event) {
 
         event.preventDefault();
 
-        const message = document.getElementById("loginMessage");
+        const login = getElement("loginValue").value.trim();
+        const password = getElement("loginPassword").value;
 
-        message.textContent = "Logging in...";
-        message.className = "message";
+        const message = getElement("loginMessage");
 
-        const login = document
-            .getElementById("loginValue")
-            .value
-            .trim();
-
-        const password = document
-            .getElementById("loginPassword")
-            .value;
+        showMessage(message, "Logging in...", true);
 
         try {
 
             const response = await fetch("/login", {
-
                 method: "POST",
-
                 headers: {
                     "Content-Type": "application/json"
                 },
-
                 body: JSON.stringify({
                     login: login,
                     password: password
                 })
-
             });
 
             const data = await response.json();
 
             if (!response.ok || !data.success) {
-
-                message.textContent =
-                    data.message || "Login failed.";
-
-                message.className =
-                    "message error";
-
+                showMessage(
+                    message,
+                    data.message || "Login failed.",
+                    false
+                );
                 return;
             }
 
-            message.textContent =
-                "Login successful.";
+            showMessage(
+                message,
+                "Login successful. Loading...",
+                true
+            );
 
-            message.className =
-                "message success";
-
-            setTimeout(() => {
-
-                enterApp(data.username);
-
-            }, 300);
+            window.location.reload();
 
         } catch (error) {
 
             console.error(error);
 
-            message.textContent =
-                "Could not connect to server.";
-
-            message.className =
-                "message error";
-
+            showMessage(
+                message,
+                "Could not connect to the server.",
+                false
+            );
         }
 
-    }
-);
+    });
+}
 
+const registerForm = getElement("registerForm");
 
-/* ============================================================
-   REGISTER
-============================================================ */
+if (registerForm) {
 
-document.getElementById("registerForm").addEventListener(
-    "submit",
-    async function(event) {
+    registerForm.addEventListener("submit", async function(event) {
 
         event.preventDefault();
 
-        const message =
-            document.getElementById("registerMessage");
-
-        message.textContent =
-            "Creating account...";
-
-        message.className =
-            "message";
-
         const username =
-            document.getElementById("registerUsername")
-            .value
-            .trim();
+            getElement("registerUsername").value.trim();
 
         const email =
-            document.getElementById("registerEmail")
-            .value
-            .trim();
+            getElement("registerEmail").value.trim();
 
         const phone =
-            document.getElementById("registerPhone")
-            .value
-            .trim();
+            getElement("registerPhone").value.trim();
 
         const password =
-            document.getElementById("registerPassword")
-            .value;
+            getElement("registerPassword").value;
+
+        const message =
+            getElement("registerMessage");
+
+        if (!email && !phone) {
+
+            showMessage(
+                message,
+                "Enter an email or phone number.",
+                false
+            );
+
+            return;
+        }
+
+        showMessage(
+            message,
+            "Creating account...",
+            true
+        );
 
         try {
 
             const response = await fetch("/register", {
-
                 method: "POST",
-
                 headers: {
                     "Content-Type": "application/json"
                 },
-
                 body: JSON.stringify({
-
                     username: username,
                     email: email,
                     phone: phone,
                     password: password
-
                 })
-
             });
 
             const data = await response.json();
 
             if (!response.ok || !data.success) {
 
-                message.textContent =
-                    data.message || "Registration failed.";
-
-                message.className =
-                    "message error";
+                showMessage(
+                    message,
+                    data.message || "Registration failed.",
+                    false
+                );
 
                 return;
             }
 
-            message.textContent =
-                "Account created successfully.";
+            showMessage(
+                message,
+                "Account created successfully. Loading...",
+                true
+            );
 
-            message.className =
-                "message success";
-
-            setTimeout(() => {
-
-                enterApp(data.username);
-
-            }, 300);
+            window.location.reload();
 
         } catch (error) {
 
             console.error(error);
 
-            message.textContent =
-                "Could not connect to server.";
-
-            message.className =
-                "message error";
-
-        }
-
-    }
-);
-
-
-/* ============================================================
-   ENTER APP
-============================================================ */
-
-function enterApp(username) {
-
-    document.getElementById("authScreen").style.display = "none";
-
-    document.getElementById("appScreen").style.display = "block";
-
-    const name =
-        username || "User";
-
-    document.getElementById("sidebarUsername")
-        .textContent = name;
-
-    document.getElementById("userAvatar")
-        .textContent = name.charAt(0).toUpperCase();
-
-    loadHistory();
-
-}
-
-
-/* ============================================================
-   LOGOUT
-============================================================ */
-
-function logout() {
-
-    window.location.href = "/logout";
-
-}
-
-
-/* ============================================================
-   HISTORY
-============================================================ */
-
-async function loadHistory() {
-
-    const list =
-        document.getElementById("historyList");
-
-    list.innerHTML = "Loading...";
-
-    try {
-
-        const response =
-            await fetch("/history");
-
-        if (response.status === 401) {
-
-            location.reload();
-            return;
-
-        }
-
-        const data =
-            await response.json();
-
-        if (!data.success) {
-
-            list.innerHTML =
-                "Could not load history.";
-
-            return;
-        }
-
-        list.innerHTML = "";
-
-        if (!data.chats.length) {
-
-            list.innerHTML =
-                '<div style="padding:15px;color:#94a3b8;font-size:13px;">No chats yet.</div>';
-
-            return;
-        }
-
-        data.chats.forEach(chat => {
-
-            const button =
-                document.createElement("button");
-
-            button.className =
-                "history-item";
-
-            if (chat.id === currentChatId) {
-                button.classList.add("active");
-            }
-
-            button.textContent =
-                chat.title || "New Chat";
-
-            button.title =
-                chat.title || "New Chat";
-
-            button.onclick = () => {
-
-                openChat(chat.id);
-
-            };
-
-            list.appendChild(button);
-
-        });
-
-    } catch (error) {
-
-        console.error(error);
-
-        list.innerHTML =
-            "Could not load history.";
-
-    }
-
-}
-
-
-/* ============================================================
-   NEW CHAT
-============================================================ */
-
-async function newChat() {
-
-    try {
-
-        const response =
-            await fetch("/new-chat", {
-
-                method: "POST",
-
-                headers: {
-                    "Content-Type": "application/json"
-                }
-
-            });
-
-        const data =
-            await response.json();
-
-        if (!response.ok || !data.success) {
-
-            alert(
-                data.message ||
-                "Could not create new chat."
+            showMessage(
+                message,
+                "Could not connect to the server.",
+                false
             );
-
-            return;
         }
 
-        currentChatId =
-            data.chat_id;
-
-        clearChat();
-
-        loadHistory();
-
-        closeSidebarOnMobile();
-
-    } catch (error) {
-
-        console.error(error);
-
-        alert(
-            "Could not connect to server."
-        );
-
-    }
-
+    });
 }
 
+/* ==========================================================
+   MAIN APP
+========================================================== */
 
-/* ============================================================
-   OPEN CHAT
-============================================================ */
+const chatForm = getElement("chatForm");
 
-async function openChat(chatId) {
+if (chatForm) {
 
-    try {
-
-        const response =
-            await fetch(
-                "/chat/" +
-                encodeURIComponent(chatId)
-            );
-
-        const data =
-            await response.json();
-
-        if (!response.ok || !data.success) {
-
-            alert(
-                data.message ||
-                "Could not open chat."
-            );
-
-            return;
-        }
-
-        currentChatId =
-            data.chat.id;
-
-        clearChat();
-
-        const messages =
-            data.chat.messages || [];
-
-        if (messages.length > 0) {
-
-            document.getElementById("welcome")
-                .style.display = "none";
-
-            messages.forEach(message => {
-
-                addMessage(
-                    message.role,
-                    message.content
-                );
-
-            });
-
-        }
-
-        loadHistory();
-
-        closeSidebarOnMobile();
-
-        scrollToBottom();
-
-    } catch (error) {
-
-        console.error(error);
-
-        alert(
-            "Could not load this chat."
-        );
-
-    }
-
-}
-
-
-/* ============================================================
-   CLEAR CHAT DISPLAY
-============================================================ */
-
-function clearChat() {
-
-    document.getElementById("messages")
-        .innerHTML = "";
-
-    document.getElementById("welcome")
-        .style.display = "block";
-
-}
-
-
-/* ============================================================
-   ADD MESSAGE
-============================================================ */
-
-function addMessage(role, content) {
+    const messageInput =
+        getElement("messageInput");
 
     const messages =
-        document.getElementById("messages");
+        getElement("messages");
 
-    document.getElementById("welcome")
-        .style.display = "none";
+    const welcome =
+        getElement("welcome");
 
-    const row =
-        document.createElement("div");
+    const chatContainer =
+        getElement("chatContainer");
 
-    row.className =
-        "message-row " +
-        (role === "user" ? "user" : "assistant");
+    const typingIndicator =
+        getElement("typingIndicator");
 
-    const avatar =
-        document.createElement("div");
+    const status =
+        getElement("status");
 
-    avatar.className =
-        "avatar " +
-        (role === "user"
-            ? "user-avatar-message"
-            : "assistant-avatar");
+    let currentChatId = null;
 
-    if (role === "user") {
+    /* ======================================================
+       SUGGESTIONS
+    ====================================================== */
 
-        avatar.textContent =
-            document.getElementById("userAvatar")
-            .textContent || "U";
+    window.useSuggestion = function(text) {
 
-    } else {
-
-        const image =
-            document.createElement("img");
-
-        image.src =
-            "{{ url_for('static', filename='halper-logo.png') }}";
-
-        image.alt = "H";
-
-        avatar.appendChild(image);
-
-    }
-
-    const bubble =
-        document.createElement("div");
-
-    bubble.className =
-        "bubble";
-
-    bubble.textContent =
-        content;
-
-    if (role === "user") {
-
-        row.appendChild(bubble);
-        row.appendChild(avatar);
-
-    } else {
-
-        row.appendChild(avatar);
-        row.appendChild(bubble);
-
-    }
-
-    messages.appendChild(row);
-
-}
-
-
-/* ============================================================
-   SEND MESSAGE
-============================================================ */
-
-async function sendMessage() {
-
-    const input =
-        document.getElementById("messageInput");
-
-    const text =
-        input.value.trim();
-
-    if (!text) {
-        return;
-    }
-
-    input.value = "";
-    autoResize(input);
-
-    addMessage(
-        "user",
-        text
-    );
-
-    scrollToBottom();
-
-    showTyping(true);
-
-    setStatus("Thinking...");
-
-    try {
-
-        const response =
-            await fetch("/chat", {
-
-                method: "POST",
-
-                headers: {
-                    "Content-Type": "application/json"
-                },
-
-                body: JSON.stringify({
-                    message: text
-                })
-
-            });
-
-        const data =
-            await response.json();
-
-        showTyping(false);
-
-        if (response.status === 401) {
-
-            alert(
-                "Your session has expired. Please login again."
-            );
-
-            location.reload();
-
+        if (!messageInput) {
             return;
         }
 
-        if (!response.ok || !data.success) {
+        messageInput.value = text;
 
-            addMessage(
-                "assistant",
-                "⚠️ " +
-                (
-                    data.message ||
-                    data.error ||
-                    data.answer ||
-                    "Something went wrong."
-                )
-            );
+        autoResizeTextarea();
 
-            setStatus("Error");
-
-            return;
-        }
-
-        currentChatId =
-            data.chat_id || currentChatId;
-
-        const answer =
-            data.answer ||
-            data.response ||
-            data.reply ||
-            data.message ||
-            "";
-
-        addMessage(
-            "assistant",
-            answer
-        );
-
-        setStatus("AI Ready");
-
-        loadHistory();
-
-    } catch (error) {
-
-        console.error(error);
-
-        showTyping(false);
-
-        addMessage(
-            "assistant",
-            "⚠️ Could not connect to the Halper server."
-        );
-
-        setStatus("Connection error");
-
-    }
-
-    scrollToBottom();
-
-}
-
-
-/* ============================================================
-   SUGGESTION
-============================================================ */
-
-function useSuggestion(text) {
-
-    const input =
-        document.getElementById("messageInput");
-
-    input.value =
-        text;
-
-    autoResize(input);
-
-    input.focus();
-
-}
-
-
-/* ============================================================
-   TYPING
-============================================================ */
-
-function showTyping(show) {
-
-    document.getElementById("typing")
-        .style.display =
-        show ? "flex" : "none";
-
-}
-
-
-function setStatus(text) {
-
-    document.getElementById("statusText")
-        .textContent = text;
-
-}
-
-
-/* ============================================================
-   INPUT KEYBOARD
-============================================================ */
-
-function handleInputKey(event) {
-
-    if (event.key === "Enter" && !event.shiftKey) {
-
-        event.preventDefault();
-
-        sendMessage();
-
-    }
-
-}
-
-
-const messageInput =
-    document.getElementById("messageInput");
-
-messageInput.addEventListener(
-    "input",
-    function() {
-
-        autoResize(this);
-
-    }
-);
-
-
-function autoResize(element) {
-
-    element.style.height = "auto";
-
-    element.style.height =
-        Math.min(
-            element.scrollHeight,
-            130
-        ) + "px";
-
-}
-
-
-/* ============================================================
-   MICROPHONE
-============================================================ */
-
-function setupSpeechRecognition() {
-
-    const SpeechRecognition =
-        window.SpeechRecognition ||
-        window.webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-
-        return false;
-
-    }
-
-    recognition =
-        new SpeechRecognition();
-
-    recognition.continuous = false;
-
-    recognition.interimResults = true;
-
-    recognition.lang = "en-IN";
-
-    recognition.onstart = function() {
-
-        isListening = true;
-
-        document
-            .getElementById("micButton")
-            .classList.add("listening");
-
-        setStatus("Listening...");
-
+        messageInput.focus();
     };
 
-    recognition.onresult =
-        function(event) {
+    /* ======================================================
+       TEXTAREA
+    ====================================================== */
 
-            let text = "";
+    function autoResizeTextarea() {
 
-            for (
-                let i = event.resultIndex;
-                i < event.results.length;
-                i++
-            ) {
-
-                text +=
-                    event.results[i][0].transcript;
-
-            }
-
-            document
-                .getElementById("messageInput")
-                .value = text;
-
-            autoResize(
-                document.getElementById("messageInput")
-            );
-
-        };
-
-    recognition.onerror =
-        function(event) {
-
-            console.error(
-                "Speech recognition error:",
-                event.error
-            );
-
-            stopMic();
-
-            setStatus("AI Ready");
-
-        };
-
-    recognition.onend =
-        function() {
-
-            stopMic();
-
-            setStatus("AI Ready");
-
-        };
-
-    return true;
-
-}
-
-
-function toggleMic() {
-
-    if (!recognition) {
-
-        const available =
-            setupSpeechRecognition();
-
-        if (!available) {
-
-            alert(
-                "Voice input is not supported in this browser. Try Chrome or Edge."
-            );
-
+        if (!messageInput) {
             return;
-
         }
 
+        messageInput.style.height = "auto";
+
+        messageInput.style.height =
+            Math.min(
+                messageInput.scrollHeight,
+                140
+            ) + "px";
     }
 
-    if (isListening) {
+    messageInput.addEventListener(
+        "input",
+        autoResizeTextarea
+    );
 
-        recognition.stop();
+    messageInput.addEventListener(
+        "keydown",
+        function(event) {
 
-    } else {
+            if (
+                event.key === "Enter" &&
+                !event.shiftKey
+            ) {
+
+                event.preventDefault();
+
+                chatForm.requestSubmit();
+            }
+
+        }
+    );
+
+    /* ======================================================
+       ADD MESSAGE
+    ====================================================== */
+
+    function addMessage(role, content) {
+
+        if (!messages) {
+            return;
+        }
+
+        if (welcome) {
+            welcome.style.display = "none";
+        }
+
+        const message = document.createElement("div");
+
+        message.className =
+            "message " +
+            (role === "user"
+                ? "user"
+                : "assistant");
+
+        const avatar =
+            document.createElement("div");
+
+        avatar.className = "avatar";
+
+        if (role === "assistant") {
+
+            const img =
+                document.createElement("img");
+
+            img.src =
+                "{{ url_for('static', filename='halper-logo.png') }}";
+
+            img.alt = "H";
+
+            avatar.appendChild(img);
+
+        } else {
+
+            avatar.textContent = "S";
+        }
+
+        const contentBox =
+            document.createElement("div");
+
+        contentBox.className =
+            "message-content";
+
+        contentBox.textContent =
+            content || "";
+
+        message.appendChild(avatar);
+        message.appendChild(contentBox);
+
+        messages.appendChild(message);
+
+        scrollToBottom();
+    }
+
+    /* ======================================================
+       ASSISTANT ACTIONS
+    ====================================================== */
+
+    function addAssistantActions(question, answer) {
+
+        if (!messages) {
+            return;
+        }
+
+        const lastMessage =
+            messages.lastElementChild;
+
+        if (!lastMessage) {
+            return;
+        }
+
+        const actionBox =
+            document.createElement("div");
+
+        actionBox.className =
+            "message-actions";
+
+        const improveButton =
+            document.createElement("button");
+
+        improveButton.className =
+            "action-btn";
+
+        improveButton.type = "button";
+
+        improveButton.textContent =
+            "Improve";
+
+        improveButton.onclick = function() {
+
+            improveAnswer(
+                question,
+                answer,
+                "improve",
+                actionBox
+            );
+        };
+
+        const checkButton =
+            document.createElement("button");
+
+        checkButton.className =
+            "action-btn";
+
+        checkButton.type = "button";
+
+        checkButton.textContent =
+            "Check";
+
+        checkButton.onclick = function() {
+
+            improveAnswer(
+                question,
+                answer,
+                "check",
+                actionBox
+            );
+        };
+
+        const explainButton =
+            document.createElement("button");
+
+        explainButton.className =
+            "action-btn";
+
+        explainButton.type = "button";
+
+        explainButton.textContent =
+            "Explain";
+
+        explainButton.onclick = function() {
+
+            improveAnswer(
+                question,
+                answer,
+                "explain",
+                actionBox
+            );
+        };
+
+        const shortButton =
+            document.createElement("button");
+
+        shortButton.className =
+            "action-btn";
+
+        shortButton.type = "button";
+
+        shortButton.textContent =
+            "Make Short";
+
+        shortButton.onclick = function() {
+
+            improveAnswer(
+                question,
+                answer,
+                "short",
+                actionBox
+            );
+        };
+
+        actionBox.appendChild(improveButton);
+        actionBox.appendChild(checkButton);
+        actionBox.appendChild(explainButton);
+        actionBox.appendChild(shortButton);
+
+        lastMessage
+            .querySelector(".message-content")
+            .appendChild(actionBox);
+    }
+
+    /* ======================================================
+       IMPROVE
+    ====================================================== */
+
+    async function improveAnswer(
+        question,
+        answer,
+        action,
+        actionBox
+    ) {
+
+        actionBox.style.opacity = "0.6";
 
         try {
 
-            recognition.start();
+            const response =
+                await fetch("/improve", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        question: question,
+                        answer: answer,
+                        action: action
+                    })
+                });
+
+            const data =
+                await response.json();
+
+            if (!response.ok || !data.success) {
+
+                alert(
+                    data.message ||
+                    data.error ||
+                    "Could not improve answer."
+                );
+
+                return;
+            }
+
+            addMessage(
+                "assistant",
+                data.answer || data.response || ""
+            );
 
         } catch (error) {
 
             console.error(error);
 
+            alert(
+                "Could not connect to the server."
+            );
+
+        } finally {
+
+            actionBox.style.opacity = "1";
+        }
+    }
+
+    /* ======================================================
+       SEND MESSAGE
+    ====================================================== */
+
+    chatForm.addEventListener(
+        "submit",
+        async function(event) {
+
+            event.preventDefault();
+
+            const text =
+                messageInput.value.trim();
+
+            if (!text) {
+                return;
+            }
+
+            addMessage(
+                "user",
+                text
+            );
+
+            messageInput.value = "";
+
+            autoResizeTextarea();
+
+            if (status) {
+                status.textContent =
+                    "Thinking...";
+            }
+
+            if (typingIndicator) {
+                typingIndicator.style.display =
+                    "block";
+            }
+
+            scrollToBottom();
+
+            try {
+
+                const response =
+                    await fetch("/chat", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            message: text
+                        })
+                    });
+
+                const data =
+                    await response.json();
+
+                if (typingIndicator) {
+                    typingIndicator.style.display =
+                        "none";
+                }
+
+                if (
+                    !response.ok ||
+                    !data.success
+                ) {
+
+                    addMessage(
+                        "assistant",
+                        "⚠️ " +
+                        (
+                            data.answer ||
+                            data.message ||
+                            data.error ||
+                            "Something went wrong."
+                        )
+                    );
+
+                    if (status) {
+                        status.textContent =
+                            "Error";
+                    }
+
+                    return;
+                }
+
+                const answer =
+                    data.answer ||
+                    data.response ||
+                    data.reply ||
+                    data.message ||
+                    "";
+
+                currentChatId =
+                    data.chat_id ||
+                    currentChatId;
+
+                addMessage(
+                    "assistant",
+                    answer
+                );
+
+                addAssistantActions(
+                    text,
+                    answer
+                );
+
+                if (status) {
+                    status.textContent =
+                        "Ready";
+                }
+
+                loadHistory();
+
+            } catch (error) {
+
+                console.error(error);
+
+                if (typingIndicator) {
+                    typingIndicator.style.display =
+                        "none";
+                }
+
+                addMessage(
+                    "assistant",
+                    "⚠️ Could not connect to the Flask server."
+                );
+
+                if (status) {
+                    status.textContent =
+                        "Connection error";
+                }
+            }
+
+        }
+    );
+
+    /* ======================================================
+       SCROLL
+    ====================================================== */
+
+    function scrollToBottom() {
+
+        if (!chatContainer) {
+            return;
         }
 
+        setTimeout(function() {
+
+            chatContainer.scrollTop =
+                chatContainer.scrollHeight;
+
+        }, 50);
     }
 
-}
+    /* ======================================================
+       LOAD HISTORY
+    ====================================================== */
 
+    async function loadHistory() {
 
-function stopMic() {
+        const history =
+            getElement("history");
 
-    isListening = false;
+        if (!history) {
+            return;
+        }
 
-    document
-        .getElementById("micButton")
-        .classList.remove("listening");
+        try {
 
-}
+            const response =
+                await fetch("/history");
 
+            const data =
+                await response.json();
 
-/* ============================================================
-   CAMERA
-============================================================ */
+            if (
+                !response.ok ||
+                !data.success
+            ) {
+                return;
+            }
 
-async function openCamera() {
+            history.innerHTML = "";
 
-    const modal =
-        document.getElementById("cameraModal");
+            const chats =
+                data.chats || [];
 
-    const video =
-        document.getElementById("cameraVideo");
+            chats.forEach(function(chat) {
 
-    if (!navigator.mediaDevices ||
-        !navigator.mediaDevices.getUserMedia) {
+                const button =
+                    document.createElement("button");
 
-        alert(
-            "Camera is not supported by this browser."
-        );
+                button.type = "button";
 
-        return;
+                button.className =
+                    "history-item";
 
-    }
+                button.textContent =
+                    chat.title ||
+                    "New Chat";
 
-    try {
+                button.title =
+                    chat.title ||
+                    "New Chat";
 
-        cameraStream =
-            await navigator.mediaDevices.getUserMedia({
-                video: true,
-                audio: false
+                button.dataset.chatId =
+                    chat.id;
+
+                button.onclick =
+                    function() {
+
+                        openChat(chat.id);
+                    };
+
+                history.appendChild(button);
+
             });
 
-        video.srcObject =
-            cameraStream;
+        } catch (error) {
 
-        modal.style.display =
-            "flex";
+            console.error(
+                "History error:",
+                error
+            );
+        }
+    }
 
-    } catch (error) {
+    /* ======================================================
+       OPEN CHAT
+    ====================================================== */
 
-        console.error(error);
+    async function openChat(chatId) {
 
-        alert(
-            "Could not access the camera. Please allow camera permission."
+        try {
+
+            const response =
+                await fetch(
+                    "/chat/" +
+                    encodeURIComponent(chatId)
+                );
+
+            const data =
+                await response.json();
+
+            if (
+                !response.ok ||
+                !data.success
+            ) {
+
+                alert(
+                    data.message ||
+                    "Chat not found."
+                );
+
+                return;
+            }
+
+            currentChatId =
+                chatId;
+
+            const chat =
+                data.chat;
+
+            if (messages) {
+                messages.innerHTML = "";
+            }
+
+            if (welcome) {
+                welcome.style.display =
+                    "none";
+            }
+
+            const title =
+                getElement("chatTitle");
+
+            if (title) {
+                title.textContent =
+                    chat.title ||
+                    "New Chat";
+            }
+
+            const chatMessages =
+                chat.messages || [];
+
+            if (chatMessages.length === 0) {
+
+                if (welcome) {
+                    welcome.style.display =
+                        "block";
+                }
+
+            } else {
+
+                chatMessages.forEach(
+                    function(item) {
+
+                        addMessage(
+                            item.role,
+                            item.content
+                        );
+
+                    }
+                );
+            }
+
+            highlightHistory(chatId);
+
+            closeSidebarOnMobile();
+
+        } catch (error) {
+
+            console.error(error);
+
+            alert(
+                "Could not open chat."
+            );
+        }
+    }
+
+    /* ======================================================
+       HIGHLIGHT HISTORY
+    ====================================================== */
+
+    function highlightHistory(chatId) {
+
+        document
+            .querySelectorAll(".history-item")
+            .forEach(function(item) {
+
+                item.classList.toggle(
+                    "active",
+                    item.dataset.chatId === chatId
+                );
+
+            });
+    }
+
+    /* ======================================================
+       NEW CHAT
+    ====================================================== */
+
+    const newChatBtn =
+        getElement("newChatBtn");
+
+    if (newChatBtn) {
+
+        newChatBtn.addEventListener(
+            "click",
+            async function() {
+
+                try {
+
+                    const response =
+                        await fetch(
+                            "/new-chat",
+                            {
+                                method: "POST"
+                            }
+                        );
+
+                    const data =
+                        await response.json();
+
+                    if (
+                        !response.ok ||
+                        !data.success
+                    ) {
+
+                        alert(
+                            data.message ||
+                            "Could not create new chat."
+                        );
+
+                        return;
+                    }
+
+                    currentChatId =
+                        data.chat_id;
+
+                    if (messages) {
+                        messages.innerHTML = "";
+                    }
+
+                    if (welcome) {
+                        welcome.style.display =
+                            "block";
+                    }
+
+                    const title =
+                        getElement("chatTitle");
+
+                    if (title) {
+                        title.textContent =
+                            "New Chat";
+                    }
+
+                    if (status) {
+                        status.textContent =
+                            "Ready";
+                    }
+
+                    await loadHistory();
+
+                    closeSidebarOnMobile();
+
+                } catch (error) {
+
+                    console.error(error);
+
+                    alert(
+                        "Could not create new chat."
+                    );
+                }
+
+            }
         );
-
     }
 
-}
+    /* ======================================================
+       LOGOUT
+    ====================================================== */
 
+    const logoutBtn =
+        getElement("logoutBtn");
 
-function closeCamera() {
+    if (logoutBtn) {
 
-    const modal =
-        document.getElementById("cameraModal");
+        logoutBtn.addEventListener(
+            "click",
+            function() {
 
-    const video =
-        document.getElementById("cameraVideo");
+                window.location.href =
+                    "/logout";
 
-    modal.style.display =
-        "none";
-
-    if (cameraStream) {
-
-        cameraStream
-            .getTracks()
-            .forEach(track => track.stop());
-
-        cameraStream = null;
-
-    }
-
-    video.srcObject = null;
-
-}
-
-
-function capturePhoto() {
-
-    const video =
-        document.getElementById("cameraVideo");
-
-    const canvas =
-        document.getElementById("cameraCanvas");
-
-    if (!video.videoWidth) {
-
-        alert(
-            "Camera is not ready yet."
+            }
         );
-
-        return;
-
     }
 
-    canvas.width =
-        video.videoWidth;
+    /* ======================================================
+       MOBILE SIDEBAR
+    ====================================================== */
 
-    canvas.height =
-        video.videoHeight;
+    const menuBtn =
+        getElement("menuBtn");
 
-    const context =
-        canvas.getContext("2d");
+    const sidebar =
+        getElement("sidebar");
 
-    context.drawImage(
-        video,
-        0,
-        0,
-        canvas.width,
-        canvas.height
-    );
+    if (menuBtn && sidebar) {
 
-    closeCamera();
+        menuBtn.addEventListener(
+            "click",
+            function() {
 
-    addMessage(
-        "user",
-        "📷 Photo captured."
-    );
+                sidebar.classList.toggle(
+                    "open"
+                );
 
-    /*
-       Your current Flask /chat endpoint accepts
-       text messages only. The captured image is
-       therefore not automatically sent to Ollama.
-    */
+            }
+        );
+    }
 
-    addMessage(
-        "assistant",
-        "The photo was captured. Image analysis is not connected to the current Flask/Ollama endpoint yet."
-    );
+    function closeSidebarOnMobile() {
+
+        if (
+            window.innerWidth <= 800 &&
+            sidebar
+        ) {
+
+            sidebar.classList.remove(
+                "open"
+            );
+        }
+    }
+
+    /* ======================================================
+       MICROPHONE
+    ====================================================== */
+
+    const micBtn =
+        getElement("micBtn");
+
+    let recognition = null;
+
+    if (
+        "SpeechRecognition" in window ||
+        "webkitSpeechRecognition" in window
+    ) {
+
+        const SpeechRecognition =
+            window.SpeechRecognition ||
+            window.webkitSpeechRecognition;
+
+        recognition =
+            new SpeechRecognition();
+
+        recognition.continuous = false;
+
+        recognition.interimResults = false;
+
+        recognition.lang = "en-US";
+
+        recognition.onstart =
+            function() {
+
+                micBtn.classList.add(
+                    "mic-listening"
+                );
+
+                micBtn.textContent =
+                    "⏹";
+
+                if (status) {
+                    status.textContent =
+                        "Listening...";
+                }
+            };
+
+        recognition.onresult =
+            function(event) {
+
+                const transcript =
+                    event.results[0][0].transcript;
+
+                messageInput.value =
+                    (
+                        messageInput.value +
+                        " " +
+                        transcript
+                    ).trim();
+
+                autoResizeTextarea();
+            };
+
+        recognition.onerror =
+            function(event) {
+
+                console.error(
+                    "Speech recognition error:",
+                    event.error
+                );
+
+                if (status) {
+                    status.textContent =
+                        "Microphone error";
+                }
+            };
+
+        recognition.onend =
+            function() {
+
+                micBtn.classList.remove(
+                    "mic-listening"
+                );
+
+                micBtn.textContent =
+                    "🎤";
+
+                if (status) {
+                    status.textContent =
+                        "Ready";
+                }
+            };
+
+    } else {
+
+        if (micBtn) {
+
+            micBtn.title =
+                "Voice input is not supported by this browser";
+
+        }
+    }
+
+    if (micBtn) {
+
+        micBtn.addEventListener(
+            "click",
+            function() {
+
+                if (!recognition) {
+
+                    alert(
+                        "Voice input is not supported by this browser. Try Chrome or Edge."
+                    );
+
+                    return;
+                }
+
+                try {
+
+                    if (
+                        micBtn.classList.contains(
+                            "mic-listening"
+                        )
+                    ) {
+
+                        recognition.stop();
+
+                    } else {
+
+                        recognition.start();
+
+                    }
+
+                } catch (error) {
+
+                    console.error(error);
+
+                }
+            }
+        );
+    }
+
+    /* ======================================================
+       CAMERA
+    ====================================================== */
+
+    const cameraBtn =
+        getElement("cameraBtn");
+
+    const cameraModal =
+        getElement("cameraModal");
+
+    const cameraVideo =
+        getElement("cameraVideo");
+
+    const cameraCanvas =
+        getElement("cameraCanvas");
+
+    const closeCamera =
+        getElement("closeCamera");
+
+    const captureCamera =
+        getElement("captureCamera");
+
+    let cameraStream = null;
+
+    async function openCamera() {
+
+        if (!cameraModal) {
+            return;
+        }
+
+        try {
+
+            cameraStream =
+                await navigator.mediaDevices.getUserMedia({
+                    video: true
+                });
+
+            cameraVideo.srcObject =
+                cameraStream;
+
+            cameraModal.classList.add(
+                "show"
+            );
+
+        } catch (error) {
+
+            console.error(error);
+
+            alert(
+                "Camera permission was not available."
+            );
+        }
+    }
+
+    function closeCameraModal() {
+
+        if (cameraStream) {
+
+            cameraStream
+                .getTracks()
+                .forEach(function(track) {
+
+                    track.stop();
+
+                });
+
+            cameraStream = null;
+        }
+
+        if (cameraVideo) {
+            cameraVideo.srcObject = null;
+        }
+
+        if (cameraModal) {
+            cameraModal.classList.remove(
+                "show"
+            );
+        }
+    }
+
+    if (cameraBtn) {
+
+        cameraBtn.addEventListener(
+            "click",
+            openCamera
+        );
+    }
+
+    if (closeCamera) {
+
+        closeCamera.addEventListener(
+            "click",
+            closeCameraModal
+        );
+    }
+
+    if (captureCamera) {
+
+        captureCamera.addEventListener(
+            "click",
+            function() {
+
+                if (
+                    !cameraVideo ||
+                    !cameraCanvas
+                ) {
+                    return;
+                }
+
+                const width =
+                    cameraVideo.videoWidth;
+
+                const height =
+                    cameraVideo.videoHeight;
+
+                if (!width || !height) {
+                    return;
+                }
+
+                cameraCanvas.width =
+                    width;
+
+                cameraCanvas.height =
+                    height;
+
+                const context =
+                    cameraCanvas.getContext("2d");
+
+                context.drawImage(
+                    cameraVideo,
+                    0,
+                    0,
+                    width,
+                    height
+                );
+
+                closeCameraModal();
+
+                addMessage(
+                    "user",
+                    "📷 Image captured. Please describe what you want Halper to help with."
+                );
+
+                messageInput.focus();
+
+            }
+        );
+    }
+
+    /* ======================================================
+       INITIAL LOAD
+    ====================================================== */
+
+    loadHistory();
 
     scrollToBottom();
-
 }
-
-
-/* ============================================================
-   MOBILE SIDEBAR
-============================================================ */
-
-function toggleSidebar() {
-
-    document
-        .getElementById("sidebar")
-        .classList.toggle("open");
-
-}
-
-
-function closeSidebarOnMobile() {
-
-    document
-        .getElementById("sidebar")
-        .classList.remove("open");
-
-}
-
-
-/* ============================================================
-   SCROLL
-============================================================ */
-
-function scrollToBottom() {
-
-    const area =
-        document.getElementById("chatArea");
-
-    setTimeout(() => {
-
-        area.scrollTop =
-            area.scrollHeight;
-
-    }, 50);
-
-}
-
-
-/* ============================================================
-   INITIAL PAGE
-============================================================ */
-
-document.addEventListener(
-    "DOMContentLoaded",
-    function() {
-
-        {% if logged_in %}
-
-        enterApp(
-            {{ username|tojson }}
-        );
-
-        {% endif %}
-
-    }
-);
-
 </script>
 
 </body>
