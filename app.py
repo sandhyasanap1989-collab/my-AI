@@ -56,11 +56,11 @@ os.makedirs(DATA_DIR, exist_ok=True)
 # ============================================================
 
 CREATOR_INFO = {
-    "name": "YOUR NAME",
+    "name": "Soham Chandrahas Sanap",
 
     "role": "Creator and developer of Halper",
 
-    "project": "Halper",
+    "project": "Helpar",
 
     "about": (
         "Halper is an educational AI tutor "
