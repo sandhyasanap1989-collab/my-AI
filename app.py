@@ -3,6 +3,8 @@ import re
 import json
 import uuid
 import sqlite3
+import ast
+import operator
 from datetime import datetime
 from functools import wraps
 
@@ -25,22 +27,22 @@ from werkzeug.security import (
 
 
 # ============================================================
-# HELPAR
-# Educational AI Tutor
+# HALPER
+# Local basic answers + Ollama
 # ============================================================
 
 app = Flask(__name__)
 
 app.secret_key = os.environ.get(
     "SECRET_KEY",
-    "change-this-secret-key-in-render",
+    "halper-secret-key-change-this"
 )
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 DATA_DIR = os.environ.get(
     "DATA_DIR",
-    BASE_DIR,
+    BASE_DIR
 )
 
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -49,84 +51,50 @@ os.makedirs(DATA_DIR, exist_ok=True)
 # ============================================================
 # CREATOR INFORMATION
 # ============================================================
-#
-# CHANGE ONLY THESE VALUES.
+# Change ONLY these public values.
 #
 # Do NOT put passwords, API keys, phone numbers,
-# home address, or private information here.
-#
+# home address, or other private information here.
 # ============================================================
 
 CREATOR_INFO = {
-    "name": "Soham Chandrahas Sanap",
-    "role": "Creator and developer of Helpar",
-    "project": "Helpar",
+    "name": "YOUR NAME",
+
+    "role": "Creator and developer of Halper",
+
+    "project": "Halper",
+
     "about": (
-        "Helpar is an educational AI project created "
+        "Halper is an educational AI project created "
         "to help students learn and solve questions."
     ),
-    "extra": "",
+
+    "extra": (
+        "Halper can help with mathematics, physics, "
+        "chemistry, biology, computer basics, and general "
+        "educational questions."
+    ),
 }
 
 
 # ============================================================
-# HUGGING FACE CONFIGURATION
-# ============================================================
-#
-# Set these in Render Environment Variables:
-#
-# HF_TOKEN = your Hugging Face token
-#
-# Optional:
-# HF_MODEL = openai/gpt-oss-120b
-#
-# ============================================================
-
-HF_TOKEN = os.environ.get("HF_TOKEN", "").strip()
-
-HF_MODEL = os.environ.get(
-    "HF_MODEL",
-    "openai/gpt-oss-120b",
-).strip()
-
-HF_TIMEOUT = int(
-    os.environ.get(
-        "HF_TIMEOUT",
-        "120",
-    )
-)
-
-
-# ============================================================
-# OPTIONAL LOCAL OLLAMA
-# ============================================================
-#
-# This is OPTIONAL.
-#
-# Render cannot normally reach Ollama running on your
-# personal Windows computer through 127.0.0.1.
-#
-# We therefore DO NOT depend on Ollama.
-#
-# If you later run Ollama on the same server, you can
-# configure OLLAMA_URL.
-#
+# OLLAMA CONFIGURATION
 # ============================================================
 
 OLLAMA_URL = os.environ.get(
     "OLLAMA_URL",
-    "",
-).strip().rstrip("/")
+    "http://127.0.0.1:11434"
+).rstrip("/")
 
 OLLAMA_MODEL = os.environ.get(
     "OLLAMA_MODEL",
-    "llama3.2:3b",
-).strip()
+    "llama3.2:3b"
+)
 
 OLLAMA_TIMEOUT = int(
     os.environ.get(
         "OLLAMA_TIMEOUT",
-        "120",
+        "180"
     )
 )
 
@@ -137,12 +105,12 @@ OLLAMA_TIMEOUT = int(
 
 USERS_FILE = os.path.join(
     DATA_DIR,
-    "users.json",
+    "users.json"
 )
 
 DATABASE_FILE = os.path.join(
     DATA_DIR,
-    "helpar.db",
+    "halper.db"
 )
 
 
@@ -158,14 +126,14 @@ def load_json(filename, default):
         with open(
             filename,
             "r",
-            encoding="utf-8",
+            encoding="utf-8"
         ) as file:
             return json.load(file)
 
     except Exception as error:
         print(
             "JSON LOAD ERROR:",
-            repr(error),
+            repr(error)
         )
 
         return default
@@ -178,18 +146,18 @@ def save_json(filename, data):
         with open(
             temporary_file,
             "w",
-            encoding="utf-8",
+            encoding="utf-8"
         ) as file:
             json.dump(
                 data,
                 file,
                 indent=2,
-                ensure_ascii=False,
+                ensure_ascii=False
             )
 
         os.replace(
             temporary_file,
-            filename,
+            filename
         )
 
         return True
@@ -197,7 +165,7 @@ def save_json(filename, data):
     except Exception as error:
         print(
             "JSON SAVE ERROR:",
-            repr(error),
+            repr(error)
         )
 
         try:
@@ -216,7 +184,7 @@ def save_json(filename, data):
 if not os.path.exists(USERS_FILE):
     save_json(
         USERS_FILE,
-        {},
+        {}
     )
 
 
@@ -227,7 +195,7 @@ if not os.path.exists(USERS_FILE):
 def get_db():
     connection = sqlite3.connect(
         DATABASE_FILE,
-        timeout=30,
+        timeout=30
     )
 
     connection.row_factory = sqlite3.Row
@@ -236,9 +204,11 @@ def get_db():
 
 
 def initialize_database():
+
     connection = get_db()
 
     try:
+
         connection.execute(
             "PRAGMA foreign_keys = ON"
         )
@@ -263,6 +233,7 @@ def initialize_database():
                 role TEXT NOT NULL,
                 content TEXT NOT NULL,
                 timestamp TEXT NOT NULL,
+
                 FOREIGN KEY(chat_id)
                 REFERENCES chats(id)
                 ON DELETE CASCADE
@@ -272,14 +243,16 @@ def initialize_database():
 
         connection.execute(
             """
-            CREATE INDEX IF NOT EXISTS idx_chats_username
+            CREATE INDEX IF NOT EXISTS
+            idx_chats_username
             ON chats(username)
             """
         )
 
         connection.execute(
             """
-            CREATE INDEX IF NOT EXISTS idx_messages_chat
+            CREATE INDEX IF NOT EXISTS
+            idx_messages_chat
             ON messages(chat_id)
             """
         )
@@ -287,14 +260,16 @@ def initialize_database():
         connection.commit()
 
     except Exception as error:
+
         connection.rollback()
 
         print(
             "DATABASE INITIALIZATION ERROR:",
-            repr(error),
+            repr(error)
         )
 
     finally:
+
         connection.close()
 
 
@@ -310,34 +285,7 @@ def now_iso():
 
 
 # ============================================================
-# AUTHENTICATION
-# ============================================================
-
-def current_username():
-    return session.get("username")
-
-
-def login_required(function):
-
-    @wraps(function)
-    def wrapper(*args, **kwargs):
-
-        if not session.get("username"):
-            return jsonify({
-                "success": False,
-                "message": "Please login first.",
-            }), 401
-
-        return function(
-            *args,
-            **kwargs,
-        )
-
-    return wrapper
-
-
-# ============================================================
-# CREATOR QUESTIONS
+# CREATOR QUESTION DETECTION
 # ============================================================
 
 def is_creator_question(text):
@@ -347,37 +295,50 @@ def is_creator_question(text):
     ).lower().strip()
 
     creator_phrases = [
+
         "who created you",
         "who is your creator",
-        "who created helpar",
+        "who created halper",
+
         "who made you",
-        "who made helpar",
+        "who made halper",
+
         "who developed you",
-        "who developed helpar",
+        "who developed halper",
+
         "who built you",
-        "who built helpar",
+        "who built halper",
+
         "who programmed you",
-        "who programmed helpar",
+        "who programmed halper",
+
         "who designed you",
-        "who designed helpar",
-        "who is behind helpar",
+        "who designed halper",
+
+        "who is behind halper",
         "who is behind you",
+
         "who is your developer",
-        "who is helpar's developer",
-        "who is helpar developer",
+        "who is halper's developer",
+        "who is halper developer",
+
         "who is your maker",
-        "who is helpar's maker",
-        "who is helpar maker",
+        "who is halper's maker",
+        "who is halper maker",
+
         "tell me about your creator",
-        "tell me about helpar creator",
+        "tell me about halper creator",
+
         "tell me about your developer",
-        "tell me about helpar developer",
+        "tell me about halper developer",
+
         "who is your father",
-        "who is helpar's father",
-        "who is helpar father",
+        "who is halper's father",
+        "who is halper father",
+
         "who is your dad",
-        "who is helpar's dad",
-        "who is helpar dad",
+        "who is halper's dad",
+        "who is halper dad",
     ]
 
     for phrase in creator_phrases:
@@ -397,9 +358,9 @@ def is_creator_question(text):
         "made",
     )
 
-    helpar_words = (
+    halper_words = (
         "you",
-        "helpar",
+        "halper",
         "your",
     )
 
@@ -408,14 +369,14 @@ def is_creator_question(text):
         for word in creator_words
     )
 
-    has_helpar_reference = any(
+    has_halper_reference = any(
         word in text
-        for word in helpar_words
+        for word in halper_words
     )
 
     return (
         has_creator_word
-        and has_helpar_reference
+        and has_halper_reference
     )
 
 
@@ -423,27 +384,27 @@ def creator_response():
 
     name = CREATOR_INFO.get(
         "name",
-        "the creator",
+        "the creator"
     )
 
     role = CREATOR_INFO.get(
         "role",
-        "the developer",
+        "the developer"
     )
 
     project = CREATOR_INFO.get(
         "project",
-        "Helpar",
+        "Halper"
     )
 
     about = CREATOR_INFO.get(
         "about",
-        "",
+        ""
     )
 
     extra = CREATOR_INFO.get(
         "extra",
-        "",
+        ""
     )
 
     response = (
@@ -461,698 +422,31 @@ def creator_response():
 
 
 # ============================================================
-# BASIC BUILT-IN ANSWERS
-# ============================================================
-#
-# These work WITHOUT Ollama or Hugging Face.
-#
+# AUTHENTICATION
 # ============================================================
 
-BASIC_ANSWERS = {
+def current_username():
+    return session.get("username")
 
-    # ----------------------------
-    # GREETINGS
-    # ----------------------------
 
-    "hi":
-        "Hi! 👋 I'm Helpar. How can I help you today?",
+def login_required(function):
 
-    "hii":
-        "Hii! 👋 I'm Helpar. What would you like to learn?",
+    @wraps(function)
+    def wrapper(*args, **kwargs):
 
-    "hello":
-        "Hello! 👋 I'm Helpar, your educational AI tutor. What would you like to learn?",
+        if not session.get("username"):
 
-    "hey":
-        "Hey! 👋 What would you like to learn today?",
+            return jsonify({
+                "success": False,
+                "message": "Please login first."
+            }), 401
 
-    "good morning":
-        "Good morning! ☀️ How can I help you learn today?",
-
-    "good afternoon":
-        "Good afternoon! 😊 What would you like to study?",
-
-    "good evening":
-        "Good evening! 🌆 How can I help you?",
-
-    "how are you":
-        "I'm doing great! 🤖 Ready to help you learn.",
-
-    "thanks":
-        "You're welcome! 😊",
-
-    "thank you":
-        "You're welcome! 😊",
-
-    "thanks helpar":
-        "You're welcome! 😊",
-
-    "bye":
-        "Goodbye! 👋 Keep learning!",
-
-    # ----------------------------
-    # HELPAR
-    # ----------------------------
-
-    "what is your name":
-        "My name is Helpar. 🤖 I'm an educational AI tutor.",
-
-    "who are you":
-        (
-            "I'm Helpar, an educational AI tutor. "
-            "I can help with Mathematics, Physics, Chemistry, "
-            "Biology, Computer Science, and general learning."
-        ),
-
-    "what can you do":
-        (
-            "I can help you with:\n\n"
-            "• Mathematics\n"
-            "• Physics\n"
-            "• Chemistry\n"
-            "• Biology\n"
-            "• Basic Computer Science\n"
-            "• General educational questions\n"
-            "• Step-by-step problem solving"
-        ),
-
-    # ----------------------------
-    # COMPUTER
-    # ----------------------------
-
-    "what is a computer":
-        (
-            "A computer is an electronic device that accepts data, "
-            "processes it according to instructions, stores information, "
-            "and produces output."
-        ),
-
-    "define computer":
-        (
-            "A computer is an electronic device that accepts data, "
-            "processes it according to instructions, stores information, "
-            "and produces output."
-        ),
-
-    "what is cpu":
-        (
-            "CPU stands for Central Processing Unit. "
-            "It executes instructions and performs calculations "
-            "in a computer."
-        ),
-
-    "what is a cpu":
-        (
-            "CPU stands for Central Processing Unit. "
-            "It executes instructions and performs calculations "
-            "in a computer."
-        ),
-
-    "define cpu":
-        (
-            "CPU stands for Central Processing Unit. "
-            "It executes instructions and performs calculations "
-            "in a computer."
-        ),
-
-    "what is ram":
-        (
-            "RAM stands for Random Access Memory. "
-            "It temporarily stores data and programs that the "
-            "computer is currently using."
-        ),
-
-    "what is a ram":
-        (
-            "RAM stands for Random Access Memory. "
-            "It temporarily stores data and programs that the "
-            "computer is currently using."
-        ),
-
-    "define ram":
-        (
-            "RAM stands for Random Access Memory. "
-            "It temporarily stores data and programs that the "
-            "computer is currently using."
-        ),
-
-    "what is rom":
-        (
-            "ROM stands for Read-Only Memory. "
-            "It stores information that is generally retained "
-            "when the computer is turned off."
-        ),
-
-    "define rom":
-        (
-            "ROM stands for Read-Only Memory. "
-            "It stores information that is generally retained "
-            "when the computer is turned off."
-        ),
-
-    "what is hardware":
-        (
-            "Hardware refers to the physical components of a computer, "
-            "such as the CPU, RAM, keyboard, storage, and display."
-        ),
-
-    "define hardware":
-        (
-            "Hardware refers to the physical components of a computer, "
-            "such as the CPU, RAM, keyboard, storage, and display."
-        ),
-
-    "what is software":
-        (
-            "Software is a collection of programs and instructions "
-            "that tell a computer what to do."
-        ),
-
-    "define software":
-        (
-            "Software is a collection of programs and instructions "
-            "that tell a computer what to do."
-        ),
-
-    "what is an operating system":
-        (
-            "An operating system is system software that manages "
-            "computer hardware and provides services for applications. "
-            "Examples include Windows, Linux, macOS, Android, and iOS."
-        ),
-
-    "what is os":
-        (
-            "An operating system is system software that manages "
-            "computer hardware and provides services for applications."
-        ),
-
-    "what is keyboard":
-        (
-            "A keyboard is an input device used to enter letters, "
-            "numbers, symbols, and commands into a computer."
-        ),
-
-    "what is a keyboard":
-        (
-            "A keyboard is an input device used to enter letters, "
-            "numbers, symbols, and commands into a computer."
-        ),
-
-    "what is mouse":
-        (
-            "A computer mouse is a pointing input device used to "
-            "move a pointer and interact with items on a screen."
-        ),
-
-    "what is a mouse":
-        (
-            "A computer mouse is a pointing input device used to "
-            "move a pointer and interact with items on a screen."
-        ),
-
-    "what is internet":
-        (
-            "The Internet is a worldwide network of connected "
-            "computer networks that communicate using standard "
-            "networking protocols."
-        ),
-
-    "what is the internet":
-        (
-            "The Internet is a worldwide network of connected "
-            "computer networks that communicate using standard "
-            "networking protocols."
-        ),
-
-    "what is wifi":
-        (
-            "Wi-Fi is a wireless networking technology that allows "
-            "devices to connect to a network using radio signals."
-        ),
-
-    "what is wi fi":
-        (
-            "Wi-Fi is a wireless networking technology that allows "
-            "devices to connect to a network using radio signals."
-        ),
-
-    # ----------------------------
-    # PHYSICS
-    # ----------------------------
-
-    "what is force":
-        (
-            "Force is a push or pull that can change the motion or "
-            "shape of an object.\n\n"
-            "SI unit: newton (N)"
-        ),
-
-    "define force":
-        (
-            "Force is a push or pull that can change the motion or "
-            "shape of an object.\n\n"
-            "SI unit: newton (N)"
-        ),
-
-    "what is speed":
-        (
-            "Speed is the distance travelled per unit time.\n\n"
-            "Formula:\n"
-            "Speed = Distance ÷ Time\n\n"
-            "SI unit: m/s"
-        ),
-
-    "define speed":
-        (
-            "Speed is the distance travelled per unit time.\n\n"
-            "Formula:\n"
-            "Speed = Distance ÷ Time\n\n"
-            "SI unit: m/s"
-        ),
-
-    "what is velocity":
-        (
-            "Velocity is the rate of change of displacement with time. "
-            "It is a vector quantity, so it has magnitude and direction."
-        ),
-
-    "define velocity":
-        (
-            "Velocity is the rate of change of displacement with time. "
-            "It is a vector quantity, so it has magnitude and direction."
-        ),
-
-    "what is acceleration":
-        (
-            "Acceleration is the rate of change of velocity with time.\n\n"
-            "Formula:\n"
-            "a = (v - u) / t\n\n"
-            "SI unit: m/s²"
-        ),
-
-    "define acceleration":
-        (
-            "Acceleration is the rate of change of velocity with time.\n\n"
-            "Formula:\n"
-            "a = (v - u) / t\n\n"
-            "SI unit: m/s²"
-        ),
-
-    "what is gravity":
-        (
-            "Gravity is the attractive force between masses. "
-            "Near Earth's surface, gravitational acceleration is "
-            "approximately 9.8 m/s²."
-        ),
-
-    "define gravity":
-        (
-            "Gravity is the attractive force between masses. "
-            "Near Earth's surface, gravitational acceleration is "
-            "approximately 9.8 m/s²."
-        ),
-
-    "what is newton's first law":
-        (
-            "Newton's First Law states that an object remains at rest "
-            "or continues moving with uniform velocity unless acted "
-            "upon by an external unbalanced force."
-        ),
-
-    "newtons first law":
-        (
-            "Newton's First Law states that an object remains at rest "
-            "or continues moving with uniform velocity unless acted "
-            "upon by an external unbalanced force."
-        ),
-
-    # ----------------------------
-    # CHEMISTRY
-    # ----------------------------
-
-    "what is atom":
-        (
-            "An atom is the smallest unit of an element that retains "
-            "the chemical properties of that element. It contains "
-            "protons, neutrons, and electrons."
-        ),
-
-    "what is an atom":
-        (
-            "An atom is the smallest unit of an element that retains "
-            "the chemical properties of that element. It contains "
-            "protons, neutrons, and electrons."
-        ),
-
-    "define atom":
-        (
-            "An atom is the smallest unit of an element that retains "
-            "the chemical properties of that element."
-        ),
-
-    "what is molecule":
-        (
-            "A molecule is a group of two or more atoms chemically "
-            "bonded together."
-        ),
-
-    "what is a molecule":
-        (
-            "A molecule is a group of two or more atoms chemically "
-            "bonded together."
-        ),
-
-    "define molecule":
-        (
-            "A molecule is a group of two or more atoms chemically "
-            "bonded together."
-        ),
-
-    "what is element":
-        (
-            "An element is a pure substance made of atoms that all "
-            "have the same number of protons."
-        ),
-
-    "what is an element":
-        (
-            "An element is a pure substance made of atoms that all "
-            "have the same number of protons."
-        ),
-
-    "what is compound":
-        (
-            "A compound is a pure substance formed when two or more "
-            "different elements combine chemically in fixed proportions."
-        ),
-
-    "what is a compound":
-        (
-            "A compound is a pure substance formed when two or more "
-            "different elements combine chemically in fixed proportions."
-        ),
-
-    "what is ph":
-        (
-            "pH is a measure related to the acidity or basicity of an "
-            "aqueous solution. At about 25°C, pH 7 is neutral, values "
-            "below 7 are acidic, and values above 7 are basic."
-        ),
-
-    # ----------------------------
-    # BIOLOGY
-    # ----------------------------
-
-    "what is cell":
-        (
-            "A cell is the basic structural and functional unit of life."
-        ),
-
-    "what is a cell":
-        (
-            "A cell is the basic structural and functional unit of life."
-        ),
-
-    "define cell":
-        (
-            "A cell is the basic structural and functional unit of life."
-        ),
-
-    "what is photosynthesis":
-        (
-            "Photosynthesis is the process by which green plants and "
-            "some other organisms use light energy to make food from "
-            "carbon dioxide and water, releasing oxygen."
-        ),
-
-    "define photosynthesis":
-        (
-            "Photosynthesis is the process by which green plants and "
-            "some other organisms use light energy to make food from "
-            "carbon dioxide and water, releasing oxygen."
-        ),
-
-    "what is dna":
-        (
-            "DNA stands for deoxyribonucleic acid. "
-            "It stores genetic information used in the development "
-            "and functioning of organisms."
-        ),
-
-    "what is respiration":
-        (
-            "Cellular respiration is a set of metabolic reactions "
-            "through which cells release usable energy from nutrients "
-            "such as glucose."
-        ),
-
-    "define respiration":
-        (
-            "Cellular respiration is a set of metabolic reactions "
-            "through which cells release usable energy from nutrients "
-            "such as glucose."
-        ),
-
-    # ----------------------------
-    # MATHS
-    # ----------------------------
-
-    "what is pi":
-        (
-            "π (pi) is the ratio of a circle's circumference to its "
-            "diameter. Its approximate value is 3.14159."
-        ),
-
-    "define pi":
-        (
-            "π (pi) is the ratio of a circle's circumference to its "
-            "diameter. Its approximate value is 3.14159."
-        ),
-
-    "what is a prime number":
-        (
-            "A prime number is a whole number greater than 1 that has "
-            "exactly two positive factors: 1 and itself."
-        ),
-
-    "define prime number":
-        (
-            "A prime number is a whole number greater than 1 that has "
-            "exactly two positive factors: 1 and itself."
-        ),
-
-    "what is percentage":
-        (
-            "A percentage expresses a quantity as a fraction of 100.\n\n"
-            "Percentage = (Part ÷ Whole) × 100"
-        ),
-
-    "define percentage":
-        (
-            "A percentage expresses a quantity as a fraction of 100.\n\n"
-            "Percentage = (Part ÷ Whole) × 100"
-        ),
-}
-
-
-# ============================================================
-# NORMALIZE TEXT
-# ============================================================
-
-def normalize_text(text):
-
-    text = str(
-        text or ""
-    ).lower().strip()
-
-    text = re.sub(
-        r"\s+",
-        " ",
-        text,
-    )
-
-    text = re.sub(
-        r"[!?.,]+$",
-        "",
-        text,
-    )
-
-    return text
-
-
-# ============================================================
-# BASIC MATH CALCULATOR
-# ============================================================
-#
-# Supports simple arithmetic.
-#
-# Examples:
-# 2+2
-# 10-5
-# 5*6
-# 20/4
-# 2^3
-#
-# It does NOT execute arbitrary Python code.
-#
-# ============================================================
-
-def safe_calculate(expression):
-
-    expression = expression.strip()
-
-    if len(expression) > 100:
-        return None
-
-    if not re.fullmatch(
-        r"[0-9+\-*/().%\s^]+",
-        expression,
-    ):
-        return None
-
-    expression = expression.replace(
-        "^",
-        "**",
-    )
-
-    if "**" in expression:
-        parts = expression.split("**")
-
-        if len(parts) != 2:
-            return None
-
-        try:
-            base = float(parts[0].strip())
-            exponent = float(parts[1].strip())
-
-            if abs(exponent) > 20:
-                return None
-
-        except Exception:
-            return None
-
-    try:
-
-        result = eval(
-            expression,
-            {
-                "__builtins__": {}
-            },
-            {},
+        return function(
+            *args,
+            **kwargs
         )
 
-        if not isinstance(
-            result,
-            (int, float),
-        ):
-            return None
-
-        if abs(result) > 10**100:
-            return None
-
-        if isinstance(
-            result,
-            float,
-        ) and result.is_integer():
-            result = int(result)
-
-        return result
-
-    except Exception:
-        return None
-
-
-def get_math_answer(text):
-
-    cleaned = normalize_text(text)
-
-    # Direct expression
-    if re.fullmatch(
-        r"[0-9+\-*/().%\s^]+",
-        cleaned,
-    ):
-
-        result = safe_calculate(
-            cleaned
-        )
-
-        if result is not None:
-            return (
-                f"Let's calculate it step by step.\n\n"
-                f"{cleaned} = {result}"
-            )
-
-    # "calculate ..."
-    prefixes = [
-        "calculate ",
-        "solve ",
-        "what is ",
-    ]
-
-    for prefix in prefixes:
-
-        if cleaned.startswith(prefix):
-
-            expression = cleaned[
-                len(prefix):
-            ].strip()
-
-            result = safe_calculate(
-                expression
-            )
-
-            if result is not None:
-
-                return (
-                    f"Let's calculate it.\n\n"
-                    f"{expression} = {result}"
-                )
-
-    return None
-
-
-# ============================================================
-# GET BASIC ANSWER
-# ============================================================
-
-def get_basic_answer(text):
-
-    cleaned = normalize_text(
-        text
-    )
-
-    if cleaned in BASIC_ANSWERS:
-        return BASIC_ANSWERS[
-            cleaned
-        ]
-
-    math_answer = get_math_answer(
-        text
-    )
-
-    if math_answer:
-        return math_answer
-
-    # Additional simple patterns
-
-    if cleaned.startswith(
-        "hi "
-    ):
-        return (
-            "Hi! 👋 I'm Helpar. "
-            "How can I help you today?"
-        )
-
-    if cleaned.startswith(
-        "hello "
-    ):
-        return (
-            "Hello! 👋 I'm Helpar. "
-            "What would you like to learn?"
-        )
-
-    return None
+    return wrapper
 
 
 # ============================================================
@@ -1174,7 +468,13 @@ def create_chat(username):
         connection.execute(
             """
             INSERT INTO chats
-            (id, username, title, created_at, updated_at)
+            (
+                id,
+                username,
+                title,
+                created_at,
+                updated_at
+            )
             VALUES (?, ?, ?, ?, ?)
             """,
             (
@@ -1182,22 +482,20 @@ def create_chat(username):
                 username,
                 "New Chat",
                 timestamp,
-                timestamp,
-            ),
+                timestamp
+            )
         )
 
         connection.commit()
 
     finally:
+
         connection.close()
 
     return chat_id
 
 
-def chat_exists(
-    chat_id,
-    username,
-):
+def chat_exists(chat_id, username):
 
     connection = get_db()
 
@@ -1207,17 +505,19 @@ def chat_exists(
             """
             SELECT id
             FROM chats
-            WHERE id = ? AND username = ?
+            WHERE id = ?
+            AND username = ?
             """,
             (
                 chat_id,
-                username,
-            ),
+                username
+            )
         ).fetchone()
 
         return row is not None
 
     finally:
+
         connection.close()
 
 
@@ -1235,9 +535,7 @@ def get_latest_chat(username):
             ORDER BY updated_at DESC
             LIMIT 1
             """,
-            (
-                username,
-            ),
+            (username,)
         ).fetchone()
 
         if row:
@@ -1246,6 +544,7 @@ def get_latest_chat(username):
         return None
 
     finally:
+
         connection.close()
 
 
@@ -1264,7 +563,7 @@ def get_current_chat():
 
         if chat_exists(
             saved_chat,
-            username,
+            username
         ):
             return saved_chat
 
@@ -1290,7 +589,7 @@ def get_current_chat():
 def save_message(
     chat_id,
     role,
-    content,
+    content
 ):
 
     connection = get_db()
@@ -1302,15 +601,20 @@ def save_message(
         connection.execute(
             """
             INSERT INTO messages
-            (chat_id, role, content, timestamp)
+            (
+                chat_id,
+                role,
+                content,
+                timestamp
+            )
             VALUES (?, ?, ?, ?)
             """,
             (
                 chat_id,
                 role,
                 content,
-                timestamp,
-            ),
+                timestamp
+            )
         )
 
         connection.execute(
@@ -1321,8 +625,8 @@ def save_message(
             """,
             (
                 timestamp,
-                chat_id,
-            ),
+                chat_id
+            )
         )
 
         connection.commit()
@@ -1335,18 +639,19 @@ def save_message(
 
         print(
             "SAVE MESSAGE ERROR:",
-            repr(error),
+            repr(error)
         )
 
         return False
 
     finally:
+
         connection.close()
 
 
 def set_chat_title(
     chat_id,
-    title,
+    title
 ):
 
     connection = get_db()
@@ -1356,25 +661,27 @@ def set_chat_title(
         connection.execute(
             """
             UPDATE chats
-            SET title = ?, updated_at = ?
+            SET title = ?,
+                updated_at = ?
             WHERE id = ?
             """,
             (
                 title,
                 now_iso(),
-                chat_id,
-            ),
+                chat_id
+            )
         )
 
         connection.commit()
 
     finally:
+
         connection.close()
 
 
 def get_chat(
     chat_id,
-    username,
+    username
 ):
 
     connection = get_db()
@@ -1389,12 +696,13 @@ def get_chat(
                 created_at,
                 updated_at
             FROM chats
-            WHERE id = ? AND username = ?
+            WHERE id = ?
+            AND username = ?
             """,
             (
                 chat_id,
-                username,
-            ),
+                username
+            )
         ).fetchone()
 
         if not chat:
@@ -1410,9 +718,7 @@ def get_chat(
             WHERE chat_id = ?
             ORDER BY id ASC
             """,
-            (
-                chat_id,
-            ),
+            (chat_id,)
         ).fetchall()
 
         return {
@@ -1420,216 +726,729 @@ def get_chat(
             "title": chat["title"],
             "created_at": chat["created_at"],
             "updated_at": chat["updated_at"],
+
             "messages": [
                 {
                     "role": row["role"],
                     "content": row["content"],
-                    "timestamp": row["timestamp"],
+                    "timestamp": row["timestamp"]
                 }
+
                 for row in messages
-            ],
+            ]
         }
 
     finally:
+
         connection.close()
 
 
 # ============================================================
-# HUGGING FACE AI
+# LOCAL MATHEMATICS
 # ============================================================
 
-def call_huggingface(
-    prompt,
-    conversation=None,
-):
+# Only safe mathematical operators are allowed.
+SAFE_OPERATORS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.Pow: operator.pow,
+    ast.Mod: operator.mod,
+    ast.FloorDiv: operator.floordiv,
+    ast.USub: operator.neg,
+    ast.UAdd: operator.pos,
+}
 
-    if conversation is None:
-        conversation = []
 
-    if not HF_TOKEN:
-        return (
-            False,
-            "Online AI is not configured yet. "
-            "Add HF_TOKEN to your Render environment variables."
+def safe_math_eval(expression):
+
+    expression = expression.strip()
+
+    if len(expression) > 100:
+        raise ValueError(
+            "Expression is too long."
         )
 
-    messages = [
-        {
-            "role": "system",
-            "content": (
-                "You are Helpar, a helpful educational AI tutor. "
-                "Answer clearly and accurately. "
-                "Use simple language when appropriate. "
-                "For mathematics, show useful steps. "
-                "For physics, show formulas and units. "
-                "For chemistry, check equations carefully. "
-                "For biology, use correct scientific terms. "
-                "For computer science, explain concepts clearly. "
-                "Do not invent facts. "
-                "If you do not know something, say so."
-            ),
-        }
+    tree = ast.parse(
+        expression,
+        mode="eval"
+    )
+
+    def calculate(node):
+
+        if isinstance(
+            node,
+            ast.Expression
+        ):
+            return calculate(
+                node.body
+            )
+
+        if isinstance(
+            node,
+            ast.Constant
+        ):
+
+            if isinstance(
+                node.value,
+                (int, float)
+            ):
+                return node.value
+
+            raise ValueError(
+                "Invalid number."
+            )
+
+        if isinstance(
+            node,
+            ast.BinOp
+        ):
+
+            left = calculate(
+                node.left
+            )
+
+            right = calculate(
+                node.right
+            )
+
+            operation = SAFE_OPERATORS.get(
+                type(node.op)
+            )
+
+            if operation is None:
+                raise ValueError(
+                    "Operator not allowed."
+                )
+
+            return operation(
+                left,
+                right
+            )
+
+        if isinstance(
+            node,
+            ast.UnaryOp
+        ):
+
+            value = calculate(
+                node.operand
+            )
+
+            operation = SAFE_OPERATORS.get(
+                type(node.op)
+            )
+
+            if operation is None:
+                raise ValueError(
+                    "Operator not allowed."
+                )
+
+            return operation(
+                value
+            )
+
+        raise ValueError(
+            "Invalid expression."
+        )
+
+    result = calculate(tree)
+
+    if isinstance(
+        result,
+        float
+    ):
+
+        if result.is_integer():
+            return str(
+                int(result)
+            )
+
+        return str(
+            round(result, 10)
+        )
+
+    return str(result)
+
+
+def local_math_answer(text):
+
+    original = str(
+        text or ""
+    ).strip()
+
+    if not original:
+        return None
+
+    expression = original.lower()
+
+    # Remove common calculation wording.
+    replacements = [
+        "what is",
+        "calculate",
+        "solve",
+        "find",
+        "answer",
+        "equals",
+        "=",
+        "?",
     ]
 
-    for item in conversation[-12:]:
+    for word in replacements:
 
-        role = item.get(
-            "role"
+        expression = expression.replace(
+            word,
+            ""
         )
 
-        content = item.get(
-            "content",
-            "",
-        )
+    expression = expression.strip()
 
-        if role not in (
-            "user",
-            "assistant",
-        ):
-            continue
+    # Convert common multiplication symbols.
+    expression = expression.replace(
+        "×",
+        "*"
+    )
 
-        if not content:
-            continue
+    expression = expression.replace(
+        "x",
+        "*"
+    )
 
-        messages.append({
-            "role": role,
-            "content": str(content),
-        })
+    expression = expression.replace(
+        "÷",
+        "/"
+    )
 
-    messages.append({
-        "role": "user",
-        "content": prompt,
-    })
+    # Remove commas from large numbers.
+    expression = expression.replace(
+        ",",
+        ""
+    )
 
-    headers = {
-        "Authorization": f"Bearer {HF_TOKEN}",
-        "Content-Type": "application/json",
-    }
+    # Only allow a pure arithmetic expression.
+    if not re.fullmatch(
+        r"[0-9\s+\-*/%.()]+",
+        expression
+    ):
+        return None
 
-    payload = {
-        "model": HF_MODEL,
-        "messages": messages,
-        "stream": False,
-        "temperature": 0.3,
-        "max_tokens": 1500,
-    }
+    if not re.search(
+        r"[+\-*/%]",
+        expression
+    ):
+        return None
 
     try:
 
-        response = requests.post(
-            "https://router.huggingface.co/v1/chat/completions",
-            headers=headers,
-            json=payload,
-            timeout=HF_TIMEOUT,
+        result = safe_math_eval(
+            expression
+        )
+
+        return (
+            f"The answer is **{result}**."
+        )
+
+    except Exception:
+        return None
+
+
+# ============================================================
+# BASIC QUESTION ANSWERS
+# ============================================================
+
+BASIC_RESPONSES = {
+
+    "hi": (
+        "Hi! 👋 I'm Halper. "
+        "How can I help you learn today?"
+    ),
+
+    "hello": (
+        "Hello! 👋 I'm Halper. "
+        "Ask me a question about Maths, Physics, "
+        "Chemistry, Biology, computers, or another subject."
+    ),
+
+    "hey": (
+        "Hey! 👋 What would you like to learn today?"
+    ),
+
+    "good morning": (
+        "Good morning! ☀️ "
+        "What would you like to study today?"
+    ),
+
+    "good afternoon": (
+        "Good afternoon! "
+        "What can I help you learn?"
+    ),
+
+    "good evening": (
+        "Good evening! "
+        "What would you like to study?"
+    ),
+
+    "how are you": (
+        "I'm doing well! 😊 "
+        "I'm ready to help you learn."
+    ),
+
+    "thanks": (
+        "You're welcome! 😊"
+    ),
+
+    "thank you": (
+        "You're welcome! 😊"
+    ),
+
+    "bye": (
+        "Goodbye! 👋 Keep learning!"
+    ),
+}
+
+
+def basic_question_answer(text):
+
+    cleaned = str(
+        text or ""
+    ).strip().lower()
+
+    cleaned = re.sub(
+        r"[!?.,]+$",
+        "",
+        cleaned
+    ).strip()
+
+    if cleaned in BASIC_RESPONSES:
+
+        return BASIC_RESPONSES[
+            cleaned
+        ]
+
+    # Computer basics.
+    if cleaned in (
+        "what is a computer",
+        "what is computer",
+        "define computer",
+    ):
+
+        return (
+            "**Computer:** A computer is an electronic "
+            "device that accepts data, processes it, "
+            "stores information, and produces output."
+        )
+
+    if cleaned in (
+        "what is cpu",
+        "what is a cpu",
+        "define cpu",
+    ):
+
+        return (
+            "**CPU:** CPU stands for Central Processing Unit. "
+            "It executes instructions and performs calculations "
+            "needed by a computer."
+        )
+
+    if cleaned in (
+        "what is ram",
+        "what is a ram",
+        "define ram",
+    ):
+
+        return (
+            "**RAM:** RAM stands for Random Access Memory. "
+            "It temporarily stores data and instructions "
+            "that the computer is actively using."
+        )
+
+    if cleaned in (
+        "what is rom",
+        "what is a rom",
+        "define rom",
+    ):
+
+        return (
+            "**ROM:** ROM stands for Read-Only Memory. "
+            "It stores data that generally remains available "
+            "when the device is turned off."
+        )
+
+    if cleaned in (
+        "what is an operating system",
+        "what is operating system",
+        "define operating system",
+    ):
+
+        return (
+            "An **operating system (OS)** is software that "
+            "manages computer hardware and provides services "
+            "for applications. Examples include Windows, "
+            "Linux, Android, and macOS."
+        )
+
+    if cleaned in (
+        "what is software",
+        "define software",
+    ):
+
+        return (
+            "**Software** is a collection of programs and "
+            "instructions that tell a computer what to do."
+        )
+
+    if cleaned in (
+        "what is hardware",
+        "define hardware",
+    ):
+
+        return (
+            "**Hardware** refers to the physical parts of a "
+            "computer, such as the CPU, RAM, keyboard, mouse, "
+            "storage drive, and monitor."
+        )
+
+    # Physics basics.
+    if cleaned in (
+        "what is force",
+        "define force",
+    ):
+
+        return (
+            "**Force** is a push or pull that can change the "
+            "motion of an object. Its SI unit is the newton (N)."
+        )
+
+    if cleaned in (
+        "what is speed",
+        "define speed",
+    ):
+
+        return (
+            "**Speed** is the distance travelled per unit time.\n\n"
+            "Formula:\n"
+            "Speed = Distance / Time\n\n"
+            "SI unit: m/s"
+        )
+
+    if cleaned in (
+        "what is velocity",
+        "define velocity",
+    ):
+
+        return (
+            "**Velocity** is displacement per unit time and "
+            "has both magnitude and direction.\n\n"
+            "SI unit: m/s"
+        )
+
+    if cleaned in (
+        "what is acceleration",
+        "define acceleration",
+    ):
+
+        return (
+            "**Acceleration** is the rate of change of velocity "
+            "with respect to time.\n\n"
+            "a = Change in velocity / Time\n\n"
+            "SI unit: m/s²"
+        )
+
+    if cleaned in (
+        "what is newtons first law",
+        "what is newton's first law",
+    ):
+
+        return (
+            "**Newton's First Law:** An object remains at rest "
+            "or continues moving with constant velocity unless "
+            "acted upon by a net external force."
+        )
+
+    if cleaned in (
+        "what is newtons second law",
+        "what is newton's second law",
+    ):
+
+        return (
+            "**Newton's Second Law:** The net force on an object "
+            "equals its mass multiplied by its acceleration.\n\n"
+            "F = ma"
+        )
+
+    if cleaned in (
+        "what is newtons third law",
+        "what is newton's third law",
+    ):
+
+        return (
+            "**Newton's Third Law:** When one object exerts a "
+            "force on another object, the second object exerts "
+            "an equal and opposite force on the first."
+        )
+
+    # Chemistry basics.
+    if cleaned in (
+        "what is an atom",
+        "what is atom",
+        "define atom",
+    ):
+
+        return (
+            "An **atom** is the basic unit of an element that "
+            "retains the chemical properties of that element."
+        )
+
+    if cleaned in (
+        "what is a molecule",
+        "what is molecule",
+        "define molecule",
+    ):
+
+        return (
+            "A **molecule** is a group of two or more atoms "
+            "chemically bonded together."
+        )
+
+    if cleaned in (
+        "what is an element",
+        "what is element",
+        "define element",
+    ):
+
+        return (
+            "A **chemical element** is a pure substance made "
+            "of atoms with the same number of protons."
+        )
+
+    if cleaned in (
+        "what is a compound",
+        "what is compound",
+        "define compound",
+    ):
+
+        return (
+            "A **compound** is a substance formed when atoms "
+            "of two or more different elements chemically "
+            "combine in fixed proportions."
+        )
+
+    if cleaned in (
+        "what is ph",
+        "what is p h",
+    ):
+
+        return (
+            "**pH** is a scale used to describe how acidic or "
+            "basic an aqueous solution is. Lower values are "
+            "generally more acidic, while higher values are "
+            "generally more basic."
+        )
+
+    # Biology basics.
+    if cleaned in (
+        "what is a cell",
+        "what is cell",
+        "define cell",
+    ):
+
+        return (
+            "A **cell** is the basic structural and functional "
+            "unit of living organisms."
+        )
+
+    if cleaned in (
+        "what is photosynthesis",
+        "define photosynthesis",
+    ):
+
+        return (
+            "**Photosynthesis** is the process by which green "
+            "plants use light energy to make glucose from "
+            "carbon dioxide and water, releasing oxygen."
+        )
+
+    if cleaned in (
+        "what is respiration",
+        "define respiration",
+    ):
+
+        return (
+            "**Cellular respiration** is a set of chemical "
+            "reactions through which cells release usable "
+            "energy from nutrients such as glucose."
+        )
+
+    if cleaned in (
+        "what is dna",
+        "define dna",
+    ):
+
+        return (
+            "**DNA** stands for deoxyribonucleic acid. "
+            "It stores genetic information in living organisms "
+            "and many viruses."
+        )
+
+    if cleaned in (
+        "what is a gene",
+        "what is gene",
+        "define gene",
+    ):
+
+        return (
+            "A **gene** is a segment of genetic material that "
+            "contains information used to produce a functional "
+            "product, such as a protein or functional RNA."
+        )
+
+    return None
+
+
+# ============================================================
+# LOCAL ANSWER ENGINE
+# ============================================================
+
+def get_local_answer(text):
+
+    # Creator questions always handled locally.
+    if is_creator_question(text):
+        return creator_response()
+
+    # Mathematics.
+    math_answer = local_math_answer(text)
+
+    if math_answer:
+        return math_answer
+
+    # Basic educational questions.
+    basic_answer = basic_question_answer(text)
+
+    if basic_answer:
+        return basic_answer
+
+    return None
+
+
+# ============================================================
+# OLLAMA CONNECTION CHECK
+# ============================================================
+
+def check_ollama():
+
+    try:
+
+        response = requests.get(
+            f"{OLLAMA_URL}/api/tags",
+            timeout=10
         )
 
         if response.status_code != 200:
 
-            print(
-                "HUGGING FACE ERROR:",
-                response.status_code,
-                response.text,
-            )
-
             return (
                 False,
-                "Online AI returned HTTP "
-                + str(response.status_code),
+                f"Ollama returned HTTP "
+                f"{response.status_code}"
             )
 
         data = response.json()
 
-        choices = data.get(
-            "choices"
+        models = data.get(
+            "models",
+            []
         )
 
-        if not choices:
-            return (
-                False,
-                "Online AI returned no answer.",
-            )
+        model_names = []
 
-        message = choices[0].get(
-            "message",
-            {},
-        )
+        for model in models:
 
-        answer = message.get(
-            "content",
-            "",
-        )
+            if isinstance(
+                model,
+                dict
+            ):
 
-        answer = str(
-            answer
-        ).strip()
+                name = model.get(
+                    "name"
+                )
 
-        if not answer:
-            return (
-                False,
-                "Online AI returned an empty answer.",
-            )
+                if name:
+                    model_names.append(
+                        name
+                    )
 
         return (
             True,
-            answer,
-        )
-
-    except requests.exceptions.Timeout:
-
-        return (
-            False,
-            "Online AI took too long to respond.",
+            {
+                "models": model_names,
+                "selected_model": OLLAMA_MODEL,
+                "model_available":
+                    OLLAMA_MODEL in model_names,
+            }
         )
 
     except requests.exceptions.ConnectionError:
 
         return (
             False,
-            "Could not connect to the online AI service.",
+            "Cannot connect to Ollama. "
+            "Make sure Ollama is running."
         )
 
     except Exception as error:
 
-        print(
-            "HUGGING FACE EXCEPTION:",
-            repr(error),
-        )
-
         return (
             False,
-            "Online AI error: "
-            + str(error),
+            str(error)
         )
 
 
 # ============================================================
-# OPTIONAL OLLAMA
+# OLLAMA AI
 # ============================================================
 
 def call_ollama(
     prompt,
-    conversation=None,
+    conversation=None
 ):
-
-    if not OLLAMA_URL:
-        return (
-            False,
-            "Ollama is not configured.",
-        )
 
     if conversation is None:
         conversation = []
 
     messages = [
+
         {
             "role": "system",
+
             "content": (
-                "You are Helpar, an educational AI tutor. "
-                "Give clear, accurate educational answers."
-            ),
+                "You are Halper, a helpful educational AI tutor. "
+
+                "Give accurate, clear and friendly answers. "
+
+                "For mathematics, show useful steps and "
+                "check calculations carefully. "
+
+                "For physics, show formulas and units. "
+
+                "For chemistry, check equations carefully. "
+
+                "For biology, use correct scientific terms. "
+
+                "For computer questions, explain concepts "
+                "clearly for students. "
+
+                "Do not invent facts. "
+
+                "If you are unsure about something, say so. "
+
+                "If asked about your creator, developer, "
+                "maker, father, or who made you, the application "
+                "handles that separately."
+            )
         }
     ]
 
+    # Add recent conversation.
     for item in conversation[-12:]:
 
         role = item.get(
@@ -1638,32 +1457,44 @@ def call_ollama(
 
         content = item.get(
             "content",
-            "",
+            ""
         )
 
-        if role in (
+        if role not in (
             "user",
-            "assistant",
-        ) and content:
+            "assistant"
+        ):
+            continue
 
-            messages.append({
+        if not content:
+            continue
+
+        messages.append(
+            {
                 "role": role,
-                "content": str(content),
-            })
+                "content": str(content)
+            }
+        )
 
-    messages.append({
-        "role": "user",
-        "content": prompt,
-    })
+    messages.append(
+        {
+            "role": "user",
+            "content": prompt
+        }
+    )
 
     payload = {
+
         "model": OLLAMA_MODEL,
+
         "messages": messages,
+
         "stream": False,
+
         "options": {
-            "temperature": 0.3,
-            "num_predict": 1500,
-        },
+            "temperature": 0.2,
+            "num_predict": 1500
+        }
     }
 
     try:
@@ -1671,15 +1502,21 @@ def call_ollama(
         response = requests.post(
             f"{OLLAMA_URL}/api/chat",
             json=payload,
-            timeout=OLLAMA_TIMEOUT,
+            timeout=OLLAMA_TIMEOUT
         )
 
         if response.status_code != 200:
 
+            print(
+                "OLLAMA HTTP ERROR:",
+                response.status_code,
+                response.text
+            )
+
             return (
                 False,
                 "Ollama returned HTTP "
-                + str(response.status_code),
+                + str(response.status_code)
             )
 
         data = response.json()
@@ -1690,50 +1527,60 @@ def call_ollama(
 
         if not isinstance(
             message,
-            dict,
+            dict
         ):
+
             return (
                 False,
-                "Ollama returned no message.",
+                "Ollama returned no message."
             )
 
+        answer = message.get(
+            "content",
+            ""
+        )
+
         answer = str(
-            message.get(
-                "content",
-                "",
-            )
+            answer
         ).strip()
 
         if not answer:
+
             return (
                 False,
-                "Ollama returned an empty answer.",
+                "Ollama returned an empty answer."
             )
 
         return (
             True,
-            answer,
+            answer
         )
 
     except requests.exceptions.ConnectionError:
 
         return (
             False,
-            "Cannot connect to Ollama.",
+            "Cannot connect to Ollama. "
+            "Make sure Ollama is running."
         )
 
     except requests.exceptions.Timeout:
 
         return (
             False,
-            "Ollama took too long to respond.",
+            "Ollama took too long to respond."
         )
 
     except Exception as error:
 
+        print(
+            "OLLAMA ERROR:",
+            repr(error)
+        )
+
         return (
             False,
-            str(error),
+            str(error)
         )
 
 
@@ -1743,7 +1590,7 @@ def call_ollama(
 
 @app.route(
     "/login",
-    methods=["POST"],
+    methods=["POST"]
 )
 def login():
 
@@ -1754,14 +1601,14 @@ def login():
     login_value = str(
         data.get(
             "login",
-            "",
+            ""
         )
     ).strip()
 
     password = str(
         data.get(
             "password",
-            "",
+            ""
         )
     )
 
@@ -1769,14 +1616,13 @@ def login():
 
         return jsonify({
             "success": False,
-            "message": (
+            "message":
                 "Enter username/email and password."
-            ),
         }), 400
 
     users = load_json(
         USERS_FILE,
-        {},
+        {}
     )
 
     username_found = None
@@ -1786,21 +1632,21 @@ def login():
 
         if not isinstance(
             user,
-            dict,
+            dict
         ):
             continue
 
         email = str(
             user.get(
                 "email",
-                "",
+                ""
             )
         ).lower()
 
         phone = str(
             user.get(
                 "phone",
-                "",
+                ""
             )
         )
 
@@ -1815,16 +1661,14 @@ def login():
 
             username_found = username
             user_found = user
-
             break
 
     if not user_found:
 
         return jsonify({
             "success": False,
-            "message": (
+            "message":
                 "Invalid username, email or phone."
-            ),
         }), 401
 
     try:
@@ -1832,9 +1676,9 @@ def login():
         password_correct = check_password_hash(
             user_found.get(
                 "password",
-                "",
+                ""
             ),
-            password,
+            password
         )
 
     except Exception:
@@ -1845,7 +1689,8 @@ def login():
 
         return jsonify({
             "success": False,
-            "message": "Incorrect password.",
+            "message":
+                "Incorrect password."
         }), 401
 
     session["username"] = username_found
@@ -1867,7 +1712,7 @@ def login():
     return jsonify({
         "success": True,
         "message": "Login successful.",
-        "username": username_found,
+        "username": username_found
     })
 
 
@@ -1877,7 +1722,7 @@ def login():
 
 @app.route(
     "/register",
-    methods=["POST"],
+    methods=["POST"]
 )
 def register():
 
@@ -1888,28 +1733,28 @@ def register():
     username = str(
         data.get(
             "username",
-            "",
+            ""
         )
     ).strip()
 
     email = str(
         data.get(
             "email",
-            "",
+            ""
         )
     ).strip()
 
     phone = str(
         data.get(
             "phone",
-            "",
+            ""
         )
     ).strip()
 
     password = str(
         data.get(
             "password",
-            "",
+            ""
         )
     )
 
@@ -1917,65 +1762,60 @@ def register():
 
         return jsonify({
             "success": False,
-            "message": (
+            "message":
                 "Username must contain at least 3 characters."
-            ),
         }), 400
 
     if not re.fullmatch(
         r"[A-Za-z0-9_.-]+",
-        username,
+        username
     ):
 
         return jsonify({
             "success": False,
-            "message": (
+            "message":
                 "Username contains invalid characters."
-            ),
         }), 400
 
     if not email and not phone:
 
         return jsonify({
             "success": False,
-            "message": (
+            "message":
                 "Enter an email or phone number."
-            ),
         }), 400
 
     if email:
 
         if not re.fullmatch(
             r"[^@\s]+@[^@\s]+\.[^@\s]+",
-            email,
+            email
         ):
 
             return jsonify({
                 "success": False,
-                "message": (
+                "message":
                     "Enter a valid email address."
-                ),
             }), 400
 
     if len(password) < 6:
 
         return jsonify({
             "success": False,
-            "message": (
+            "message":
                 "Password must contain at least 6 characters."
-            ),
         }), 400
 
     users = load_json(
         USERS_FILE,
-        {},
+        {}
     )
 
     for existing_username, user in users.items():
 
         if not isinstance(
             user,
-            dict,
+            dict
         ):
             continue
 
@@ -1986,15 +1826,14 @@ def register():
 
             return jsonify({
                 "success": False,
-                "message": (
+                "message":
                     "Username already exists."
-                ),
             }), 409
 
         existing_email = str(
             user.get(
                 "email",
-                "",
+                ""
             )
         ).lower()
 
@@ -2006,15 +1845,14 @@ def register():
 
             return jsonify({
                 "success": False,
-                "message": (
+                "message":
                     "Email already exists."
-                ),
             }), 409
 
         existing_phone = str(
             user.get(
                 "phone",
-                "",
+                ""
             )
         )
 
@@ -2026,30 +1864,34 @@ def register():
 
             return jsonify({
                 "success": False,
-                "message": (
+                "message":
                     "Phone number already exists."
-                ),
             }), 409
 
     users[username] = {
+
         "email": email,
+
         "phone": phone,
-        "password": generate_password_hash(
-            password
-        ),
-        "created_at": now_iso(),
+
+        "password":
+            generate_password_hash(
+                password
+            ),
+
+        "created_at":
+            now_iso()
     }
 
     if not save_json(
         USERS_FILE,
-        users,
+        users
     ):
 
         return jsonify({
             "success": False,
-            "message": (
+            "message":
                 "Could not save the account."
-            ),
         }), 500
 
     session["username"] = username
@@ -2060,10 +1902,9 @@ def register():
 
     return jsonify({
         "success": True,
-        "message": (
-            "Account created successfully."
-        ),
-        "username": username,
+        "message":
+            "Account created successfully.",
+        "username": username
     })
 
 
@@ -2071,9 +1912,7 @@ def register():
 # LOGOUT
 # ============================================================
 
-@app.route(
-    "/logout"
-)
+@app.route("/logout")
 def logout():
 
     session.clear()
@@ -2089,7 +1928,7 @@ def logout():
 
 @app.route(
     "/new-chat",
-    methods=["POST"],
+    methods=["POST"]
 )
 @login_required
 def new_chat():
@@ -2105,7 +1944,7 @@ def new_chat():
     return jsonify({
         "success": True,
         "chat_id": chat_id,
-        "title": "New Chat",
+        "title": "New Chat"
     })
 
 
@@ -2115,7 +1954,7 @@ def new_chat():
 
 @app.route(
     "/history",
-    methods=["GET"],
+    methods=["GET"]
 )
 @login_required
 def history():
@@ -2137,9 +1976,7 @@ def history():
             WHERE username = ?
             ORDER BY updated_at DESC
             """,
-            (
-                username,
-            ),
+            (username,)
         ).fetchall()
 
         chats = []
@@ -2148,34 +1985,35 @@ def history():
 
             chats.append({
                 "id": row["id"],
-                "title": (
+                "title":
                     row["title"]
-                    or "New Chat"
-                ),
-                "created_at": row["created_at"],
-                "updated_at": row["updated_at"],
+                    or "New Chat",
+                "created_at":
+                    row["created_at"],
+                "updated_at":
+                    row["updated_at"]
             })
 
         return jsonify({
             "success": True,
-            "chats": chats,
+            "chats": chats
         })
 
     except Exception as error:
 
         print(
             "HISTORY ERROR:",
-            repr(error),
+            repr(error)
         )
 
         return jsonify({
             "success": False,
-            "message": (
+            "message":
                 "Could not load history."
-            ),
         }), 500
 
     finally:
+
         connection.close()
 
 
@@ -2185,7 +2023,7 @@ def history():
 
 @app.route(
     "/chat/<chat_id>",
-    methods=["GET"],
+    methods=["GET"]
 )
 @login_required
 def open_chat(chat_id):
@@ -2194,21 +2032,22 @@ def open_chat(chat_id):
 
     chat = get_chat(
         chat_id,
-        username,
+        username
     )
 
     if not chat:
 
         return jsonify({
             "success": False,
-            "message": "Chat not found.",
+            "message":
+                "Chat not found."
         }), 404
 
     session["chat_id"] = chat_id
 
     return jsonify({
         "success": True,
-        "chat": chat,
+        "chat": chat
     })
 
 
@@ -2218,7 +2057,7 @@ def open_chat(chat_id):
 
 @app.route(
     "/chat",
-    methods=["POST"],
+    methods=["POST"]
 )
 @login_required
 def chat():
@@ -2230,7 +2069,7 @@ def chat():
     user_message = str(
         data.get(
             "message",
-            "",
+            ""
         )
     ).strip()
 
@@ -2238,9 +2077,8 @@ def chat():
 
         return jsonify({
             "success": False,
-            "message": (
+            "message":
                 "Please enter a message."
-            ),
         }), 400
 
     username = current_username()
@@ -2251,116 +2089,65 @@ def chat():
 
         return jsonify({
             "success": False,
-            "message": (
+            "message":
                 "Could not create chat."
-            ),
         }), 500
 
-    # ========================================================
-    # CREATOR QUESTION
-    # ========================================================
+    # --------------------------------------------------------
+    # LOCAL ANSWER FIRST
+    # --------------------------------------------------------
 
-    if is_creator_question(
-        user_message
-    ):
-
-        answer = creator_response()
-
-        save_message(
-            chat_id,
-            "user",
-            user_message,
-        )
-
-        save_message(
-            chat_id,
-            "assistant",
-            answer,
-        )
-
-        current_chat = get_chat(
-            chat_id,
-            username,
-        )
-
-        if (
-            current_chat
-            and current_chat.get(
-                "title"
-            ) == "New Chat"
-        ):
-
-            set_chat_title(
-                chat_id,
-                user_message[:50],
-            )
-
-        return jsonify({
-            "success": True,
-            "answer": answer,
-            "response": answer,
-            "reply": answer,
-            "message": answer,
-            "chat_id": chat_id,
-            "source": "built-in",
-        })
-
-    # ========================================================
-    # BASIC BUILT-IN ANSWER
-    # ========================================================
-
-    basic_answer = get_basic_answer(
+    local_answer = get_local_answer(
         user_message
     )
 
-    if basic_answer:
+    if local_answer:
 
         save_message(
             chat_id,
             "user",
-            user_message,
+            user_message
         )
 
         save_message(
             chat_id,
             "assistant",
-            basic_answer,
+            local_answer
         )
 
         current_chat = get_chat(
             chat_id,
-            username,
+            username
         )
 
         if (
             current_chat
-            and current_chat.get(
-                "title"
-            ) == "New Chat"
+            and current_chat.get("title")
+            == "New Chat"
         ):
 
             set_chat_title(
                 chat_id,
-                user_message[:50],
+                user_message[:50]
             )
 
         return jsonify({
             "success": True,
-            "answer": basic_answer,
-            "response": basic_answer,
-            "reply": basic_answer,
-            "message": basic_answer,
+            "answer": local_answer,
+            "response": local_answer,
+            "reply": local_answer,
+            "message": local_answer,
             "chat_id": chat_id,
-            "source": "built-in",
+            "source": "local"
         })
 
-    # ========================================================
-    # GET OLD CONVERSATION
-    # ========================================================
+    # --------------------------------------------------------
+    # GET PREVIOUS CONVERSATION
+    # --------------------------------------------------------
 
     old_chat = get_chat(
         chat_id,
-        username,
+        username
     )
 
     conversation = []
@@ -2369,35 +2156,33 @@ def chat():
 
         conversation = old_chat.get(
             "messages",
-            [],
+            []
         )
 
-    # ========================================================
+    # --------------------------------------------------------
     # SAVE USER MESSAGE
-    # ========================================================
+    # --------------------------------------------------------
 
     if not save_message(
         chat_id,
         "user",
-        user_message,
+        user_message
     ):
 
         return jsonify({
             "success": False,
-            "message": (
+            "message":
                 "Could not save your message."
-            ),
         }), 500
 
-    # ========================================================
+    # --------------------------------------------------------
     # CHAT TITLE
-    # ========================================================
+    # --------------------------------------------------------
 
     if (
         old_chat
-        and old_chat.get(
-            "title"
-        ) == "New Chat"
+        and old_chat.get("title")
+        == "New Chat"
     ):
 
         title = user_message[:50]
@@ -2407,72 +2192,46 @@ def chat():
 
         set_chat_title(
             chat_id,
-            title,
+            title
         )
 
-    # ========================================================
-    # ONLINE AI
-    # ========================================================
+    # --------------------------------------------------------
+    # OLLAMA
+    # --------------------------------------------------------
 
-    success, answer = call_huggingface(
+    success, answer = call_ollama(
         user_message,
-        conversation,
+        conversation
     )
-
-    # ========================================================
-    # OPTIONAL OLLAMA FALLBACK
-    # ========================================================
-
-    if not success and OLLAMA_URL:
-
-        print(
-            "Hugging Face failed:",
-            answer,
-        )
-
-        ollama_success, ollama_answer = call_ollama(
-            user_message,
-            conversation,
-        )
-
-        if ollama_success:
-
-            success = True
-            answer = ollama_answer
-
-    # ========================================================
-    # AI FAILURE
-    # ========================================================
 
     if not success:
 
         print(
             "AI ERROR:",
-            answer,
+            answer
         )
-
-        # Keep the error user-friendly.
-        # IMPORTANT: no "Start Ollama" message because
-        # Ollama is not required for the Render version.
 
         return jsonify({
             "success": False,
-            "answer": (
-                "⚠️ "
-                + answer
-            ),
+
+            "answer":
+                "⚠️ " + answer,
+
             "error": answer,
+
             "chat_id": chat_id,
+
+            "source": "ollama"
         }), 502
 
-    # ========================================================
+    # --------------------------------------------------------
     # SAVE AI RESPONSE
-    # ========================================================
+    # --------------------------------------------------------
 
     save_message(
         chat_id,
         "assistant",
-        answer,
+        answer
     )
 
     return jsonify({
@@ -2482,7 +2241,7 @@ def chat():
         "reply": answer,
         "message": answer,
         "chat_id": chat_id,
-        "source": "online-ai",
+        "source": "ollama"
     })
 
 
@@ -2492,7 +2251,7 @@ def chat():
 
 @app.route(
     "/improve",
-    methods=["POST"],
+    methods=["POST"]
 )
 @login_required
 def improve():
@@ -2504,21 +2263,21 @@ def improve():
     question = str(
         data.get(
             "question",
-            "",
+            ""
         )
     ).strip()
 
     answer = str(
         data.get(
             "answer",
-            "",
+            ""
         )
     ).strip()
 
     action = str(
         data.get(
             "action",
-            "improve",
+            "improve"
         )
     ).strip().lower()
 
@@ -2534,12 +2293,12 @@ def improve():
             "Explain the answer step by step in simple language.",
 
         "short":
-            "Make the answer shorter while keeping the important information.",
+            "Make the answer shorter while keeping the important information."
     }
 
     instruction = instructions.get(
         action,
-        instructions["improve"],
+        instructions["improve"]
     )
 
     prompt = f"""
@@ -2555,25 +2314,32 @@ Task:
 Give the corrected and useful result.
 """
 
-    success, result = call_huggingface(
-        prompt
+    # First try local answer for simple questions.
+    local_result = get_local_answer(
+        question
     )
 
-    if not success and OLLAMA_URL:
+    if local_result:
 
-        success, result = call_ollama(
-            prompt
-        )
+        return jsonify({
+            "success": True,
+            "answer": local_result,
+            "response": local_result,
+            "reply": local_result,
+            "source": "local"
+        })
+
+    success, result = call_ollama(
+        prompt
+    )
 
     if not success:
 
         return jsonify({
             "success": False,
-            "answer": (
-                "⚠️ "
-                + result
-            ),
-            "error": result,
+            "answer":
+                "⚠️ " + result,
+            "error": result
         }), 502
 
     return jsonify({
@@ -2581,6 +2347,7 @@ Give the corrected and useful result.
         "answer": result,
         "response": result,
         "reply": result,
+        "source": "ollama"
     })
 
 
@@ -2590,50 +2357,64 @@ Give the corrected and useful result.
 
 @app.route(
     "/health",
-    methods=["GET"],
+    methods=["GET"]
 )
 def health():
+
+    ollama_ok, ollama_info = check_ollama()
 
     return jsonify({
 
         "status": "ok",
 
-        "application": "Helpar",
+        "application": "Halper",
 
-        "ai_provider": (
-            "Hugging Face"
-            if HF_TOKEN
-            else "Built-in only"
-        ),
+        "ai_provider": "Ollama",
 
-        "online_ai_configured": bool(
-            HF_TOKEN
-        ),
+        "ollama_url":
+            OLLAMA_URL,
 
-        "online_ai_model": HF_MODEL,
+        "ollama_model":
+            OLLAMA_MODEL,
 
-        "ollama_configured": bool(
-            OLLAMA_URL
-        ),
+        "ollama_connected":
+            ollama_ok,
 
-        "ollama_model": OLLAMA_MODEL,
+        "ollama_info":
+            ollama_info,
 
-        "creator_configured": bool(
-            CREATOR_INFO.get("name")
-            and CREATOR_INFO.get("name")
-            != "YOUR NAME"
-        ),
+        "local_answers":
+            True,
+
+        "local_math":
+            True,
+
+        "creator_configured":
+            bool(
+                CREATOR_INFO.get("name")
+                and
+                CREATOR_INFO.get("name")
+                != "YOUR NAME"
+            ),
 
         "routes": {
+
             "home": "/",
+
             "login": "/login",
+
             "register": "/register",
+
             "chat": "/chat",
+
             "history": "/history",
+
             "new_chat": "/new-chat",
+
             "improve": "/improve",
-            "health": "/health",
-        },
+
+            "health": "/health"
+        }
     })
 
 
@@ -2646,13 +2427,15 @@ def home():
 
     return render_template(
         "index.html",
+
         logged_in=(
             "username" in session
         ),
+
         username=session.get(
             "username",
-            "",
-        ),
+            ""
+        )
     )
 
 
@@ -2665,8 +2448,10 @@ def page_not_found(error):
 
     return jsonify({
         "success": False,
-        "message": "Route not found.",
-        "path": request.path,
+        "message":
+            "Route not found.",
+        "path":
+            request.path
     }), 404
 
 
@@ -2675,14 +2460,13 @@ def internal_error(error):
 
     print(
         "INTERNAL SERVER ERROR:",
-        repr(error),
+        repr(error)
     )
 
     return jsonify({
         "success": False,
-        "message": (
+        "message":
             "Internal server error."
-        ),
     }), 500
 
 
@@ -2695,37 +2479,41 @@ if __name__ == "__main__":
     port = int(
         os.environ.get(
             "PORT",
-            "5000",
+            "5000"
         )
     )
 
     print()
     print("=" * 55)
-    print(" HELPAR")
+    print(" HALPER")
     print("=" * 55)
     print(
         "AI Provider :",
-        "Hugging Face"
-        if HF_TOKEN
-        else "Built-in answers",
+        "Ollama"
     )
     print(
         "Model       :",
-        HF_MODEL,
+        OLLAMA_MODEL
     )
     print(
-        "Ollama      :",
-        "Configured"
-        if OLLAMA_URL
-        else "Disabled",
+        "Ollama URL  :",
+        OLLAMA_URL
     )
     print(
         "Creator     :",
-        CREATOR_INFO["name"],
+        CREATOR_INFO["name"]
+    )
+    print(
+        "Local Math  :",
+        "Enabled"
+    )
+    print(
+        "Basic PCMB  :",
+        "Enabled"
     )
     print(
         "Port        :",
-        port,
+        port
     )
     print("=" * 55)
     print()
@@ -2733,5 +2521,5 @@ if __name__ == "__main__":
     app.run(
         host="0.0.0.0",
         port=port,
-        debug=False,
+        debug=True
     )
